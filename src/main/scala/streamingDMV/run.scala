@@ -168,9 +168,9 @@ object run {
 
       if(
         logEvalRate &&
-        math.log10(initialMiniBatchSize + ((i-1)*miniBatchSize) )%1 == 0 &&
-        i != evalEvery &&
-        i != initialMiniBatchSize
+        math.log10( sentencesProcessed )%1 == 0 &&
+        sentencesProcessed != evalEvery &&
+        sentencesProcessed != initialMiniBatchSize
       ) {
         evalEvery *= 10
         println( s"$i eval every $evalEvery" )
