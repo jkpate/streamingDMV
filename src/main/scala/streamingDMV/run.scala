@@ -85,6 +85,8 @@ object run {
     println( s"fullyNormalizing: ${fullyNormalizing}" )
     println( s"incConvergence: ${incConvergence}" )
     println( s"incIters: ${incIters}" )
+    println( s"miniBatchSize: ${miniBatchSize}" )
+    println( s"initialMiniBatchSize: ${initialMiniBatchSize}" )
     println( s"printItersReached: ${printItersReached}" )
     println( s"logEvalRate: ${logEvalRate}" )
     println( s"evalEvery: ${evalEvery}" )
@@ -115,11 +117,9 @@ object run {
     val shuffledTrainSet = r.shuffle( trainSet.toList )
 
     // Batch VB is just a special case of minibatch VB where the first minibatch is set to the
-    // entire training corpus.
+    // entire training corpus. Use initialMiniBatchSize to control how much of the training corpus
+    // we use (so we can get learning curves against corpus size).
     val firstMiniBatch:List[Utt] =
-      if( batchVB )
-        trainSet.toList
-      else
         shuffledTrainSet.take( initialMiniBatchSize )
 
     val subsequentMiniBatches:List[List[Utt]] =
