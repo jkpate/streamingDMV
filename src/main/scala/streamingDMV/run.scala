@@ -145,7 +145,8 @@ object run {
         else
           miniBatchDur/(evalEvery*miniBatchSize)
 
-      if( i%evalEvery == 0 ) {
+      val sentencesProcessed = initialMiniBatchSize + miniBatchSize*i
+      if( sentencesProcessed%evalEvery == 0 ) {
         println( s"training took ${timePerSentence}ms/sentence" )
         miniBatchDur = 0
 
@@ -153,11 +154,11 @@ object run {
         testSet.foreach{ s =>
           if( constituencyEval ) {
             val Parse( id, conParse, depParse ) = p.viterbiParse( s )
-            println( s"it${i}:constituency:${id} ${conParse}" )
-            println( s"it${i}:dependency:${id} ${printDependencyParse(depParse)}" )
+            println( s"it${sentencesProcessed}:constituency:${id} ${conParse}" )
+            println( s"it${sentencesProcessed}:dependency:${id} ${printDependencyParse(depParse)}" )
           } else {
             val Parse( id, _, depParse ) = p.viterbiParse( s )
-            println( s"it${i}:dependency:${id} ${printDependencyParse(depParse)}" )
+            println( s"it${sentencesProcessed}:dependency:${id} ${printDependencyParse(depParse)}" )
           }
         }
         val parseEndTime = System.currentTimeMillis
