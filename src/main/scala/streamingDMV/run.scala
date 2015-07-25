@@ -162,7 +162,7 @@ object run {
           }
         }
         val parseEndTime = System.currentTimeMillis
-        println( s"test took ${ (parseEndTime - parseStartTime ) / testSet.size}ms" )
+        println( s"test took ${ (parseEndTime - parseStartTime ) / testSet.size}ms per sentence" )
       }
       i += 1
 
@@ -190,7 +190,7 @@ object run {
       }
     }
     val parseEndTime = System.currentTimeMillis
-    println( s"test took ${ (parseEndTime - parseStartTime ) / testSet.size}ms" )
+    println( s"test took ${ (parseEndTime - parseStartTime ) / testSet.size}ms per sentence" )
 
   }
 }
