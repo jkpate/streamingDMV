@@ -16,6 +16,7 @@ object run {
 
     optsParser.accepts( "trainStrings" ).withRequiredArg
     optsParser.accepts( "testStrings" ).withRequiredArg
+    optsParser.accepts( "parserType" ).withRequiredArg
     optsParser.accepts( "fullyNormalizing" )
     optsParser.accepts( "incConvergence" ).withRequiredArg
     optsParser.accepts( "incIters" ).withRequiredArg
@@ -36,6 +37,11 @@ object run {
     val trainStrings = opts.valueOf( "trainStrings" ).toString
     val testStrings = opts.valueOf( "testStrings" ).toString
     val fullyNormalizing = opts.has( "fullyNormalizing" )
+    val parserType =
+      if( opts.has( "parserType" ) )
+        opts.valueOf( "parserType" )
+      else
+        "TopDownDMVParser"
     val incConvergence =
       if( opts.has( "incConvergence" ) )
         opts.valueOf( "incConvergence" ).toString.toDouble
@@ -69,7 +75,10 @@ object run {
     val batchVB = opts.has( "batchVB" )
     val logEvalRate = opts.has( "logEvalRate" )
     var evalEvery =
-      if(opts.has( "evalEvery" )) opts.valueOf( "evalEvery" ).toString.toInt else 0
+      if(opts.has( "evalEvery" ))
+        opts.valueOf( "evalEvery" ).toString.toInt
+      else
+        initialMiniBatchSize
     val printItersReached =
       opts.has( "printItersReached" )
     val constituencyEval =
@@ -83,11 +92,13 @@ object run {
     println( s"trainStrings: ${trainStrings}" )
     println( s"testStrings: ${testStrings}" )
     println( s"fullyNormalizing: ${fullyNormalizing}" )
+    println( s"parserType: ${parserType}" )
     println( s"incConvergence: ${incConvergence}" )
     println( s"incIters: ${incIters}" )
     println( s"miniBatchSize: ${miniBatchSize}" )
     println( s"initialMiniBatchSize: ${initialMiniBatchSize}" )
     println( s"printItersReached: ${printItersReached}" )
+    println( s"batchVB: ${batchVB}" )
     println( s"logEvalRate: ${logEvalRate}" )
     println( s"evalEvery: ${evalEvery}" )
     println( s"alpha: ${alpha}" )
@@ -109,7 +120,17 @@ object run {
     println( s"${testSet.map{_.string.size}.sum} testing words" )
     println( s"${stringsToUtts.dictionary.size} unique words" )
 
-    val p = new TopDownDMVParser( { trainSet ++ testSet }.map{ _.string.length }.max )
+    val p =
+      if( parserType == "TopDownDMVParser" ) {
+        println( "Using TopDownDMVParser" )
+        new TopDownDMVParser( { trainSet ++ testSet }.map{ _.string.length }.max )
+      } else if( parserType == "OriginalDMVParser" ) {
+        println( "Using OriginalDMVParser" )
+        new OriginalDMVParser( { trainSet ++ testSet }.map{ _.string.length }.max )
+      } else {
+        println( "parser type not recognized -- defaulting to OriginalDMVParser" )
+        new OriginalDMVParser( { trainSet ++ testSet }.map{ _.string.length }.max )
+      }
 
     p.zerosInit( trainSet ++ testSet )
 
@@ -141,7 +162,7 @@ object run {
 
       val timePerSentence =
         if( i == 0 )
-          miniBatchDur/(evalEvery*initialMiniBatchSize)
+          miniBatchDur/((initialMiniBatchSize + (1-evalEvery)*miniBatchSize))
         else
           miniBatchDur/(evalEvery*miniBatchSize)
 
@@ -150,6 +171,7 @@ object run {
         println( s"training took ${timePerSentence}ms/sentence" )
         miniBatchDur = 0
 
+        var heldOutLogProb = 0D
         val parseStartTime = System.currentTimeMillis
         testSet.foreach{ s =>
           if( constituencyEval ) {
@@ -160,9 +182,12 @@ object run {
             val Parse( id, _, depParse ) = p.viterbiParse( s )
             println( s"it${sentencesProcessed}:dependency:${id} ${printDependencyParse(depParse)}" )
           }
+          heldOutLogProb += p.logProb( s.string )
         }
         val parseEndTime = System.currentTimeMillis
-        println( s"test took ${ (parseEndTime - parseStartTime ) / testSet.size}ms per sentence" )
+
+        println( s"it${sentencesProcessed}:logProb:${heldOutLogProb}" )
+        println( s"test took ${ (parseEndTime - parseStartTime ) / testSet.size}ms/sentence" )
       }
       i += 1
 
@@ -173,24 +198,29 @@ object run {
         sentencesProcessed != initialMiniBatchSize
       ) {
         evalEvery *= 10
-        println( s"$i eval every $evalEvery" )
+        println( s"after processing $sentencesProcessed we eval every $evalEvery" )
       }
     }
     println( s"overall training took ${totalDur/trainSet.size}ms/sentence" )
 
+    val trainingSentCount =
+      ( firstMiniBatch :: subsequentMiniBatches ).map{ _.size }.sum
+    var heldOutLogProb = 0D
     val parseStartTime = System.currentTimeMillis
     testSet.foreach{ s =>
       if( constituencyEval ) {
         val Parse( id, conParse, depParse ) = p.viterbiParse( s )
-        println( s"convergence:constituency:${id} ${conParse}" )
-        println( s"convergence:dependency:${id} ${printDependencyParse(depParse)}" )
+        println( s"it${trainingSentCount}:constituency:${id} ${conParse}" )
+        println( s"it${trainingSentCount}:dependency:${id} ${printDependencyParse(depParse)}" )
       } else {
         val Parse( id, _, depParse ) = p.viterbiParse( s )
-        println( s"convergence:dependency:${id} ${printDependencyParse(depParse)}" )
+        println( s"it${trainingSentCount}:dependency:${id} ${printDependencyParse(depParse)}" )
       }
+      heldOutLogProb += p.logProb( s.string )
     }
     val parseEndTime = System.currentTimeMillis
-    println( s"test took ${ (parseEndTime - parseStartTime ) / testSet.size}ms per sentence" )
+    println( s"it${trainingSentCount}:logProb:${heldOutLogProb}" )
+    println( s"test took ${ (parseEndTime - parseStartTime ) / testSet.size}ms/sentence" )
 
   }
 }

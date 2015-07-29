@@ -5,7 +5,7 @@ import streamingDMV.tables.CPT
 
 import collection.mutable.{Set=>MSet}
 
-class DMVParameters(
+abstract class ArcFactoredParameters(
   rootAlpha:Double,
   stopAlpha:Double,
   chooseAlpha:Double
@@ -13,9 +13,6 @@ class DMVParameters(
 
   var fullyNormalized:Boolean = false
 
-  // val p_root = new CPT[RootEvent,RootNorm.type]( rootAlpha )
-  // val p_stop = new CPT[StopEvent,StopNorm]( stopAlpha )
-  // val p_choose = new CPT[ChooseEvent,ChooseNorm]( chooseAlpha )
   val p_root = new CPT[RootEvent]( rootAlpha )
   val p_stop = new CPT[StopEvent]( stopAlpha )
   val p_choose = new CPT[ChooseEvent]( chooseAlpha )
@@ -41,6 +38,7 @@ class DMVParameters(
       p_choose.expDigammaNormalized( c )
   }
 
+  def possibleStopEvents( h:Int ):Seq[StopEvent]
   def zerosInit( corpus:List[Utt] ) {
     val rootEvents = MSet[RootEvent]()
     val stopEvents = MSet[StopEvent]()
@@ -51,16 +49,7 @@ class DMVParameters(
         val h = s(t)
 
         rootEvents += RootEvent( h )
-        stopEvents ++= Seq(
-          StopEvent( h, LeftAtt, Outermost, Stop ),
-          StopEvent( h, LeftAtt, Outermost, NotStop ),
-          StopEvent( h, LeftAtt, Inner, Stop ),
-          StopEvent( h, LeftAtt, Inner, NotStop ),
-          StopEvent( h, RightAtt, Outermost, Stop ),
-          StopEvent( h, RightAtt, Outermost, NotStop ),
-          StopEvent( h, RightAtt, Inner, Stop ),
-          StopEvent( h, RightAtt, Inner, NotStop )
-        )
+        stopEvents ++= possibleStopEvents( h )
 
         ( 0 until t ).foreach{ i =>
           chooseEvents += ChooseEvent( h, LeftAtt, s(i) )
@@ -94,8 +83,6 @@ class DMVParameters(
     p_stop.decrement( counts.stopCounts )
     p_choose.decrement( counts.chooseCounts )
   }
-
-
 
 
 }

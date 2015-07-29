@@ -25,6 +25,7 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
 
 
   val p = new TopDownDMVParser( dmvCorpus.map{_.length}.max )
+  // val p = new OriginalDMVParser( dmvCorpus.map{_.length}.max )
 
   // p.zerosInit( idDMVCorpus )
   p.randomInit( idDMVCorpus, 15, 1 )
@@ -49,16 +50,20 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
 
       println(
         {
-          p.insideHeads(0)(1)( Inner ) * p.outsideHeads(0)(1)( Inner ) +
-          p.insideHeads(0)(1)( Outermost ) * p.outsideHeads(0)(1)( Outermost ) 
+          p.insideHeads(0)(1).keys.map{ k => p.insideHeads(0)(1)(k) * p.outsideHeads(0)(1)(k) }.sum
+          // p.insideHeads(0)(1)( Inner ) * p.outsideHeads(0)(1)( Inner ) +
+          // p.insideHeads(0)(1)( Outermost ) * p.outsideHeads(0)(1)( Outermost ) 
+          // p.insideHeads(0)(1)( Innermost ) * p.outsideHeads(0)(1)( Innermost ) 
         } + " <=> " + pObs
       )
       (0 to ((2*s.length)-1)).foreach{ i =>
         assertTrue(
           // p.insideHeads(i)(i+1) * p.outsideHeads(i)(i+1)
           {
-            p.insideHeads(i)(i+1)( Inner ) * p.outsideHeads(i)(i+1)( Inner ) +
-            p.insideHeads(i)(i+1)( Outermost ) * p.outsideHeads(i)(i+1)( Outermost ) 
+            p.insideHeads(i)(i+1).keys.map{ k => p.insideHeads(i)(i+1)(k) * p.outsideHeads(i)(i+1)(k) }.sum
+            // p.insideHeads(i)(i+1)( Inner ) * p.outsideHeads(i)(i+1)( Inner ) +
+            // p.insideHeads(i)(i+1)( Outermost ) * p.outsideHeads(i)(i+1)( Outermost ) 
+            // p.insideHeads(i)(i+1)( Innermost ) * p.outsideHeads(i)(i+1)( Innermost ) 
           } - pObs < 0.000000001
         )
       }

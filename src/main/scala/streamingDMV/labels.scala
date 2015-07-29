@@ -18,15 +18,19 @@ object NotStop extends StopDecision
 abstract class Valence
 object Outermost extends Valence
 object Inner extends Valence
+object Outer extends Valence
+object Innermost extends Valence
 
 
-abstract class NormKey
+abstract class NormKey 
 abstract class Event {
   // def normKey[N<:NormKey]:N
   def normKey:NormKey//[N<:NormKey]:N
 }
 
-case class ChooseNorm( head:Int, dir:AttDir ) extends NormKey
+case class ChooseNorm( head:Int, dir:AttDir ) extends NormKey {
+  override lazy val hashCode: Int= scala.runtime.ScalaRunTime._hashCode(ChooseNorm.this)
+}
 case class ChooseEvent( head:Int, dir:AttDir, dep:Int ) extends Event {
   def normKey = ChooseNorm( head, dir )
 }
