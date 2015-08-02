@@ -127,6 +127,9 @@ object run {
       } else if( parserType == "OriginalDMVParser" ) {
         println( "Using OriginalDMVParser" )
         new OriginalDMVParser( { trainSet ++ testSet }.map{ _.string.length }.max )
+      } else if( parserType == "NoValenceParser" ) {
+        println( "Using NoValenceParser" )
+        new NoValenceParser( { trainSet ++ testSet }.map{ _.string.length }.max )
       } else {
         println( "parser type not recognized -- defaulting to OriginalDMVParser" )
         new OriginalDMVParser( { trainSet ++ testSet }.map{ _.string.length }.max )

@@ -20,10 +20,10 @@ abstract class FoldUnfoldParser[P<:ArcFactoredParameters](
   val theta:P
 
   // Inside-Outside definitions
-  val insideHeads:Array[Array[MMap[Valence,Double]]]
-  val insideM:Array[Array[MMap[Tuple2[Valence,Valence],Double]]]
-  val outsideHeads:Array[Array[MMap[Valence,Double]]]
-  val outsideM:Array[Array[MMap[Tuple2[Valence,Valence],Double]]]
+  val insideHeads:Array[Array[MMap[Decoration,Double]]]
+  val insideM:Array[Array[MMap[MDecoration,Double]]]
+  val outsideHeads:Array[Array[MMap[Decoration,Double]]]
+  val outsideM:Array[Array[MMap[MDecoration,Double]]]
   var stringProb = 0D
 
   def lexFill( index:Int ):Unit
@@ -113,10 +113,10 @@ abstract class FoldUnfoldParser[P<:ArcFactoredParameters](
   // Viterbi definitions
 
   val headTrace = Array.tabulate( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
-    MMap[Valence,Entry]()
+    MMap[Decoration,Entry]()
   )
   val mTrace = Array.tabulate( 2*maxLength, 2*maxLength )( (i,j) =>
-    MMap[Tuple2[Valence,Valence],MEntry]()
+    MMap[MDecoration,MEntry]()
   )
 
   var doubledLength = 0
@@ -144,13 +144,13 @@ abstract class FoldUnfoldParser[P<:ArcFactoredParameters](
   def findRightRootChild( k:Int ):Entry
 
   def findLeftLeftwardChild( i:Int, k:Int ):Entry
-  def findRightLeftwardChild( k:Int, j:Int, hV:Valence, mDV:Valence ):Entry
+  def findRightLeftwardChild( k:Int, j:Int, hV:Decoration, mDV:Decoration ):Entry
 
-  def findLeftRightwardChild( i:Int, k:Int, hV:Valence, mDV:Valence ):Entry
+  def findLeftRightwardChild( i:Int, k:Int, hV:Decoration, mDV:Decoration ):Entry
   def findRightRightwardChild( k:Int, j:Int ):Entry
 
-  def findLeftMChild( i:Int, k:Int, leftV:Valence ):Entry
-  def findRightMChild( k:Int, j:Int, rightV:Valence ):Entry
+  def findLeftMChild( i:Int, k:Int, decoration:MDecoration ):Entry
+  def findRightMChild( k:Int, j:Int, decoration:MDecoration ):Entry
 
 
   case class RootEntry( k:Int ) extends BinaryEntry( 0, k, intString.length ) {
@@ -166,20 +166,20 @@ abstract class FoldUnfoldParser[P<:ArcFactoredParameters](
   }
 
   case class MEntry(
-    i:Int, k:Int, j:Int,
-    leftV:Valence, rightV:Valence
+    i:Int, k:Int, j:Int, decoration:MDecoration
+    // leftV:Decoration, rightV:Decoration
   ) extends BinaryEntry( i, k, j ) {
     // val leftChild = headTrace( i )( k )( leftV )
     // val rightChild = headTrace( k )( j )( rightV )
-    val leftChild = findLeftMChild( i, k, leftV )
-    val rightChild = findRightMChild( k, j, rightV )
+    val leftChild = findLeftMChild( i, k, decoration )
+    val rightChild = findRightMChild( k, j, decoration )
 
     def toDepParse = leftChild.toDepParse ++ rightChild.toDepParse
     def toConParse = s"(M ${leftChild.toConParse} ${rightChild.toConParse} )"
 
   }
 
-  case class LeftwardEntry( i:Int, k:Int, j:Int, hV:Valence, mDV:Valence ) extends BinaryEntry( i, k, j ) {
+  case class LeftwardEntry( i:Int, k:Int, j:Int, hV:Decoration, mDV:Decoration ) extends BinaryEntry( i, k, j ) {
     // val leftChild = headTrace( i )( k )( Outermost )
     // val rightChild = mTrace( k )( j )( ( Outermost, Inner ) )
     val leftChild = findLeftLeftwardChild( i, k )
@@ -190,7 +190,7 @@ abstract class FoldUnfoldParser[P<:ArcFactoredParameters](
     def toConParse = s"(L.${intString(j)} ${leftChild.toConParse} ${rightChild.toConParse})"
   }
 
-  case class RightwardEntry( i:Int, k:Int, j:Int, hV:Valence, mDV:Valence ) extends BinaryEntry( i, k, j ) {
+  case class RightwardEntry( i:Int, k:Int, j:Int, hV:Decoration, mDV:Decoration ) extends BinaryEntry( i, k, j ) {
     // val leftChild = mTrace( i )( k )( ( Inner, Outermost ) )
     // val rightChild = headTrace( k )( j )( ( Outermost ) )
     val leftChild = findLeftRightwardChild( i , k, hV, mDV )
@@ -259,15 +259,15 @@ abstract class FoldUnfoldParser[P<:ArcFactoredParameters](
   }
 
 
-  case class SplitSpec( k:Int, leftV:Valence, rightV:Valence )
-  def viterbiRightRank( i:Int, j:Int, parentV:Valence ):Iterable[Tuple2[SplitSpec,Double]]
-  def viterbiLeftRank( i:Int, j:Int, parentV:Valence ):Iterable[Tuple2[SplitSpec,Double]]
-  def viterbiMRank( i:Int, j:Int, leftV:Valence, rightV:Valence ):Iterable[Tuple2[SplitSpec,Double]]
+  case class SplitSpec( k:Int, leftV:Decoration, rightV:Decoration )
+  def viterbiRightRank( i:Int, j:Int, parentV:Decoration ):Iterable[Tuple2[SplitSpec,Double]]
+  def viterbiLeftRank( i:Int, j:Int, parentV:Decoration ):Iterable[Tuple2[SplitSpec,Double]]
+  def viterbiMRank( i:Int, j:Int, mDecoration:MDecoration ):Iterable[Tuple2[SplitSpec,Double]]
   def viterbiRootRank:Iterable[Tuple2[SplitSpec,Double]]
 
-  def leftArcParentVs( i:Int ):Set[Valence]
-  def rightArcParentVs( j:Int ):Set[Valence]
-  def mNodeParentVs( i:Int, j:Int ):Set[Tuple2[Valence,Valence]]
+  def leftArcParentVs( i:Int ):Set[Decoration]
+  def rightArcParentVs( j:Int ):Set[Decoration]
+  def mNodeParentVs( i:Int, j:Int ):Set[MDecoration]
 
   def viterbiSynFill( i:Int, j:Int ) {
     if( i%2 == 1 && j%2 == 0 ) {
@@ -298,14 +298,14 @@ abstract class FoldUnfoldParser[P<:ArcFactoredParameters](
     } else if( i%2 == 1 && j%2 == 1 ) {
       // M
 
-      mNodeParentVs( i, j ).foreach{ vs  =>
-        val (leftV, rightV) = vs
-        val expansions = viterbiMRank( i, j, leftV, rightV )
+      mNodeParentVs( i, j ).foreach{ mDecoration  =>
+        // val (leftV, rightV) = vs
+        val expansions = viterbiMRank( i, j, mDecoration )
 
         val (bestSplit, bestScore) = argMax( expansions )
-        insideM( i )( j )( vs ) = bestScore
-        mTrace( i )( j )( vs ) =
-          MEntry( i, bestSplit.k, j, bestSplit.leftV, bestSplit.rightV )
+        insideM( i )( j )( mDecoration ) = bestScore
+        mTrace( i )( j )( mDecoration ) =
+          MEntry( i, bestSplit.k, j, mDecoration )
       }
     } else {
       // Root
@@ -369,12 +369,14 @@ abstract class FoldUnfoldParser[P<:ArcFactoredParameters](
   def outsideRightWithMarginals( i:Int, k:Int, j:Int ):Map[Event,Double]
   def lexMarginals( index:Int ):Map[Event,Double]
 
+  def mSplits( i:Int, j:Int ):Iterable[Int]
+
 
   def outsidePassWithCounts( s:Array[Int] ):DMVCounts = {
     val c = DMVCounts(
-      new CPT[RootEvent]( rootAlpha ),
-      new CPT[StopEvent]( stopAlpha ),
-      new CPT[ChooseEvent]( chooseAlpha )
+      new CPT[AbstractRootEvent]( rootAlpha ),
+      new CPT[AbstractStopEvent]( stopAlpha ),
+      new CPT[AbstractChooseEvent]( chooseAlpha )
     )
 
     ( 1 to s.length ).reverse.foreach{ length =>
@@ -428,7 +430,8 @@ abstract class FoldUnfoldParser[P<:ArcFactoredParameters](
             }
           }
         } else if( i%2 == 1 && j%2 == 1 ) { // M label
-          ( (i+1) to (j-1) by 2 ).foreach{ k =>
+          // ( (i+1) to (j-1) by 2 ).foreach{ k =>
+          mSplits(i,j).foreach{ k =>
             // no counts to gather from M-cells
             outsideM( i, k, j )
           }
@@ -474,9 +477,9 @@ abstract class FoldUnfoldParser[P<:ArcFactoredParameters](
   ) = {
 
     var lastFHat = DMVCounts(
-      new CPT[RootEvent]( rootAlpha ),
-      new CPT[StopEvent]( stopAlpha ),
-      new CPT[ChooseEvent]( chooseAlpha )
+      new CPT[AbstractRootEvent]( rootAlpha ),
+      new CPT[AbstractStopEvent]( stopAlpha ),
+      new CPT[AbstractChooseEvent]( chooseAlpha )
     )
 
     var lastMiniBatchScores = 1D
@@ -517,7 +520,7 @@ abstract class FoldUnfoldParser[P<:ArcFactoredParameters](
   // debugging stuff
   def chartToString(
     label:String,
-    chartToPrint:Array[Array[MMap[Valence,Double]]],
+    chartToPrint:Array[Array[MMap[Decoration,Double]]],
     logSpace:Boolean = true
   ) = {
     s"${label} Chart:\n\n" +

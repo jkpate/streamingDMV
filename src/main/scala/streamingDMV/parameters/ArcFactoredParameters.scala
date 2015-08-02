@@ -11,11 +11,11 @@ abstract class ArcFactoredParameters(
   chooseAlpha:Double
 ) {
 
-  var fullyNormalized:Boolean = false
+  val p_root = new CPT[AbstractRootEvent]( rootAlpha )
+  val p_stop = new CPT[AbstractStopEvent]( stopAlpha )
+  val p_choose = new CPT[AbstractChooseEvent]( chooseAlpha )
 
-  val p_root = new CPT[RootEvent]( rootAlpha )
-  val p_stop = new CPT[StopEvent]( stopAlpha )
-  val p_choose = new CPT[ChooseEvent]( chooseAlpha )
+  var fullyNormalized:Boolean = false
 
   def apply( r:RootEvent ) = {
     if( fullyNormalized )

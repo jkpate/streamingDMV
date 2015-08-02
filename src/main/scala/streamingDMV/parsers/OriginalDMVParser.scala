@@ -13,73 +13,73 @@ class OriginalDMVParser(
   stopAlpha:Double = 1D,
   chooseAlpha:Double = 1D,
   randomSeed:Int = 15
-) extends FoldUnfoldParser[OriginalDMVParameters](
+) extends FirstOrderFoldUnfoldParser[OriginalDMVParameters](
   maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed
 ) {
 
   val theta = new OriginalDMVParameters( rootAlpha, stopAlpha, chooseAlpha )
 
   // For the original DMV, valence is redundant with span indices
-  val insideHeads:Array[Array[MMap[Valence,Double]]] = Array.tabulate( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
+  val insideHeads:Array[Array[MMap[Decoration,Double]]] = Array.tabulate( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
     if( ( i%2 != j%2 ) ) {
       if( j-i > 1 )
         MMap( Outer -> 0D )
       else
         MMap( Innermost -> 0D )
     } else {
-      MMap[Valence,Double]()
+      MMap[Decoration,Double]()
     }
   )
   // One of the m-node children is a head-child, so they can't both be outermost
-  val insideM:Array[Array[MMap[Tuple2[Valence,Valence],Double]]] = Array.tabulate( 2*maxLength, 2*maxLength )( (i,j) =>
+  val insideM:Array[Array[MMap[MDecoration,Double]]] = Array.tabulate( 2*maxLength, 2*maxLength )( (i,j) =>
     if( i%2 == 1 && j%2 == 1 ) {
       if( j-i >= 6 )
         MMap(
-          (Outer,Outer) -> 0D,
-          (Outer,Innermost) -> 0D,
-          (Innermost,Outer) -> 0D
+          DecorationPair(Outer,Outer) -> 0D,
+          DecorationPair(Outer,Innermost) -> 0D,
+          DecorationPair(Innermost,Outer) -> 0D
         )
       else if( j-i == 4 )
         MMap(
-          (Outer,Innermost) -> 0D,
-          (Innermost,Outer) -> 0D
+          DecorationPair(Outer,Innermost) -> 0D,
+          DecorationPair(Innermost,Outer) -> 0D
         )
       else// if( j-i == 2 )
         MMap(
-          (Innermost,Innermost) -> 0D
+          DecorationPair(Innermost,Innermost) -> 0D
         )
     } else {
-      MMap[Tuple2[Valence,Valence],Double]()
+      MMap()
     }
   )
   // For the original DMV, valence is redundant with span indices
-  val outsideHeads:Array[Array[MMap[Valence,Double]]] = Array.tabulate( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
+  val outsideHeads:Array[Array[MMap[Decoration,Double]]] = Array.tabulate( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
     if( ( i%2 != j%2 ) ) {
       if( j-i > 1 )
         MMap( Outer -> 0D )
       else
         MMap( Innermost -> 0D )
     } else {
-      MMap[Valence,Double]()
+      MMap[Decoration,Double]()
     }
   )
   // One of the m-node children is a head-child, so they can't both be outermost
-  val outsideM:Array[Array[MMap[Tuple2[Valence,Valence],Double]]] = Array.tabulate( 2*maxLength, 2*maxLength )( (i,j) =>
+  val outsideM:Array[Array[MMap[MDecoration,Double]]] = Array.tabulate( 2*maxLength, 2*maxLength )( (i,j) =>
     if( i%2 == 1 && j%2 == 1 ) {
       if( j-i >= 6 )
         MMap(
-          (Outer,Outer) -> 0D,
-          (Outer,Innermost) -> 0D,
-          (Innermost,Outer) -> 0D
+          DecorationPair(Outer,Outer) -> 0D,
+          DecorationPair(Outer,Innermost) -> 0D,
+          DecorationPair(Innermost,Outer) -> 0D
         )
       else if( j-i == 4 )
         MMap(
-          (Outer,Innermost) -> 0D,
-          (Innermost,Outer) -> 0D
+          DecorationPair(Outer,Innermost) -> 0D,
+          DecorationPair(Innermost,Outer) -> 0D
         )
       else// if( j-i == 2 )
         MMap(
-          (Innermost,Innermost) -> 0D
+          DecorationPair(Innermost,Innermost) -> 0D
         )
     } else {
       MMap()
@@ -95,13 +95,13 @@ class OriginalDMVParser(
     headTrace( k )( intString.length )( adj( k, intString.length ) )
 
   def findLeftLeftwardChild( i:Int, k:Int ) = headTrace( i )( k )( adj( i, k ) )
-  def findRightLeftwardChild( k:Int, j:Int, hV:Valence, mDV:Valence ) =
-    mTrace( k )( j )( ( mDV, hV ) )
-  def findLeftRightwardChild( i:Int, k:Int, hV:Valence, mDV:Valence ) =
-    mTrace( i )( k )( ( hV, mDV ) )
+  def findRightLeftwardChild( k:Int, j:Int, hV:Decoration, mDV:Decoration ) =
+    mTrace( k )( j )( DecorationPair( mDV, hV ) )
+  def findLeftRightwardChild( i:Int, k:Int, hV:Decoration, mDV:Decoration ) =
+    mTrace( i )( k )( DecorationPair( hV, mDV ) )
   def findRightRightwardChild( k:Int, j:Int ) = headTrace( k )( j )( adj( k, j ) )
-  def findLeftMChild( i:Int, k:Int, leftV:Valence ) = headTrace( i )( k )( leftV )
-  def findRightMChild( k:Int, j:Int, rightV:Valence ) = headTrace( k )( j )( rightV )
+  def findLeftMChild( i:Int, k:Int, decoration:MDecoration ) = headTrace( i )( k )( decoration.left )
+  def findRightMChild( k:Int, j:Int, decoration:MDecoration ) = headTrace( k )( j )( decoration.right )
 
   def lexFill( index:Int ) {
     val head = intString( index )
@@ -131,7 +131,6 @@ class OriginalDMVParser(
 
     val cDV = adj( k, i )
 
-    // wonky type inference with the scala compiler
     val valences = mValences( j-k )
 
     // Only do this calculation once for this loop
@@ -141,7 +140,7 @@ class OriginalDMVParser(
           outsideHeads( i )( j )( Outer )
 
     valences.foreach{ vs =>
-      val ( mDV, hV ) = vs
+      val DecorationPair( mDV, hV ) = vs
       val factorAndOutside =
         theta( StopEvent( head, LeftAtt, hV, NotStop ) ) *
           theta( StopEvent( dep, RightAtt, mDV, Stop ) ) *
@@ -174,7 +173,7 @@ class OriginalDMVParser(
           outsideHeads( i )( j )( Outer )
 
     valences.foreach{ vs =>
-      val (hV, mDV) = vs
+      val DecorationPair(hV, mDV) = vs
       val factorAndOutside =
         theta( StopEvent( head, RightAtt, hV, NotStop ) ) *
           theta( StopEvent( dep, LeftAtt, mDV, Stop ) ) *
@@ -183,10 +182,10 @@ class OriginalDMVParser(
       // First, send messages to right child -- that is, the rightward looking dependent
       // label.
       outsideHeads( k )( j )( cDV ) +=
-          insideM( i )( k )( (hV, mDV) ) * factorAndOutside
+          insideM( i )( k )( DecorationPair(hV, mDV) ) * factorAndOutside
 
       // Now, send messages to left child -- that is, the M-label
-      outsideM( i )( k )( (hV, mDV) ) +=
+      outsideM( i )( k )( DecorationPair(hV, mDV) ) +=
           insideHeads( k )( j )( cDV ) * factorAndOutside
     }
   }
@@ -196,7 +195,7 @@ class OriginalDMVParser(
     val leftV = adj( k, i )
     val rightV = adj( j, k )
 
-    val vs = (leftV, rightV)
+    val vs = DecorationPair(leftV, rightV)
 
     outsideHeads( i )( k )( leftV ) +=
       outsideM( i )( j )( vs ) *
@@ -249,7 +248,7 @@ class OriginalDMVParser(
       val valences = mValences( j-k )
 
       valences.map{ vs =>
-        val ( mDV, hV ) = vs
+        val DecorationPair( mDV, hV ) = vs
         val factorAndOutside =
           theta( ChooseEvent( head, LeftAtt, dep ) ) *
           theta( StopEvent( head, LeftAtt, hV, NotStop ) ) *
@@ -282,7 +281,7 @@ class OriginalDMVParser(
       // this is a (pre-)terminal cell -- do nothing
       Map()
     }
-  }//.toMap
+  }
 
   def outsideRightWithMarginals( i:Int, k:Int, j:Int ) = {
     val head = intString( i )
@@ -296,7 +295,7 @@ class OriginalDMVParser(
       val valences = mValences( k-i )
 
       valences.map{ vs  =>
-        val ( hV, mDV ) = vs
+        val DecorationPair( hV, mDV ) = vs
         val factorAndOutside =
           theta( ChooseEvent( head, RightAtt, dep ) ) *
           theta( StopEvent( head, RightAtt, hV, NotStop ) ) *
@@ -340,7 +339,7 @@ class OriginalDMVParser(
     val valences = mValences( k-i )
 
     valences.foreach{ vs =>
-      val ( hV, mDV ) = vs
+      val DecorationPair( hV, mDV ) = vs
       insideHeads( i )( j )( Outer ) +=
         insideHeads( k )( j )( cDV ) *
           insideM( i )( k )( vs ) *
@@ -351,18 +350,18 @@ class OriginalDMVParser(
     }
   }
 
-  val longSpanVs = Set[Tuple2[Valence,Valence]](
-    (Innermost,Outer),
-    (Outer,Outer),
-    (Outer,Innermost)
+  val longSpanVs = Set[MDecoration](
+    DecorationPair(Innermost,Outer),
+    DecorationPair(Outer,Outer),
+    DecorationPair(Outer,Innermost)
   )
-  val midSpanVs = Set[Tuple2[Valence,Valence]](
-    (Innermost,Outer),
-    (Outer,Innermost)
+  val midSpanVs = Set[MDecoration](
+    DecorationPair(Innermost,Outer),
+    DecorationPair(Outer,Innermost)
   )
-  val shortSpanVs = Set[Tuple2[Valence,Valence]]( (Innermost,Innermost))
+  val shortSpanVs = Set[MDecoration]( DecorationPair(Innermost,Innermost))
 
-  def mValences( span:Int ):Set[Tuple2[Valence,Valence]] =
+  def mValences( span:Int ):Set[MDecoration] =
     if( span >= 6 )
       longSpanVs
     else if( span == 4 )
@@ -376,14 +375,13 @@ class OriginalDMVParser(
 
     val cDV = adj( i, k )
 
-    // wonky type inference with the scala compiler
     val valences = mValences( j-k )
 
     valences.foreach{ vs =>
-      val ( mDV, hV ) = vs
+      val DecorationPair( mDV, hV ) = vs
       insideHeads( i )( j )( Outer ) +=
         insideHeads( i )( k )( cDV ) *
-          insideM( k )( j )( vs ) * // head child is always Inner
+          insideM( k )( j )( vs ) *
             theta( ChooseEvent( head, LeftAtt, dep ) ) *
             theta( StopEvent( head, LeftAtt, hV, NotStop ) ) *
               theta( StopEvent( dep, RightAtt, mDV, Stop ) ) *
@@ -395,7 +393,7 @@ class OriginalDMVParser(
     val leftV = adj( i, k )
     val rightV = adj( k, j )
 
-    insideM( i )( j )( leftV, rightV ) +=
+    insideM( i )( j )( DecorationPair(leftV, rightV) ) +=
       insideHeads( i )( k )( leftV ) *
         insideHeads( k )( j )( rightV )
   }
@@ -419,12 +417,12 @@ class OriginalDMVParser(
     headTrace(index)(index+1) += Innermost -> LexEntry( index )
   }
 
-  def leftArcParentVs( i:Int ) = Set[Valence]( Outer )
-  def rightArcParentVs( j:Int ) = Set[Valence]( Outer )
+  def leftArcParentVs( i:Int ) = Set[Decoration]( Outer )
+  def rightArcParentVs( j:Int ) = Set[Decoration]( Outer )
 
   def mNodeParentVs( i:Int, j:Int ) = mValences( j-i )
 
-  def viterbiRightRank( i:Int, j:Int, parentV:Valence ) = {
+  def viterbiRightRank( i:Int, j:Int, parentV:Decoration ) = {
     val head = intString( i )
     ( (i+2) to (j-1) by 2 ).flatMap{ k =>
       val cDV = adj( k, j )
@@ -432,7 +430,7 @@ class OriginalDMVParser(
       val valences = mValences( k-i )
 
       valences.map{ vs =>
-        val (hV, mDV) = vs
+        val DecorationPair(hV, mDV) = vs
         SplitSpec(k,hV,mDV) -> {
           insideHeads( k )( j )( cDV ) *
             insideM( i )( k )( vs ) *
@@ -445,14 +443,14 @@ class OriginalDMVParser(
     }
   }
 
-  def viterbiLeftRank( i:Int, j:Int, parentV:Valence ) = {
+  def viterbiLeftRank( i:Int, j:Int, parentV:Decoration ) = {
     val head = intString( j )
     ( (i+1) to (j-2) by 2 ).flatMap{ k =>
       val cDV = adj( i, k )
       val dep = intString( k )
       val valences = mValences( j-k )
       valences.map{ vs =>
-        val (mDV, hV) = vs
+        val DecorationPair(mDV, hV) = vs
         SplitSpec(k,mDV,hV) -> {
           insideHeads( i )( k )( cDV ) *
             insideM( k )( j )( vs ) *
@@ -465,7 +463,9 @@ class OriginalDMVParser(
     }
   }
 
-  def viterbiMRank( i:Int, j:Int, leftV:Valence, rightV:Valence ) = {
+  def viterbiMRank( i:Int, j:Int, decoration:MDecoration ) = {
+
+    val DecorationPair( leftV, rightV ) = decoration
 
     // avoid looping over indices inconsistent with the valence
     val indices =

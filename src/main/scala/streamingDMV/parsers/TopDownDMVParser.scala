@@ -13,7 +13,7 @@ class TopDownDMVParser(
   stopAlpha:Double = 1D,
   chooseAlpha:Double = 1D,
   randomSeed:Int = 15
-) extends FoldUnfoldParser[TopDownDMVParameters](
+) extends FirstOrderFoldUnfoldParser[TopDownDMVParameters](
   maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed
 ) {
 
@@ -22,31 +22,31 @@ class TopDownDMVParser(
   // any directed head can be outermost or not
   val insideHeads = Array.tabulate( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
     if( ( i%2 == 1 || j%2 == 1 ) && i%2 != j%2 )
-      MMap( Outermost -> 0D, Inner -> 0D )
+      MMap[Decoration,Double]( Outermost -> 0D, Inner -> 0D )
     else
-      MMap[Valence,Double]()
+      MMap[Decoration,Double]()
   )
   // One of the m-node children is a head-child, so they can't both be outermost
   val insideM = Array.tabulate( 2*maxLength, 2*maxLength )( (i,j) =>
     if( i%2 == 1 && j%2 == 1 )
-      MMap(
+      MMap[MDecoration,Double](
         // (Outermost,Outermost) -> 0D,
-        (Outermost,Inner) -> 0D,
-        (Inner,Outermost) -> 0D
+        DecorationPair(Outermost,Inner) -> 0D,
+        DecorationPair(Inner,Outermost) -> 0D
       )
     else
-      MMap[Tuple2[Valence,Valence],Double]()
+      MMap[MDecoration,Double]()
   )
   // any directed head can be outermost or not
   val outsideHeads = Array.fill( 2*maxLength, (2*maxLength)+1 )(
-    MMap( Outermost -> 0D, Inner -> 0D )
+    MMap[Decoration,Double]( Outermost -> 0D, Inner -> 0D )
   )
   // One of the m-node children is a head-child, so they can't both be outermost
   val outsideM = Array.fill( 2*maxLength, 2*maxLength )(
-    MMap(
-      (Outermost,Outermost) -> 0D,
-      (Outermost,Inner) -> 0D,
-      (Inner,Outermost) -> 0D
+    MMap[MDecoration,Double](
+      DecorationPair(Outermost,Outermost) -> 0D,
+      DecorationPair(Outermost,Inner) -> 0D,
+      DecorationPair(Inner,Outermost) -> 0D
     )
   )
 
@@ -55,13 +55,15 @@ class TopDownDMVParser(
   def findRightRootChild( k:Int ) = headTrace( k )( intString.length )( Outermost )
 
   def findLeftLeftwardChild( i:Int, k:Int ) = headTrace( i )( k )( Outermost )
-  def findRightLeftwardChild( k:Int, j:Int, hV:Valence, mDV:Valence ) =
-    mTrace( k )( j )( ( Outermost, Inner ) )
-  def findLeftRightwardChild( i:Int, k:Int, hV:Valence, mDV:Valence ) =
-    mTrace( i )( k )( ( Inner, Outermost ) )
+  def findRightLeftwardChild( k:Int, j:Int, hV:Decoration, mDV:Decoration ) =
+    mTrace( k )( j )( DecorationPair( Outermost, Inner ) )
+  def findLeftRightwardChild( i:Int, k:Int, hV:Decoration, mDV:Decoration ) =
+    mTrace( i )( k )( DecorationPair( Inner, Outermost ) )
   def findRightRightwardChild( k:Int, j:Int ) = headTrace( k )( j )( ( Outermost ) )
-  def findLeftMChild( i:Int, k:Int, leftV:Valence ) = headTrace( i )( k )( leftV )
-  def findRightMChild( k:Int, j:Int, rightV:Valence ) = headTrace( k )( j )( rightV )
+  def findLeftMChild( i:Int, k:Int, decoration:MDecoration ) =
+    headTrace( i )( k )( decoration.left )
+  def findRightMChild( k:Int, j:Int, decoration:MDecoration ) =
+    headTrace( k )( j )( decoration.right )
 
   def lexFill( index:Int ) {
     val head = intString( index )
@@ -93,7 +95,7 @@ class TopDownDMVParser(
     hVs.foreach{ hV =>
       insideHeads( i )( j )( hV ) +=
         insideHeads( k )( j )( Outermost ) *
-          insideM( i )( k )( (Inner, Outermost) ) * // head child is always Inner
+          insideM( i )( k )( DecorationPair(Inner, Outermost) ) * // head child is always Inner
             theta( ChooseEvent( head, RightAtt, dep ) ) *
             theta( StopEvent( head, RightAtt, hV, NotStop ) )
     }
@@ -109,7 +111,7 @@ class TopDownDMVParser(
     hVs.foreach{ hV =>
       insideHeads( i )( j )( hV ) +=
         insideHeads( i )( k )( Outermost ) *
-          insideM( k )( j )( (Outermost, Inner) ) * // head child is always Inner
+          insideM( k )( j )( DecorationPair(Outermost, Inner) ) * // head child is always Inner
             theta( ChooseEvent( head, LeftAtt, dep ) ) *
             theta( StopEvent( head, LeftAtt, hV, NotStop ) )
     }
@@ -118,11 +120,11 @@ class TopDownDMVParser(
   def populateMCell( i:Int, k:Int, j:Int ) {
     // We can't have both children be Outermost or Inner -- one must be the dependent, one must
     // be the head child.
-    insideM( i )( j )( Outermost, Inner ) +=
+    insideM( i )( j )( DecorationPair( Outermost, Inner ) ) +=
       insideHeads( i )( k )( Outermost ) *
         insideHeads( k )( j )( Inner )
 
-    insideM( i )( j )( Inner, Outermost ) +=
+    insideM( i )( j )( DecorationPair( Inner, Outermost ) ) +=
       insideHeads( i )( k )( Inner ) *
         insideHeads( k )( j )( Outermost )
   }
@@ -139,19 +141,19 @@ class TopDownDMVParser(
 
   def rightArcParentVs( j:Int ) =
     if( j == intString.length-1 )
-      Set[Valence]( Outermost )
+      Set[Decoration]( Outermost )
     else
-      Set[Valence]( Outermost, Inner )
+      Set[Decoration]( Outermost, Inner )
   def leftArcParentVs( i:Int ) =
     if( i == 0 )
-      Set[Valence]( Outermost )
+      Set[Decoration]( Outermost )
     else
-      Set[Valence]( Outermost, Inner )
+      Set[Decoration]( Outermost, Inner )
 
   val mValences =
-    Set(
-      ( Inner, Outermost ),
-      ( Outermost, Inner )
+    Set[MDecoration](
+      DecorationPair( Inner, Outermost ),
+      DecorationPair( Outermost, Inner )
     )
   def mNodeParentVs( i:Int, j:Int ) = mValences
 
@@ -181,36 +183,37 @@ class TopDownDMVParser(
   }
 
 
-  def viterbiRightRank( i:Int, j:Int, parentV:Valence ) = {
+  def viterbiRightRank( i:Int, j:Int, parentV:Decoration ) = {
     val head = intString( i )
     ( (i+2) to (j-1) by 2 ).map{ k =>
       val dep = intString( k )
       // For top down parser, head child is always Inner, dependent children are always Outer
       SplitSpec(k,Inner,Outermost) -> {
         insideHeads( k )( j )( Outermost ) *
-          insideM( i )( k )( (Inner, Outermost) ) *
+          insideM( i )( k )( DecorationPair(Inner, Outermost) ) *
             theta( ChooseEvent( head, RightAtt, dep ) ) *
             theta( StopEvent( head, RightAtt, parentV, NotStop ) )
       }
     }
   }
 
-  def viterbiLeftRank( i:Int, j:Int, parentV:Valence ) = {
+  def viterbiLeftRank( i:Int, j:Int, parentV:Decoration ) = {
     val head = intString( j )
     ( (i+1) to (j-2) by 2 ).map{ k =>
       val dep = intString( k )
       // For top down parser, head child is always Inner, dependent children are always Outer
       SplitSpec( k, Outermost, Inner ) -> {
         insideHeads( i )( k )( Outermost ) *
-          insideM( k )( j )( (Outermost, Inner) ) *
+          insideM( k )( j )( DecorationPair(Outermost, Inner) ) *
             theta( ChooseEvent( head, LeftAtt, dep ) ) *
             theta( StopEvent( head, LeftAtt, parentV, NotStop ) )
       }
     }
   }
 
-  def viterbiMRank( i:Int, j:Int, leftV:Valence, rightV:Valence ) = {
+  def viterbiMRank( i:Int, j:Int, decoration:MDecoration ) = {
   // def viterbiMRank( i:Int, j:Int ) = {
+    val DecorationPair( leftV, rightV ) = decoration
     ( (i+1) to (j-1) by 2 ).map{ k =>
       SplitSpec( k, leftV, rightV ) -> {
         insideHeads( i )( k )( leftV ) *
@@ -258,10 +261,10 @@ class TopDownDMVParser(
       // First, send messages to left child -- that is, the leftward looking dependent
       // label.
       outsideHeads( i )( k )( Outermost ) +=
-          insideM( k )( j )( (Outermost, Inner ) ) * factorAndOutside
-      // Now, send messages to right child -- that is, the M-label
+          insideM( k )( j )( DecorationPair(Outermost, Inner ) ) * factorAndOutside
 
-      outsideM( k )( j )( (Outermost, Inner) ) +=
+      // Now, send messages to right child -- that is, the M-label
+      outsideM( k )( j )( DecorationPair(Outermost, Inner) ) +=
           insideHeads( i )( k )( Outermost ) * factorAndOutside
     }
   }
@@ -280,17 +283,17 @@ class TopDownDMVParser(
       // First, send messages to left child -- that is, the leftward looking dependent
       // label.
       outsideHeads( k )( j )( Outermost ) +=
-          insideM( i )( k )( (Inner, Outermost) ) * factorAndOutside
+          insideM( i )( k )( DecorationPair(Inner, Outermost) ) * factorAndOutside
 
       // Now, send messages to right child -- that is, the M-label
-      outsideM( i )( k )( (Inner, Outermost) ) +=
+      outsideM( i )( k )( DecorationPair(Inner, Outermost) ) +=
           insideHeads( k )( j )( Outermost ) * factorAndOutside
     }
   }
 
   def outsideM( i:Int, k:Int, j:Int ) {
     mValences.foreach{ vs =>
-      val (leftV, rightV) = vs
+      val DecorationPair(leftV, rightV) = vs
       val outM = outsideM( i )( j )( vs )
 
       outsideHeads( i )( k )( leftV ) += outM * insideHeads( k )( j )( rightV )
@@ -349,15 +352,15 @@ class TopDownDMVParser(
         // First, send messages to left child -- that is, the leftward looking dependent
         // label.
         outsideHeads( i )( k )( Outermost ) +=
-            insideM( k )( j )( (Outermost, Inner ) ) * factorAndOutside
+            insideM( k )( j )( DecorationPair(Outermost, Inner ) ) * factorAndOutside
         // Now, send messages to right child -- that is, the M-label
 
-        outsideM( k )( j )( (Outermost, Inner) ) +=
+        outsideM( k )( j )( DecorationPair(Outermost, Inner) ) +=
             insideHeads( i )( k )( Outermost ) * factorAndOutside
 
         val marginal = 
           insideHeads( i )( k )( Outermost ) *
-            insideM( k )( j )( (Outermost, Inner ) ) *
+            insideM( k )( j )( DecorationPair(Outermost, Inner ) ) *
               factorAndOutside
 
         Seq(
@@ -391,15 +394,15 @@ class TopDownDMVParser(
         // First, send messages to right child -- that is, the rightward looking dependent
         // label.
         outsideHeads( k )( j )( Outermost ) +=
-            insideM( i )( k )( (Outermost, Inner ) ) * factorAndOutside
+            insideM( i )( k )( DecorationPair(Outermost, Inner ) ) * factorAndOutside
 
         // Now, send messages to left child -- that is, the M-label
-        outsideM( i )( k )( (Outermost, Inner) ) +=
+        outsideM( i )( k )( DecorationPair(Outermost, Inner) ) +=
             insideHeads( k )( j )( Outermost ) * factorAndOutside
 
         val marginal = 
           insideHeads( k )( j )( Outermost ) *
-            insideM( i )( k )( (Outermost, Inner ) ) *
+            insideM( i )( k )( DecorationPair(Outermost, Inner ) ) *
               factorAndOutside
 
         Seq(

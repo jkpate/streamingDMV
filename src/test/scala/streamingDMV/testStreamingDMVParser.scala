@@ -24,6 +24,7 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   }
 
 
+  // val p = new NoValenceParser( dmvCorpus.map{_.length}.max )
   val p = new TopDownDMVParser( dmvCorpus.map{_.length}.max )
   // val p = new OriginalDMVParser( dmvCorpus.map{_.length}.max )
 
