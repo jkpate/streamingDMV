@@ -1,5 +1,6 @@
 package streamingDMV.parsers
 
+import streamingDMV.labels.Event
 import streamingDMV.parameters.ArcFactoredParameters
 
 abstract class FirstOrderFoldUnfoldParser[P<:ArcFactoredParameters](
@@ -13,6 +14,10 @@ abstract class FirstOrderFoldUnfoldParser[P<:ArcFactoredParameters](
 ) {
 
   def mSplits( i:Int, j:Int ):Iterable[Int] = ( (i+1) to (j-1) by 2 )
+  def outsideMWithMarginals( i:Int, k:Int, j:Int ):Map[Event,Double] = {
+    outsideM( i, k, j )
+    Map()
+  }
 
 }
 

@@ -23,6 +23,8 @@ object run {
     optsParser.accepts( "logEvalRate" )
     optsParser.accepts( "evalEvery" ).withRequiredArg
     optsParser.accepts( "alpha" ).withRequiredArg
+    optsParser.accepts( "backoffAlpha" ).withRequiredArg
+    optsParser.accepts( "notBackoffAlpha" ).withRequiredArg
     optsParser.accepts( "randomSeed" ).withRequiredArg
     optsParser.accepts( "miniBatchSize" ).withRequiredArg
     optsParser.accepts( "initialMiniBatchSize" ).withRequiredArg
@@ -57,6 +59,16 @@ object run {
         opts.valueOf( "alpha" ).toString.toDouble
       else
         1D
+    val backoffAlpha =
+      if( opts.has( "backoffAlpha" ) )
+        opts.valueOf( "backoffAlpha" ).toString.toDouble
+      else
+        alpha
+    val notBackoffAlpha =
+      if( opts.has( "notBackoffAlpha" ) )
+        opts.valueOf( "notBackoffAlpha" ).toString.toDouble
+      else
+        alpha
     val randomSeed =
       if( opts.has( "randomSeed" ) )
         opts.valueOf( "randomSeed" ).toString.toInt
@@ -102,6 +114,8 @@ object run {
     println( s"logEvalRate: ${logEvalRate}" )
     println( s"evalEvery: ${evalEvery}" )
     println( s"alpha: ${alpha}" )
+    println( s"backoffAlpha: ${backoffAlpha}" )
+    println( s"notBackoffAlpha: ${notBackoffAlpha}" )
     println( s"randomSeed: ${randomSeed}" )
     println( s"constituencyEval: ${constituencyEval}" )
     println( s"printInitialGrammar: ${printInitialGrammar}" )
@@ -120,22 +134,49 @@ object run {
     println( s"${testSet.map{_.string.size}.sum} testing words" )
     println( s"${stringsToUtts.dictionary.size} unique words" )
 
-    val p =
+    val p:FoldUnfoldParser[_<:ArcFactoredParameters] =
       if( parserType == "TopDownDMVParser" ) {
         println( "Using TopDownDMVParser" )
-        new TopDownDMVParser( { trainSet ++ testSet }.map{ _.string.length }.max )
+        new TopDownDMVParser(
+          { trainSet ++ testSet }.map{ _.string.length }.max,
+          randomSeed = randomSeed
+        )
       } else if( parserType == "OriginalDMVParser" ) {
         println( "Using OriginalDMVParser" )
-        new OriginalDMVParser( { trainSet ++ testSet }.map{ _.string.length }.max )
+        new OriginalDMVParser(
+          { trainSet ++ testSet }.map{ _.string.length }.max,
+          randomSeed = randomSeed
+        )
       } else if( parserType == "NoValenceParser" ) {
         println( "Using NoValenceParser" )
-        new NoValenceParser( { trainSet ++ testSet }.map{ _.string.length }.max )
+        new NoValenceParser(
+          { trainSet ++ testSet }.map{ _.string.length }.max,
+          randomSeed = randomSeed
+        )
+      } else if( parserType == "HeadOutAdjHeadNoValence" ) {
+        println( "Using HeadOutAdjHeadNoValence" )
+        new HeadOutAdjHeadNoValenceParser(
+          { trainSet ++ testSet }.map{ _.string.length }.max,
+          randomSeed = randomSeed
+        )
+      } else if( parserType == "HeadOutInterpolatedAdjHeadNoValence" ) {
+        println( "Using HeadOutInterpolatedAdjHeadNoValence" )
+        new HeadOutInterpolatedAdjHeadNoValenceParser(
+          maxLength = { trainSet ++ testSet }.map{ _.string.length }.max,
+          backoffAlpha = backoffAlpha,
+          notBackoffAlpha = notBackoffAlpha
+        )
       } else {
         println( "parser type not recognized -- defaulting to OriginalDMVParser" )
         new OriginalDMVParser( { trainSet ++ testSet }.map{ _.string.length }.max )
       }
 
     p.zerosInit( trainSet ++ testSet )
+
+    if( printInitialGrammar ) {
+      println( "INITIAL GRAMMAR" )
+      p.theta.printOut()
+    }
 
     val r = new util.Random( randomSeed )
     val shuffledTrainSet = r.shuffle( trainSet.toList )
@@ -163,15 +204,20 @@ object run {
       totalDur += endTime - startTime
       miniBatchDur += endTime - startTime
 
+
+      // // DELETE BELOW
+      // println( s"iteration $i grammar" )
+      // p.theta.printOut()
+      // println( s"end $i -------\n\n\n" )
+
       val timePerSentence =
         if( i == 0 )
-          miniBatchDur/((initialMiniBatchSize + (1-evalEvery)*miniBatchSize))
+          miniBatchDur/((initialMiniBatchSize + (evalEvery-1)*miniBatchSize))
         else
           miniBatchDur/(evalEvery*miniBatchSize)
 
       val sentencesProcessed = initialMiniBatchSize + miniBatchSize*i
       if( sentencesProcessed%evalEvery == 0 ) {
-        println( s"training took ${timePerSentence}ms/sentence" )
         miniBatchDur = 0
 
         var heldOutLogProb = 0D
@@ -190,14 +236,15 @@ object run {
         val parseEndTime = System.currentTimeMillis
 
         println( s"it${sentencesProcessed}:logProb:${heldOutLogProb}" )
-        println( s"test took ${ (parseEndTime - parseStartTime ) / testSet.size}ms/sentence" )
+        println( s"it${sentencesProcessed}:trainTimePerSentence:${timePerSentence}ms/sentence" )
+        println( s"it${sentencesProcessed}:testTimePerSentence:${ (parseEndTime - parseStartTime ) / testSet.size}ms/sentence" )
       }
       i += 1
 
       if(
         logEvalRate &&
         math.log10( sentencesProcessed )%1 == 0 &&
-        sentencesProcessed != evalEvery &&
+        sentencesProcessed > evalEvery &&
         sentencesProcessed != initialMiniBatchSize
       ) {
         evalEvery *= 10
@@ -224,6 +271,12 @@ object run {
     val parseEndTime = System.currentTimeMillis
     println( s"it${trainingSentCount}:logProb:${heldOutLogProb}" )
     println( s"test took ${ (parseEndTime - parseStartTime ) / testSet.size}ms/sentence" )
+
+    if( printFinalGrammar ) {
+      println( "FINAL GRAMMAR" )
+      p.theta.printOut()
+    }
+
 
   }
 }

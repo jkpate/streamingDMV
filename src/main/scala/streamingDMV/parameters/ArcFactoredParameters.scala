@@ -11,9 +11,9 @@ abstract class ArcFactoredParameters(
   chooseAlpha:Double
 ) {
 
-  val p_root = new CPT[AbstractRootEvent]( rootAlpha )
-  val p_stop = new CPT[AbstractStopEvent]( stopAlpha )
-  val p_choose = new CPT[AbstractChooseEvent]( chooseAlpha )
+  val p_root = new CPT[RootEvent]( rootAlpha )
+  val p_stop = new CPT[StopEvent]( stopAlpha )
+  val p_choose = new CPT[ChooseEvent]( chooseAlpha )
 
   var fullyNormalized:Boolean = false
 
@@ -39,31 +39,7 @@ abstract class ArcFactoredParameters(
   }
 
   def possibleStopEvents( h:Int ):Seq[StopEvent]
-  def zerosInit( corpus:List[Utt] ) {
-    val rootEvents = MSet[RootEvent]()
-    val stopEvents = MSet[StopEvent]()
-    val chooseEvents = MSet[ChooseEvent]()
-
-    corpus.map{_.string}.foreach{ s =>
-      (0 until s.length).foreach{ t =>
-        val h = s(t)
-
-        rootEvents += RootEvent( h )
-        stopEvents ++= possibleStopEvents( h )
-
-        ( 0 until t ).foreach{ i =>
-          chooseEvents += ChooseEvent( h, LeftAtt, s(i) )
-        }
-        ( t+1 until s.length ).foreach{ j =>
-          chooseEvents += ChooseEvent( h, RightAtt, s(j) )
-        }
-      }
-    }
-
-    p_root.setEvents( rootEvents.toSet )
-    p_stop.setEvents( stopEvents.toSet )
-    p_choose.setEvents( chooseEvents.toSet )
-  }
+  def zerosInit( corpus:List[Utt] ):Unit
 
   def randomizeCounts( seed:Int, scale:Int ) {
     val r = new util.Random( seed )
@@ -84,6 +60,14 @@ abstract class ArcFactoredParameters(
     p_choose.decrement( counts.chooseCounts )
   }
 
+  def printOut( logSpace:Boolean = false ) {
+    println( "p_root:" )
+    p_root.printOut( logSpace )
+    println( "p_stop:" )
+    p_stop.printOut( logSpace )
+    println( "p_choose:" )
+    p_choose.printOut( logSpace )
+  }
 
 }
 

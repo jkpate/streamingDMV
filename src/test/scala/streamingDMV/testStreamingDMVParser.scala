@@ -24,14 +24,27 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   }
 
 
-  // val p = new NoValenceParser( dmvCorpus.map{_.length}.max )
-  val p = new TopDownDMVParser( dmvCorpus.map{_.length}.max )
+  // val p = new TopDownDMVParser( dmvCorpus.map{_.length}.max )
   // val p = new OriginalDMVParser( dmvCorpus.map{_.length}.max )
+  // val p = new HeadOutAdjHeadNoValenceParser(
+  //   dmvCorpus.map{_.length}.max,
+  //   randomSeed = 15
+  // )
+  // val p = new NoValenceParser(
+  //   dmvCorpus.map{_.length}.max,
+  //   randomSeed = 15
+  // )
+  val p = new HeadOutInterpolatedAdjHeadNoValenceParser(
+    dmvCorpus.map{_.length}.max,
+    notBackoffAlpha = 0,
+    randomSeed = 15
+  )
+
 
   // p.zerosInit( idDMVCorpus )
   p.randomInit( idDMVCorpus, 15, 1 )
 
-  val iters = 1000
+  val iters = 1//000
 
   @Test def testInsideOutside {
 
@@ -39,15 +52,17 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
     dmvCorpus.foreach{ s =>
       println( s.mkString(" " ) )
       var i = 0
+      var c = DMVCounts()
       while( i < iters ) {
         // p.populateChart( s )
-        p.extractPartialCounts( s )
+        c = p.extractPartialCounts( s )
         i += 1
       }
       // p.seeInsideHeads()
       // val chart = p.populateChart( s )
       // val pObs = chart.pObs
       val pObs = p.stringProb
+
 
       println(
         {
@@ -57,6 +72,14 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
           // p.insideHeads(0)(1)( Innermost ) * p.outsideHeads(0)(1)( Innermost ) 
         } + " <=> " + pObs
       )
+      // println( "all terminals:" )
+      // (0 to ((2*s.length)-1)).foreach{ i =>
+      //   println(
+      //     {
+      //       p.insideHeads(i)(i+1).keys.map{ k => p.insideHeads(i)(i+1)(k) * p.outsideHeads(i)(i+1)(k) }.sum
+      //     } + " <=> " + pObs
+      //   )
+      // }
       (0 to ((2*s.length)-1)).foreach{ i =>
         assertTrue(
           // p.insideHeads(i)(i+1) * p.outsideHeads(i)(i+1)
@@ -68,6 +91,7 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
           } - pObs < 0.000000001
         )
       }
+      p.theta.incrementCounts( c )
     }
     val endTime = System.currentTimeMillis
 

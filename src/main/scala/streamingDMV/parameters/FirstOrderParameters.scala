@@ -1,27 +1,19 @@
 package streamingDMV.parameters
 
 import streamingDMV.labels._
-import streamingDMV.tables.CPT
-
 import collection.mutable.{Set=>MSet}
 
-class HeadOutAdjHeadNoValenceParameters(
+abstract class FirstOrderArcFactoredParameters(
   rootAlpha:Double,
   stopAlpha:Double,
   chooseAlpha:Double
 ) extends ArcFactoredParameters( rootAlpha, stopAlpha, chooseAlpha ) {
 
-  def possibleStopEvents( h:Int ) = {
-    Seq(
-      StopEvent( h, LeftAtt, NoValence, Stop ),
-      StopEvent( h, LeftAtt, NoValence, NotStop ),
-      StopEvent( h, RightAtt, NoValence, Stop ),
-      StopEvent( h, RightAtt, NoValence, NotStop )
-    )
-  }
-
   def zerosInit( corpus:List[Utt] ) {
-    // don't use CPT.setEvents because .groupBy is too slow when we have trigrams
+    // val rootEvents = MSet[RootEvent]()
+    // val stopEvents = MSet[StopEvent]()
+    // val chooseEvents = MSet[ChooseEvent]()
+
     p_root.clear
     p_stop.clear
     p_choose.clear
@@ -30,26 +22,25 @@ class HeadOutAdjHeadNoValenceParameters(
       (0 until s.length).foreach{ t =>
         val h = s(t)
 
+        // rootEvents += RootEvent( h )
+        // stopEvents ++= possibleStopEvents( h )
         p_root.increment( RootEvent( h ), 0D )
         p_stop.increment( possibleStopEvents( h ), 0D )
 
         ( 0 until t ).foreach{ i =>
+          // chooseEvents += ChooseEvent( h, LeftAtt, s(i) )
           p_choose.increment( ChooseEvent( h, LeftAtt, s(i) ), 0D )
-
-          ((i+1) until t).foreach{ k =>
-            p_choose.increment( ChooseEvent( h, s(k), LeftAtt, s(i) ), 0D )
-          }
         }
         ( t+1 until s.length ).foreach{ j =>
+          // chooseEvents += ChooseEvent( h, RightAtt, s(j) )
           p_choose.increment( ChooseEvent( h, RightAtt, s(j) ), 0D )
-          ((t+1) until j).foreach{ k =>
-            p_choose.increment( ChooseEvent( h, s(k), RightAtt, s(j) ), 0D )
-          }
         }
       }
-      println( s"${p_choose.size} choose rules" )
     }
 
+    // p_root.setEvents( rootEvents.toSet )
+    // p_stop.setEvents( stopEvents.toSet )
+    // p_choose.setEvents( chooseEvents.toSet )
   }
 
 }

@@ -19,7 +19,7 @@ class NoValenceParser(
 
   val theta = new NoValenceParameters( rootAlpha, stopAlpha, chooseAlpha )
 
-  val mValence = DecorationPair(NoValence, NoValence)
+  // val PlainM = DecorationPair(NoValence, NoValence)
 
   val insideHeads:Array[Array[MMap[Decoration,Double]]] = Array.tabulate( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
     if( ( i%2 != j%2 ) ) {
@@ -31,7 +31,7 @@ class NoValenceParser(
   // One of the m-node children is a head-child, so they can't both be outermost
   val insideM:Array[Array[MMap[MDecoration,Double]]] = Array.tabulate( 2*maxLength, 2*maxLength )( (i,j) =>
     if( i%2 == 1 && j%2 == 1 ) {
-      MMap( mValence -> 0D )
+      MMap( PlainM -> 0D )
     } else {
       MMap[MDecoration,Double]()
     }
@@ -47,7 +47,7 @@ class NoValenceParser(
   // One of the m-node children is a head-child, so they can't both be outermost
   val outsideM:Array[Array[MMap[MDecoration,Double]]] = Array.tabulate( 2*maxLength, 2*maxLength )( (i,j) =>
     if( i%2 == 1 && j%2 == 1 ) {
-      MMap( mValence -> 0D )
+      MMap( PlainM -> 0D )
     } else {
       MMap()
     }
@@ -59,9 +59,9 @@ class NoValenceParser(
 
   def findLeftLeftwardChild( i:Int, k:Int ) = headTrace( i )( k )( NoValence )
   def findRightLeftwardChild( k:Int, j:Int, hV:Decoration, mDV:Decoration ) =
-    mTrace( k )( j )( mValence )
+    mTrace( k )( j )( PlainM )
   def findLeftRightwardChild( i:Int, k:Int, hV:Decoration, mDV:Decoration ) =
-    mTrace( i )( k )( mValence )
+    mTrace( i )( k )( PlainM )
   def findRightRightwardChild( k:Int, j:Int ) = headTrace( k )( j )( NoValence )
   def findLeftMChild( i:Int, k:Int, decoration:MDecoration ) = headTrace( i )( k )( NoValence )
   def findRightMChild( k:Int, j:Int, decoration:MDecoration ) = headTrace( k )( j )( NoValence )
@@ -91,7 +91,7 @@ class NoValenceParser(
     val dep = intString( k )
 
     // wonky type inference with the scala compiler
-    val valences = mValence
+    val valences = PlainM
 
     // Only do this calculation once for this loop
     val outsideChooseAndDepStop = 
@@ -107,10 +107,10 @@ class NoValenceParser(
     // First, send messages to left child -- that is, the leftward looking dependent
     // label.
     outsideHeads( i )( k )( NoValence ) +=
-        insideM( k )( j )( mValence ) * factorAndOutside
+        insideM( k )( j )( PlainM ) * factorAndOutside
 
     // Now, send messages to right child -- that is, the M-label
-    outsideM( k )( j )( mValence ) +=
+    outsideM( k )( j )( PlainM ) +=
         insideHeads( i )( k )( NoValence ) * factorAndOutside
 
   }
@@ -133,20 +133,20 @@ class NoValenceParser(
     // First, send messages to right child -- that is, the rightward looking dependent
     // label.
     outsideHeads( k )( j )( NoValence ) +=
-        insideM( i )( k )( mValence ) * factorAndOutside
+        insideM( i )( k )( PlainM ) * factorAndOutside
 
     // Now, send messages to left child -- that is, the M-label
-    outsideM( i )( k )( mValence ) +=
+    outsideM( i )( k )( PlainM ) +=
         insideHeads( k )( j )( NoValence ) * factorAndOutside
   }
 
   def outsideM( i:Int, k:Int, j:Int ) {
     outsideHeads( i )( k )( NoValence ) +=
-      outsideM( i )( j )( mValence ) *
+      outsideM( i )( j )( PlainM ) *
         insideHeads( k )( j )( NoValence )
 
     outsideHeads( k )( j )( NoValence ) +=
-      outsideM( i )( j )( mValence ) *
+      outsideM( i )( j )( PlainM ) *
         insideHeads( i )( k )( NoValence )
   }
 
@@ -196,15 +196,15 @@ class NoValenceParser(
       // First, send messages to left child -- that is, the leftward-looking dependent
       // label.
       outsideHeads( i )( k )( NoValence ) +=
-          insideM( k )( j )( mValence ) * factorAndOutside
+          insideM( k )( j )( PlainM ) * factorAndOutside
 
       // Now, send messages to right child -- that is, the M-label
-      outsideM( k )( j )( mValence ) +=
+      outsideM( k )( j )( PlainM ) +=
           insideHeads( i )( k )( NoValence ) * factorAndOutside
 
       val marginal = 
         insideHeads( i )( k )( NoValence ) *
-          insideM( k )( j )( mValence ) *
+          insideM( k )( j )( PlainM ) *
             factorAndOutside
 
       Map[Event,Double](
@@ -221,44 +221,46 @@ class NoValenceParser(
 
   def outsideRightWithMarginals( i:Int, k:Int, j:Int ) = {
     val head = intString( i )
-    if( j-i >= 3 ) {
-      // this is an Arc cell -- compute outside probs for children and return arc marginals
+    // this is an Arc cell -- compute outside probs for children and return arc marginals
 
-      val dep = intString( k )
+    val dep = intString( k )
 
-      // wonky type inference with the scala compiler
+    // wonky type inference with the scala compiler
 
-      val factorAndOutside =
-        theta( ChooseEvent( head, RightAtt, dep ) ) *
-        theta( StopEvent( head, RightAtt, NoValence, NotStop ) ) *
-          theta( StopEvent( dep, LeftAtt, NoValence, Stop ) ) *
-          theta( StopEvent( dep, RightAtt, NoValence, Stop ) ) *
-          outsideHeads( i )( j )( NoValence )
+    val factorAndOutside =
+      theta( ChooseEvent( head, RightAtt, dep ) ) *
+      theta( StopEvent( head, RightAtt, NoValence, NotStop ) ) *
+        theta( StopEvent( dep, LeftAtt, NoValence, Stop ) ) *
+        theta( StopEvent( dep, RightAtt, NoValence, Stop ) ) *
+        outsideHeads( i )( j )( NoValence )
 
-      // First, send messages to right child -- that is, the rightward-looking dependent
-      // label.
-      outsideHeads( k )( j )( NoValence ) +=
-          insideM( i )( k )( mValence ) * factorAndOutside
+    // First, send messages to right child -- that is, the rightward-looking dependent
+    // label.
+    outsideHeads( k )( j )( NoValence ) +=
+        insideM( i )( k )( PlainM ) * factorAndOutside
 
-      // Now, send messages to right child -- that is, the M-label
-      outsideM( i )( k )( mValence ) +=
-          insideHeads( k )( j )( NoValence ) * factorAndOutside
+    // Now, send messages to right child -- that is, the M-label
+    outsideM( i )( k )( PlainM ) +=
+        insideHeads( k )( j )( NoValence ) * factorAndOutside
 
-      val marginal = 
-        insideHeads( k )( j )( NoValence ) *
-          insideM( i )( k )( mValence ) *
-            factorAndOutside
+    val marginal = 
+      insideHeads( k )( j )( NoValence ) *
+        insideM( i )( k )( PlainM ) *
+          factorAndOutside
 
-      Map[Event,Double](
-        ChooseEvent( head, RightAtt, dep ) -> marginal,
-        StopEvent( head, RightAtt, NoValence, NotStop ) -> marginal,
-        StopEvent( dep, LeftAtt, NoValence, Stop ) -> marginal,
-        StopEvent( dep, RightAtt, NoValence, Stop ) -> marginal
-      )
-    } else {
-      // this is a (pre-)terminal cell -- do nothing
-      Map()
-    }
+    Map[Event,Double](
+      ChooseEvent( head, RightAtt, dep ) -> marginal,
+      StopEvent( head, RightAtt, NoValence, NotStop ) -> marginal,
+      StopEvent( dep, LeftAtt, NoValence, Stop ) -> marginal,
+      StopEvent( dep, RightAtt, NoValence, Stop ) -> marginal
+    )
+  }
+
+  def arcFactor( head:Int, dir:AttDir, dep:Int ) = {
+    theta( ChooseEvent( head, dir, dep ) ) *
+    theta( StopEvent( head, dir, NoValence, NotStop ) ) *
+      theta( StopEvent( dep, dir.flip, NoValence, Stop ) ) *
+      theta( StopEvent( dep, dir, NoValence, Stop ) )
   }
 
   def populateRightwardCell( i:Int, k:Int, j:Int ) {
@@ -267,11 +269,12 @@ class NoValenceParser(
 
     insideHeads( i )( j )( NoValence ) +=
       insideHeads( k )( j )( NoValence ) *
-        insideM( i )( k )( mValence ) *
-          theta( ChooseEvent( head, RightAtt, dep ) ) *
-          theta( StopEvent( head, RightAtt, NoValence, NotStop ) ) *
-            theta( StopEvent( dep, LeftAtt, NoValence, Stop ) ) *
-            theta( StopEvent( dep, RightAtt, NoValence, Stop ) )
+        insideM( i )( k )( PlainM ) *
+          arcFactor( head, RightAtt, dep )
+          // theta( ChooseEvent( head, RightAtt, dep ) ) *
+          // theta( StopEvent( head, RightAtt, NoValence, NotStop ) ) *
+          //   theta( StopEvent( dep, LeftAtt, NoValence, Stop ) ) *
+          //   theta( StopEvent( dep, RightAtt, NoValence, Stop ) )
   }
 
   def populateLeftwardCell( i:Int, k:Int, j:Int ) {
@@ -281,15 +284,16 @@ class NoValenceParser(
 
     insideHeads( i )( j )( NoValence ) +=
       insideHeads( i )( k )( NoValence ) *
-        insideM( k )( j )( mValence ) *
-          theta( ChooseEvent( head, LeftAtt, dep ) ) *
-          theta( StopEvent( head, LeftAtt, NoValence, NotStop ) ) *
-            theta( StopEvent( dep, RightAtt, NoValence, Stop ) ) *
-            theta( StopEvent( dep, LeftAtt, NoValence, Stop ) )
+        insideM( k )( j )( PlainM ) *
+          arcFactor( head, LeftAtt, dep )
+          // theta( ChooseEvent( head, LeftAtt, dep ) ) *
+          // theta( StopEvent( head, LeftAtt, NoValence, NotStop ) ) *
+          //   theta( StopEvent( dep, RightAtt, NoValence, Stop ) ) *
+          //   theta( StopEvent( dep, LeftAtt, NoValence, Stop ) )
   }
 
   def populateMCell( i:Int, k:Int, j:Int ) {
-    insideM( i )( j )( mValence ) +=
+    insideM( i )( j )( PlainM ) +=
       insideHeads( i )( k )( NoValence ) *
         insideHeads( k )( j )( NoValence )
   }
@@ -314,7 +318,7 @@ class NoValenceParser(
   def leftArcParentVs( i:Int ) = Set[Decoration]( NoValence )
   def rightArcParentVs( j:Int ) = Set[Decoration]( NoValence )
 
-  def mNodeParentVs( i:Int, j:Int ) = Set( mValence )
+  def mNodeParentVs( i:Int, j:Int ) = Set( PlainM )
 
   def viterbiRightRank( i:Int, j:Int, parentV:Decoration ) = {
     val head = intString( i )
@@ -323,7 +327,7 @@ class NoValenceParser(
 
       SplitSpec(k,NoValence,NoValence) -> {
         insideHeads( k )( j )( NoValence ) *
-          insideM( i )( k )( mValence ) *
+          insideM( i )( k )( PlainM ) *
             theta( ChooseEvent( head, RightAtt, dep ) ) *
             theta( StopEvent( head, RightAtt, NoValence, NotStop ) ) *
             theta( StopEvent( dep, LeftAtt, NoValence, Stop ) ) *
@@ -339,7 +343,7 @@ class NoValenceParser(
 
       SplitSpec(k,NoValence,NoValence) -> {
         insideHeads( i )( k )( NoValence ) *
-          insideM( k )( j )( mValence ) *
+          insideM( k )( j )( PlainM ) *
             theta( ChooseEvent( head, LeftAtt, dep ) ) *
             theta( StopEvent( head, LeftAtt, NoValence, NotStop ) ) *
             theta( StopEvent( dep, RightAtt, NoValence, Stop ) ) *

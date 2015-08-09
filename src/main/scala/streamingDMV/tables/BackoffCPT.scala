@@ -3,9 +3,9 @@ package streamingDMV.tables
 import streamingDMV.labels._
 import collection.mutable.{Map=>MMap,Set=>MSet}
 
-// symmetric Dirichlet Multinomial CPT
+// asymmetric Dirichlet Multinomial CPT for backing off
 // class CPT[E<:Event,N<:NormKey]( alpha:Double ) {
-class CPT[E<:Event]( alpha:Double ) {
+class BackoffCPT[E<:Event with BackingOffEvent]( alpha:Map[BackoffDecision,Double] ) {
   var events = MSet[E]()
   val counts = MMap[E,Double]()
   val denomCounts = MMap[NormKey,Double]()
@@ -18,8 +18,8 @@ class CPT[E<:Event]( alpha:Double ) {
 
   def normalized( event:E ) = {
     val n = event.normKey
-    ( counts( event ) + alpha  ) / (
-      denomCounts( n ) + (alpha * denoms(n).size )
+    ( counts( event ) + alpha( event.backOff )  ) / (
+      denomCounts( n ) + alpha.values.sum
     )
   }
 
@@ -34,11 +34,43 @@ class CPT[E<:Event]( alpha:Double ) {
 
   def expDigammaNormalized( event:E ) = {
     val n = event.normKey
-    taylorExpDigamma( 
-      ( counts( event ) + alpha  ) 
-    ) / taylorExpDigamma(
-      denomCounts( n ) + (alpha * denoms(n).size )
-    )
+
+        // val numerator =
+        //   taylorExpDigamma( 
+        //     ( counts( event ) + alpha( event.backOff )  )
+        //   )
+
+        // if( numerator == 0 ) {
+        //   0D
+        // } else {
+        //   numerator / taylorExpDigamma(
+        //     denomCounts( n ) + (alpha( event.backOff ) * denoms(n).size )
+        //   )
+        // }
+
+        // println("/-------")
+        // println( event )
+        // println( event.backOff )
+        // println( alpha.keys.mkString("\t","\n\t","\n\n") )
+        // println( "\t\t" + alpha( Backoff ) )
+        // println( "\t\t" + alpha( NotBackoff ) )
+        // println( "numerator " +
+        //   ( counts( event ) + alpha( event.backOff )  ) 
+        // )
+
+        // println( "denominator " + 
+        //   ( denomCounts( n ) + (alpha( event.backOff ) * denoms(n).size ) )
+        // )
+        // println("\\-------")
+
+    if( alpha( event.backOff ) == 0 )
+      0
+    else
+      taylorExpDigamma( 
+        ( counts( event ) + alpha( event.backOff )  ) 
+      ) / taylorExpDigamma(
+        denomCounts( n ) + alpha.values.sum
+      )
   }
 
   def increment( event:E, inc:Double ) = {
@@ -100,8 +132,6 @@ class CPT[E<:Event]( alpha:Double ) {
     counts.keys.foreach( increment( _, r.nextDouble() * scale ) )
   }
 
-  def size = counts.size
-
   def printOut( logSpace:Boolean = false ) {
     denoms.foreach{ case (n, events) =>
       println( s"$n:" )
@@ -113,6 +143,8 @@ class CPT[E<:Event]( alpha:Double ) {
       }
     }
   }
+
+
 
 }
 

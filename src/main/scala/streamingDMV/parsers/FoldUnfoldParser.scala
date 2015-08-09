@@ -60,7 +60,8 @@ abstract class FoldUnfoldParser[P<:ArcFactoredParameters](
     } else if( i%2 == 1 && j%2 == 1 ) {
       // M
       // println( s"${(i,j)}" )
-      ( (i+1) to (j-1) by 2 ).foreach{ k =>
+      // ( (i+1) to (j-1) by 2 ).foreach{ k =>
+      mSplits( i, j ).foreach{ k =>
         populateMCell( i, k, j )
       }
     } else {
@@ -119,7 +120,6 @@ abstract class FoldUnfoldParser[P<:ArcFactoredParameters](
     MMap[MDecoration,MEntry]()
   )
 
-  var doubledLength = 0
   abstract class Entry( i:Int, j:Int ) {
     def toDepParse:Set[DirectedArc]
     def toConParse:String
@@ -174,7 +174,13 @@ abstract class FoldUnfoldParser[P<:ArcFactoredParameters](
     val leftChild = findLeftMChild( i, k, decoration )
     val rightChild = findRightMChild( k, j, decoration )
 
-    def toDepParse = leftChild.toDepParse ++ rightChild.toDepParse
+    def toDepParse = {
+      decoration match {
+        case LeftwardM => Set( DirectedArc( (j-1)/2, (i-1)/2 ) )
+        case RightwardM => Set( DirectedArc( (i-1)/2, (j-1)/2 ) )
+        case _ => Set()
+      }
+    } ++ leftChild.toDepParse ++ rightChild.toDepParse
     def toConParse = s"(M ${leftChild.toConParse} ${rightChild.toConParse} )"
 
   }
@@ -221,6 +227,9 @@ abstract class FoldUnfoldParser[P<:ArcFactoredParameters](
     if( bestIdx.length == 1 ) {
       (bestIdx.head, bestScore.head)
     } else {
+      if( bestIdx.length <= 0 ) {
+        println( seq.mkString("\n" ) )
+      }
       val which = rand.nextInt( bestIdx.length )
       ( bestIdx(which), bestScore(which) )
     }
@@ -349,7 +358,6 @@ abstract class FoldUnfoldParser[P<:ArcFactoredParameters](
       }
     }
     stringProb = 0D
-    doubledLength=0
   }
 
   // Initialization stuff
@@ -367,6 +375,7 @@ abstract class FoldUnfoldParser[P<:ArcFactoredParameters](
   def outsideRootWithMarginals( k:Int ):Map[Event,Double]
   def outsideLeftWithMarginals( i:Int, k:Int, j:Int ):Map[Event,Double]
   def outsideRightWithMarginals( i:Int, k:Int, j:Int ):Map[Event,Double]
+  def outsideMWithMarginals( i:Int, k:Int, j:Int ):Map[Event,Double]
   def lexMarginals( index:Int ):Map[Event,Double]
 
   def mSplits( i:Int, j:Int ):Iterable[Int]
@@ -374,9 +383,9 @@ abstract class FoldUnfoldParser[P<:ArcFactoredParameters](
 
   def outsidePassWithCounts( s:Array[Int] ):DMVCounts = {
     val c = DMVCounts(
-      new CPT[AbstractRootEvent]( rootAlpha ),
-      new CPT[AbstractStopEvent]( stopAlpha ),
-      new CPT[AbstractChooseEvent]( chooseAlpha )
+      new CPT[RootEvent]( rootAlpha ),
+      new CPT[StopEvent]( stopAlpha ),
+      new CPT[ChooseEvent]( chooseAlpha )
     )
 
     ( 1 to s.length ).reverse.foreach{ length =>
@@ -432,8 +441,12 @@ abstract class FoldUnfoldParser[P<:ArcFactoredParameters](
         } else if( i%2 == 1 && j%2 == 1 ) { // M label
           // ( (i+1) to (j-1) by 2 ).foreach{ k =>
           mSplits(i,j).foreach{ k =>
-            // no counts to gather from M-cells
-            outsideM( i, k, j )
+            outsideMWithMarginals( i, k, j ).foreach{ case (event, count) =>
+              event match {
+                case e:StopEvent => c.stopCounts.increment( e, count )
+                case e:ChooseEvent => c.chooseCounts.increment( e, count )
+              }
+            }
           }
         }
       }
@@ -477,9 +490,9 @@ abstract class FoldUnfoldParser[P<:ArcFactoredParameters](
   ) = {
 
     var lastFHat = DMVCounts(
-      new CPT[AbstractRootEvent]( rootAlpha ),
-      new CPT[AbstractStopEvent]( stopAlpha ),
-      new CPT[AbstractChooseEvent]( chooseAlpha )
+      new CPT[RootEvent]( rootAlpha ),
+      new CPT[StopEvent]( stopAlpha ),
+      new CPT[ChooseEvent]( chooseAlpha )
     )
 
     var lastMiniBatchScores = 1D
@@ -524,8 +537,8 @@ abstract class FoldUnfoldParser[P<:ArcFactoredParameters](
     logSpace:Boolean = true
   ) = {
     s"${label} Chart:\n\n" +
-    (0 to (doubledLength)).flatMap{ i =>
-      ( (i+1) to doubledLength ).map{ j =>
+    (0 to (intString.length)).flatMap{ i =>
+      ( (i+1) to intString.length ).map{ j =>
         if( chartToPrint(i)(j).size > 0 ) {
             (i,j) + chartToPrint(i)(j).map{ case (k,v) =>
               s"${k}: ${v}"

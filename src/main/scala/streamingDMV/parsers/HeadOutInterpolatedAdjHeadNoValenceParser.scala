@@ -2,22 +2,31 @@ package streamingDMV.parsers
 
 import streamingDMV.tables.CPT
 import streamingDMV.labels._
-import streamingDMV.parameters.HeadOutAdjHeadNoValenceParameters
+import streamingDMV.parameters.HeadOutInterpolatedAdjHeadNoValenceParameters
 
 import scala.collection.mutable.{Map=>MMap}
 import scala.math.log
 
-class HeadOutAdjHeadNoValenceParser(
+class HeadOutInterpolatedAdjHeadNoValenceParser(
   maxLength:Int,
   rootAlpha:Double = 1D,
   stopAlpha:Double = 1D,
   chooseAlpha:Double = 1D,
+  backoffAlpha:Double = 1D,
+  notBackoffAlpha:Double = 10D,
   randomSeed:Int = 15
-) extends SecondOrderFoldUnfoldParser[HeadOutAdjHeadNoValenceParameters](
+) extends SecondOrderFoldUnfoldParser[HeadOutInterpolatedAdjHeadNoValenceParameters](
   maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed
 ) {
 
-  val theta = new HeadOutAdjHeadNoValenceParameters( rootAlpha, stopAlpha, chooseAlpha )
+  val theta = 
+    new HeadOutInterpolatedAdjHeadNoValenceParameters(
+      rootAlpha,
+      stopAlpha,
+      chooseAlpha,
+      backoffAlpha,
+      notBackoffAlpha
+    )
 
 
   val insideHeads:Array[Array[MMap[Decoration,Double]]] = Array.tabulate( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
@@ -85,6 +94,9 @@ class HeadOutAdjHeadNoValenceParser(
 
   def findLeftMChild( i:Int, k:Int, decoration:MDecoration ) = {
     if( k%2 == 0 ) {
+      // assert(
+      //   !( decoration == RightwardM && (k-i > 1 ) )
+      // )
       headTrace( i )( k )( NoValence )
     } else {
       decoration match {
@@ -96,6 +108,9 @@ class HeadOutAdjHeadNoValenceParser(
 
   def findRightMChild( k:Int, j:Int, decoration:MDecoration ) = {
     if( k%2 == 0 ) {
+      // assert(
+      //   !( decoration == LeftwardM && (j-k > 1 ) )
+      // )
       headTrace( k )( j )( NoValence )
     } else {
       decoration match {
@@ -128,13 +143,6 @@ class HeadOutAdjHeadNoValenceParser(
     val head = intString( i )
     val dep = intString( k )
 
-    // println( (i,k,j) + "  " + insideHeads( k )( j )( NoValence ) )
-    // println( (i,k,j) + "  " + insideM( i )( k )( RightwardM ) )
-    // println( (i,k,j) + "  " + theta( ChooseEvent( head, RightAtt, dep ) ) )
-    // println( (i,k,j) + "  " + theta( StopEvent( head, RightAtt, NoValence, NotStop ) ) )
-    // println( (i,k,j) + "  " + theta( StopEvent( dep, LeftAtt, NoValence, Stop ) ) )
-    // println( (i,k,j) + "  " + theta( StopEvent( dep, RightAtt, NoValence, Stop ) ) + "\n\n" )
-
     insideHeads( i )( j )( NoValence ) +=
       insideHeads( k )( j )( NoValence ) *
         insideM( i )( k )( RightwardM ) *
@@ -148,7 +156,6 @@ class HeadOutAdjHeadNoValenceParser(
     val head = intString( j )
     val dep = intString( k )
 
-
     insideHeads( i )( j )( NoValence ) +=
       insideHeads( i )( k )( NoValence ) *
         insideM( k )( j )( LeftwardM ) *
@@ -156,6 +163,83 @@ class HeadOutAdjHeadNoValenceParser(
           theta( StopEvent( head, LeftAtt, NoValence, NotStop ) ) *
             theta( StopEvent( dep, RightAtt, NoValence, Stop ) ) *
             theta( StopEvent( dep, LeftAtt, NoValence, Stop ) )
+  }
+
+  def backoffArcFactor( head:Int, context:Int, dir:AttDir, dep:Int ) = {
+      // val backoffSummand = 
+      //   theta( LambdaChooseEvent( head, context, dir, Backoff ) ) *
+      //     theta( ChooseEvent( head, dir, dep ) )
+      // val notBackoffSummand = 
+      //   theta( LambdaChooseEvent( head, context, dir, NotBackoff ) ) *
+      //     theta( ChooseEvent( head, context, dir, dep ) )
+
+      // println( LambdaChooseEvent( head, context, dir, NotBackoff ) + " " +
+      //   theta( LambdaChooseEvent( head, context, dir, NotBackoff ) )
+      // )
+
+      // println( ChooseEvent( head, context, dir, dep ) + " " +
+      //   theta( ChooseEvent( head, context, dir, dep ) )
+      // )
+
+      // println( LambdaChooseEvent( head, context, dir, Backoff ) + ": " + backoffSummand )
+      // println( LambdaChooseEvent( head, context, dir, NotBackoff ) + ": " + notBackoffSummand )
+
+      // println( "" )
+
+        // println( "Backoff " + 
+        //     theta( LambdaChooseEvent( head, context, dir, Backoff ) )
+        // )
+        // println( "NotBackoff " + 
+        //     theta( LambdaChooseEvent( head, context, dir, NotBackoff ) ) + "\n"
+        // )
+
+        // assert( theta( LambdaChooseEvent( head, context, dir, NotBackoff ) ) == 0 )
+        // assert( theta( LambdaChooseEvent( head, context, dir, Backoff ) ) == 1 )
+
+
+
+        // println(
+        //  "  (\n" + 
+        //  "    (\n" +
+        //  "      theta( " + LambdaChooseEvent( head, context, dir, Backoff )+ " ) *\n" + 
+        //  "      theta( " + ChooseEvent( head, dir, dep ) + " )\n" +
+        //  "    ) + (\n" +
+        //  "      theta( " + LambdaChooseEvent( head, context, dir, NotBackoff )+ " ) *\n" + 
+        //  "      theta( " + ChooseEvent( head, context, dir, dep ) + " )\n" +
+        //  "    )\n" + 
+        //  "  ) *\n" + 
+        //  "  theta( " + StopEvent( head, dir, NoValence, NotStop )+ " ) *\n" + 
+        //  "  theta( " + StopEvent( dep, dir.flip, NoValence, Stop )+ " ) *\n" + 
+        //  "  theta( " + StopEvent( dep, dir, NoValence, Stop ) + " )\n"
+        // )
+
+        // println(
+        //  "  (\n" + 
+        //  "    (\n" +
+        //  "      " + theta( LambdaChooseEvent( head, context, dir, Backoff ) ) + " *\n" + 
+        //  "      " + theta( ChooseEvent( head, dir, dep )  ) + "\n" +
+        //  "    ) + (\n" +
+        //  "      " + theta( LambdaChooseEvent( head, context, dir, NotBackoff ) ) + " *\n" + 
+        //  "      " + theta( ChooseEvent( head, context, dir, dep )  ) + "\n" +
+        //  "    )\n" + 
+        //  "  ) *\n" + 
+        //  "  " + theta( StopEvent( head, dir, NoValence, NotStop ) ) + " *\n" + 
+        //  "  " + theta( StopEvent( dep, dir.flip, NoValence, Stop ) ) + " *\n" + 
+        //  "  " + theta( StopEvent( dep, dir, NoValence, Stop )  ) + "\n\n"
+        // )
+
+    (
+      (
+        theta( LambdaChooseEvent( head, context, dir, Backoff ) ) *
+          theta( ChooseEvent( head, dir, dep ) )
+      ) + (
+        theta( LambdaChooseEvent( head, context, dir, NotBackoff ) ) *
+          theta( ChooseEvent( head, context, dir, dep ) )
+      ) 
+    ) *
+    theta( StopEvent( head, dir, NoValence, NotStop ) ) *
+    theta( StopEvent( dep, dir.flip, NoValence, Stop ) ) *
+    theta( StopEvent( dep, dir, NoValence, Stop ) )
   }
 
   def populateMCell( i:Int, k:Int, j:Int ) {
@@ -182,10 +266,7 @@ class HeadOutAdjHeadNoValenceParser(
       insideM( i )( j )( LeftwardM ) +=
         insideM( i )( k )( PlainM ) *
           insideM( k )( j )( LeftwardM ) *
-            theta( ChooseEvent( lHead, context, LeftAtt, lDep ) ) *
-              theta( StopEvent( lHead, LeftAtt, NoValence, NotStop ) ) *
-                theta( StopEvent( lDep, RightAtt, NoValence, Stop ) ) *
-                theta( StopEvent( lDep, LeftAtt, NoValence, Stop ) )
+            backoffArcFactor( lHead, context, LeftAtt, lDep )
 
       // Now RightwardM
       val rHead = intString(i)
@@ -194,10 +275,7 @@ class HeadOutAdjHeadNoValenceParser(
       insideM( i )( j )( RightwardM ) +=
         insideM( i )( k )( RightwardM ) *
           insideM( k )( j )( PlainM ) *
-            theta( ChooseEvent( rHead, context, RightAtt, rDep ) ) *
-              theta( StopEvent( rHead, RightAtt, NoValence, NotStop ) ) *
-                theta( StopEvent( rDep, LeftAtt, NoValence, Stop ) ) *
-                theta( StopEvent( rDep, RightAtt, NoValence, Stop ) )
+            backoffArcFactor( rHead, context, RightAtt, rDep )
 
     }
   }
@@ -269,6 +347,7 @@ class HeadOutAdjHeadNoValenceParser(
   }
 
   def outsideLeftWithMarginals( i:Int, k:Int, j:Int ) = {
+    assert( j-i >= 3 )
     val head = intString( j )
     val dep = intString( k )
 
@@ -375,11 +454,8 @@ class HeadOutAdjHeadNoValenceParser(
       val lDep = intString(i)
 
       val lFactorAndOutside =
-        theta( ChooseEvent( lHead, context, LeftAtt, lDep ) ) *
-          theta( StopEvent( lHead, LeftAtt, NoValence, NotStop ) ) *
-            theta( StopEvent( lDep, RightAtt, NoValence, Stop ) ) *
-            theta( StopEvent( lDep, LeftAtt, NoValence, Stop ) ) *
-              outsideM( i )( j )( LeftwardM )
+        backoffArcFactor( lHead, context, LeftAtt, lDep ) *
+          outsideM( i )( j )( LeftwardM )
       // message to left child, a PlainM node
       outsideM( i )( k )( PlainM ) +=
         insideM( k )( j )( LeftwardM ) * lFactorAndOutside
@@ -394,11 +470,8 @@ class HeadOutAdjHeadNoValenceParser(
       val rDep = intString(j)
 
       val rFactorAndOutside =
-        theta( ChooseEvent( rHead, context, RightAtt, rDep ) ) *
-          theta( StopEvent( rHead, RightAtt, NoValence, NotStop ) ) *
-            theta( StopEvent( rDep, LeftAtt, NoValence, Stop ) ) *
-            theta( StopEvent( rDep, RightAtt, NoValence, Stop ) ) *
-              outsideM( i )( j )( RightwardM )
+        backoffArcFactor( rHead, context, RightAtt, rDep ) *
+          outsideM( i )( j )( RightwardM )
       // message to right child, a PlainM node
       outsideM( k )( j )( PlainM ) +=
         insideM( i )( k )( RightwardM ) * rFactorAndOutside
@@ -444,7 +517,7 @@ class HeadOutAdjHeadNoValenceParser(
           outsideM( i )( j )( RightwardM ) *
             insideHeads( i )( k )( NoValence )
       }
-      // }
+
       Map()
     } else { // parent is DirectedM
       val context = intString(k) // switch context and dep for top-down second-order
@@ -455,11 +528,9 @@ class HeadOutAdjHeadNoValenceParser(
       val lDep = intString(i)
 
       val lFactorAndOutside =
-        theta( ChooseEvent( lHead, context, LeftAtt, lDep ) ) *
-          theta( StopEvent( lHead, LeftAtt, NoValence, NotStop ) ) *
-            theta( StopEvent( lDep, RightAtt, NoValence, Stop ) ) *
-            theta( StopEvent( lDep, LeftAtt, NoValence, Stop ) ) *
-              outsideM( i )( j )( LeftwardM )
+        backoffArcFactor( lHead, context, LeftAtt, lDep ) *
+          outsideM( i )( j )( LeftwardM )
+
       // message to left child, a PlainM node
       outsideM( i )( k )( PlainM ) +=
         insideM( k )( j )( LeftwardM ) * lFactorAndOutside
@@ -468,17 +539,16 @@ class HeadOutAdjHeadNoValenceParser(
       outsideM( k )( j )( LeftwardM ) +=
         insideM( i )( k )( PlainM ) * lFactorAndOutside
 
+
       // Rightward M parent
       // Directed M-nodes parent an arc. Get lexical items and local factor:
       val rHead = intString(i)
       val rDep = intString(j)
 
       val rFactorAndOutside =
-        theta( ChooseEvent( rHead, context, RightAtt, rDep ) ) *
-          theta( StopEvent( rHead, RightAtt, NoValence, NotStop ) ) *
-            theta( StopEvent( rDep, LeftAtt, NoValence, Stop ) ) *
-            theta( StopEvent( rDep, RightAtt, NoValence, Stop ) ) *
-              outsideM( i )( j )( RightwardM )
+        backoffArcFactor( rHead, context, RightAtt, rDep ) *
+          outsideM( i )( j )( RightwardM )
+
       // message to right child, a PlainM node
       outsideM( k )( j )( PlainM ) +=
         insideM( i )( k )( RightwardM ) * rFactorAndOutside
@@ -490,17 +560,20 @@ class HeadOutAdjHeadNoValenceParser(
       var lMarginal =
         insideM( i )( k )( PlainM ) *
           insideM( k )( j )( LeftwardM ) * lFactorAndOutside
+
       var rMarginal =
         insideM( k )( j )( PlainM ) *
           insideM( i )( k )( RightwardM ) * rFactorAndOutside
 
-
       Map(
         ChooseEvent( rHead, context, RightAtt, rDep ) -> rMarginal,
+        ChooseEvent( rHead, RightAtt, rDep ) -> rMarginal,
         StopEvent( rHead, RightAtt, NoValence, NotStop ) -> rMarginal,
         StopEvent( rDep, LeftAtt, NoValence, Stop ) -> rMarginal,
         StopEvent( rDep, RightAtt, NoValence, Stop ) -> rMarginal,
+
         ChooseEvent( lHead, context, LeftAtt, lDep ) -> lMarginal,
+        ChooseEvent( lHead, LeftAtt, lDep ) -> lMarginal,
         StopEvent( lHead, LeftAtt, NoValence, NotStop ) -> lMarginal,
         StopEvent( lDep, RightAtt, NoValence, Stop ) -> lMarginal,
         StopEvent( lDep, LeftAtt, NoValence, Stop ) -> lMarginal
@@ -589,10 +662,7 @@ class HeadOutAdjHeadNoValenceParser(
               SplitSpec(k,PlainM,LeftwardM) -> {
                 insideM( i )( k )( PlainM ) *
                   insideM( k )( j )( LeftwardM ) *
-                    theta( ChooseEvent( lHead, context, LeftAtt, lDep ) ) *
-                      theta( StopEvent( lHead, LeftAtt, NoValence, NotStop ) ) *
-                        theta( StopEvent( lDep, RightAtt, NoValence, Stop ) ) *
-                        theta( StopEvent( lDep, LeftAtt, NoValence, Stop ) )
+                    backoffArcFactor( lHead, context, LeftAtt, lDep )
               }
             )
           }
@@ -605,10 +675,7 @@ class HeadOutAdjHeadNoValenceParser(
               SplitSpec(k,RightwardM,PlainM) -> {
                   insideM( i )( k )( RightwardM ) *
                     insideM( k )( j )( PlainM ) *
-                      theta( ChooseEvent( rHead, context, RightAtt, rDep ) ) *
-                        theta( StopEvent( rHead, RightAtt, NoValence, NotStop ) ) *
-                          theta( StopEvent( rDep, LeftAtt, NoValence, Stop ) ) *
-                          theta( StopEvent( rDep, RightAtt, NoValence, Stop ) )
+                      backoffArcFactor( rHead, context, RightAtt, rDep )
               }
             )
           }
@@ -623,7 +690,6 @@ class HeadOutAdjHeadNoValenceParser(
     insideHeads(index)(index+1)( NoValence ) = 1D
     headTrace(index)(index+1) += NoValence -> LexEntry( index )
   }
-
 
 }
 

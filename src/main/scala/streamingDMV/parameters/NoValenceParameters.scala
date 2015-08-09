@@ -7,7 +7,7 @@ class NoValenceParameters(
   rootAlpha:Double,
   stopAlpha:Double,
   chooseAlpha:Double
-) extends ArcFactoredParameters( rootAlpha, stopAlpha, chooseAlpha ) {
+) extends FirstOrderArcFactoredParameters( rootAlpha, stopAlpha, chooseAlpha ) {
 
   def possibleStopEvents( h:Int ) = {
     Seq(
