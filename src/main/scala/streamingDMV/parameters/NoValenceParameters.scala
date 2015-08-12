@@ -1,7 +1,6 @@
 package streamingDMV.parameters
 
 import streamingDMV.labels._
-import streamingDMV.tables.CPT
 
 class NoValenceParameters(
   rootAlpha:Double,

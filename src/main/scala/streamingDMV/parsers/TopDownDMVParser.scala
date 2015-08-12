@@ -13,7 +13,7 @@ class TopDownDMVParser(
   stopAlpha:Double = 1D,
   chooseAlpha:Double = 1D,
   randomSeed:Int = 15
-) extends FirstOrderFoldUnfoldParser[TopDownDMVParameters](
+) extends FirstOrderFoldUnfoldNOPOSParser[TopDownDMVParameters](
   maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed
 ) {
 
@@ -312,11 +312,12 @@ class TopDownDMVParser(
     outsideHeads( k )( intString.length )( Outermost ) += 
       insideHeads( 0 )( k )( Outermost ) * factor
 
-    Map[Event,Double](
-      RootEvent( obs ) ->
+    Seq[Tuple2[Event,Double]](
+      ( RootEvent( obs ) ,
       insideHeads( 0 )( k )( Outermost ) *
         insideHeads( k )( intString.length )( Outermost ) *
           factor
+      )
     )
 
   }
@@ -327,12 +328,12 @@ class TopDownDMVParser(
       Seq( Outermost, Inner ).map{ hV =>
         StopEvent( head, LeftAtt, hV, Stop ) ->
           insideHeads( index )( index +1 )( hV ) * outsideHeads( index )( index +1 )( hV )
-      }.toMap
+      }
     } else {
       Seq( Outermost, Inner ).map{ hV =>
         StopEvent( head, RightAtt, hV, Stop ) ->
           insideHeads( index )( index +1 )( hV ) * outsideHeads( index )( index +1 )( hV )
-      }.toMap
+      }
     }
   }
 
@@ -342,7 +343,7 @@ class TopDownDMVParser(
       // this is an Arc cell -- compute outside probs for children and return arc marginals
 
       val dep = intString( k )
-      val hVs = if( j <= 3 ) Set( Outermost ) else Set( Outermost, Inner )
+      val hVs = if( j <= 3 ) Seq( Outermost ) else Seq( Outermost, Inner )
       hVs.flatMap{ hV =>
         val factorAndOutside =
           theta( ChooseEvent( head, LeftAtt, dep ) ) *
@@ -364,18 +365,19 @@ class TopDownDMVParser(
               factorAndOutside
 
         Seq(
-          ChooseEvent( head, LeftAtt, dep ) -> marginal,
-          StopEvent( head, LeftAtt, hV, NotStop ) -> marginal
+          ( ChooseEvent( head, LeftAtt, dep ) , marginal ),
+          ( StopEvent( head, LeftAtt, hV, NotStop ) , marginal )
         )
       }
     } else {
       // this is a (pre-)terminal cell -- just return stop marginals
       Seq( Outermost, Inner ).map{ hV =>
-        StopEvent( head, LeftAtt, hV, Stop ) ->
+        ( StopEvent( head, LeftAtt, hV, Stop ) ,
           insideHeads( i )( j )( hV ) * outsideHeads( i )( j )( hV )
+        )
       }
     }
-  }.toMap
+  }
 
 
   def outsideRightWithMarginals( i:Int, k:Int, j:Int ) = {
@@ -384,7 +386,7 @@ class TopDownDMVParser(
       // this is an Arc cell -- compute outside probs for children and return arc marginals
 
       val dep = intString( k )
-      val hVs = if( i >= intString.length-3 ) Set( Outermost ) else Set( Outermost, Inner )
+      val hVs = if( i >= intString.length-3 ) Seq( Outermost ) else Seq( Outermost, Inner )
       hVs.flatMap{ hV =>
         val factorAndOutside =
           theta( ChooseEvent( head, RightAtt, dep ) ) *
@@ -417,7 +419,7 @@ class TopDownDMVParser(
           insideHeads( i )( j )( hV ) * outsideHeads( i )( j )( hV )
       }
     }
-  }.toMap
+  }
 
 }
 

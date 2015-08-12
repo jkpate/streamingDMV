@@ -11,8 +11,6 @@ class CPT[E<:Event]( alpha:Double ) {
   val denomCounts = MMap[NormKey,Double]()
   val denoms = MMap[NormKey,MSet[E]]()
 
-  var fullyNormalized:Boolean = false
-
   def apply( event:E ) =
     counts( event )
 

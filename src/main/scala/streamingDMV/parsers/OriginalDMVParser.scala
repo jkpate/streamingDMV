@@ -13,7 +13,7 @@ class OriginalDMVParser(
   stopAlpha:Double = 1D,
   chooseAlpha:Double = 1D,
   randomSeed:Int = 15
-) extends FirstOrderFoldUnfoldParser[OriginalDMVParameters](
+) extends FirstOrderFoldUnfoldNOPOSParser[OriginalDMVParameters](
   maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed
 ) {
 
@@ -207,7 +207,7 @@ class OriginalDMVParser(
   }
 
 
-  def lexMarginals( index:Int ) = Map[Event,Double]()
+  def lexMarginals( index:Int ) = Seq[Tuple2[Event,Double]]()
   def outsideRootWithMarginals( k:Int ) = {
     val obs = intString( k )
 
@@ -228,10 +228,10 @@ class OriginalDMVParser(
       insideHeads( 0 )( k )( leftV ) *
         insideHeads( k )( intString.length )( rightV ) *
           factor
-    Map[Event,Double](
-      RootEvent( obs ) -> marginal,
-      StopEvent( obs, LeftAtt, leftV, Stop ) -> marginal,
-      StopEvent( obs, RightAtt, rightV, Stop ) -> marginal
+    Seq[Tuple2[Event,Double]](
+      ( RootEvent( obs ) , marginal ),
+      ( StopEvent( obs, LeftAtt, leftV, Stop ) , marginal ),
+      ( StopEvent( obs, RightAtt, rightV, Stop ) , marginal )
     )
 
   }
@@ -270,16 +270,16 @@ class OriginalDMVParser(
             insideM( k )( j )( vs ) *
               factorAndOutside
 
-        Map[Event,Double](
-          ChooseEvent( head, LeftAtt, dep ) -> marginal,
-          StopEvent( head, LeftAtt, hV, NotStop ) -> marginal,
-          StopEvent( dep, RightAtt, mDV, Stop ) -> marginal,
-          StopEvent( dep, LeftAtt, cDV, Stop ) -> marginal
+        Seq[Tuple2[Event,Double]](
+          ( ChooseEvent( head, LeftAtt, dep ) , marginal ),
+          ( StopEvent( head, LeftAtt, hV, NotStop ) , marginal ),
+          ( StopEvent( dep, RightAtt, mDV, Stop ) , marginal ),
+          ( StopEvent( dep, LeftAtt, cDV, Stop ) , marginal )
         )
       }.reduce( _++_ )
     } else {
       // this is a (pre-)terminal cell -- do nothing
-      Map()
+      Seq()
     }
   }
 
@@ -317,16 +317,16 @@ class OriginalDMVParser(
             insideM( i )( k )( vs ) *
               factorAndOutside
 
-        Map[Event,Double](
-          ChooseEvent( head, RightAtt, dep ) -> marginal,
-          StopEvent( head, RightAtt, hV, NotStop ) -> marginal,
-          StopEvent( dep, LeftAtt, mDV, Stop ) -> marginal,
-          StopEvent( dep, RightAtt, cDV, Stop ) -> marginal
+        Seq[Tuple2[Event,Double]](
+          ( ChooseEvent( head, RightAtt, dep ) , marginal ),
+          ( StopEvent( head, RightAtt, hV, NotStop ) , marginal ),
+          ( StopEvent( dep, LeftAtt, mDV, Stop ) , marginal ),
+          ( StopEvent( dep, RightAtt, cDV, Stop ) , marginal )
         )
       }.reduce(_++_)
     } else {
       // this is a (pre-)terminal cell -- do nothing
-      Map()
+      Seq()
     }
   }
 

@@ -7,7 +7,7 @@ abstract class FirstOrderArcFactoredParameters(
   rootAlpha:Double,
   stopAlpha:Double,
   chooseAlpha:Double
-) extends ArcFactoredParameters( rootAlpha, stopAlpha, chooseAlpha ) {
+) extends NOPOSArcFactoredParameters( rootAlpha, stopAlpha, chooseAlpha ) {
 
   def zerosInit( corpus:List[Utt] ) {
     // val rootEvents = MSet[RootEvent]()

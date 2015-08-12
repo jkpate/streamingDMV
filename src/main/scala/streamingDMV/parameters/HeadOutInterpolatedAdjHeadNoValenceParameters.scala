@@ -11,7 +11,7 @@ class HeadOutInterpolatedAdjHeadNoValenceParameters(
   chooseAlpha:Double,
   backoffAlpha:Double,
   notBackoffAlpha:Double
-) extends ArcFactoredParameters( rootAlpha, stopAlpha, chooseAlpha ) {
+) extends NOPOSArcFactoredParameters( rootAlpha, stopAlpha, chooseAlpha ) {
 
   val lambda_choose = new BackoffCPT[LambdaChooseEvent](
     Map( Backoff -> backoffAlpha, NotBackoff -> notBackoffAlpha )

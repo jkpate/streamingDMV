@@ -13,7 +13,7 @@ class NoValenceParser(
   stopAlpha:Double = 1D,
   chooseAlpha:Double = 1D,
   randomSeed:Int = 15
-) extends FirstOrderFoldUnfoldParser[NoValenceParameters](
+) extends FirstOrderFoldUnfoldNOPOSParser[NoValenceParameters](
   maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed
 ) {
 
@@ -90,9 +90,6 @@ class NoValenceParser(
     val head = intString( j )
     val dep = intString( k )
 
-    // wonky type inference with the scala compiler
-    val valences = PlainM
-
     // Only do this calculation once for this loop
     val outsideChooseAndDepStop = 
       theta( ChooseEvent( head, LeftAtt, dep ) ) *
@@ -150,7 +147,7 @@ class NoValenceParser(
         insideHeads( i )( k )( NoValence )
   }
 
-  def lexMarginals( index:Int ) = Map[Event,Double]()
+  def lexMarginals( index:Int ) = Seq()
 
   def outsideRootWithMarginals( k:Int ) = {
     val obs = intString( k )
@@ -170,10 +167,10 @@ class NoValenceParser(
       insideHeads( 0 )( k )( NoValence ) *
         insideHeads( k )( intString.length )( NoValence ) *
           factor
-    Map[Event,Double](
-      RootEvent( obs ) -> marginal,
-      StopEvent( obs, LeftAtt, NoValence, Stop ) -> marginal,
-      StopEvent( obs, RightAtt, NoValence, Stop ) -> marginal
+    Seq(
+      ( RootEvent( obs ) , marginal ),
+      ( StopEvent( obs, LeftAtt, NoValence, Stop ) , marginal ),
+      ( StopEvent( obs, RightAtt, NoValence, Stop ) , marginal )
     )
 
   }
@@ -207,15 +204,15 @@ class NoValenceParser(
           insideM( k )( j )( PlainM ) *
             factorAndOutside
 
-      Map[Event,Double](
-        ChooseEvent( head, LeftAtt, dep ) -> marginal,
-        StopEvent( head, LeftAtt, NoValence, NotStop ) -> marginal,
-        StopEvent( dep, RightAtt, NoValence, Stop ) -> marginal,
-        StopEvent( dep, LeftAtt, NoValence, Stop ) -> marginal
+      Seq(
+        ( ChooseEvent( head, LeftAtt, dep ) , marginal ),
+        ( StopEvent( head, LeftAtt, NoValence, NotStop ) , marginal ),
+        ( StopEvent( dep, RightAtt, NoValence, Stop ) , marginal ),
+        ( StopEvent( dep, LeftAtt, NoValence, Stop ) , marginal )
       )
     } else {
       // this is a (pre-)terminal cell -- do nothing
-      Map()
+      Seq()
     }
   }
 
@@ -248,11 +245,11 @@ class NoValenceParser(
         insideM( i )( k )( PlainM ) *
           factorAndOutside
 
-    Map[Event,Double](
-      ChooseEvent( head, RightAtt, dep ) -> marginal,
-      StopEvent( head, RightAtt, NoValence, NotStop ) -> marginal,
-      StopEvent( dep, LeftAtt, NoValence, Stop ) -> marginal,
-      StopEvent( dep, RightAtt, NoValence, Stop ) -> marginal
+    Seq(
+      ( ChooseEvent( head, RightAtt, dep ) , marginal ),
+      ( StopEvent( head, RightAtt, NoValence, NotStop ) , marginal ),
+      ( StopEvent( dep, LeftAtt, NoValence, Stop ) , marginal ),
+      ( StopEvent( dep, RightAtt, NoValence, Stop ) , marginal )
     )
   }
 

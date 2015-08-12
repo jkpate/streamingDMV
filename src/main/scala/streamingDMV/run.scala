@@ -7,7 +7,7 @@ import joptsimple.OptionSet
 import streamingDMV.io._
 import streamingDMV.parsers._
 import streamingDMV.parameters._
-import streamingDMV.labels.{Parse,Utt}
+import streamingDMV.labels.{Parse,Utt,DependencyCounts}
 
 
 object run {
@@ -25,9 +25,11 @@ object run {
     optsParser.accepts( "alpha" ).withRequiredArg
     optsParser.accepts( "backoffAlpha" ).withRequiredArg
     optsParser.accepts( "notBackoffAlpha" ).withRequiredArg
+    optsParser.accepts( "uposCount" ).withRequiredArg
     optsParser.accepts( "randomSeed" ).withRequiredArg
     optsParser.accepts( "miniBatchSize" ).withRequiredArg
     optsParser.accepts( "initialMiniBatchSize" ).withRequiredArg
+    optsParser.accepts( "convergeInitialMiniBatch" )
     optsParser.accepts( "printItersReached" )
     optsParser.accepts( "batchVB" )
     optsParser.accepts( "constituencyEval" )
@@ -69,6 +71,11 @@ object run {
         opts.valueOf( "notBackoffAlpha" ).toString.toDouble
       else
         alpha
+    val uposCount =
+      if( opts.has( "uposCount" ) )
+        opts.valueOf( "uposCount" ).toString.toInt
+      else
+        3
     val randomSeed =
       if( opts.has( "randomSeed" ) )
         opts.valueOf( "randomSeed" ).toString.toInt
@@ -84,6 +91,7 @@ object run {
         opts.valueOf( "initialMiniBatchSize" ).toString.toInt
       else
         miniBatchSize
+    val convergeInitialMiniBatch = opts.has( "convergeInitialMiniBatch" )
     val batchVB = opts.has( "batchVB" )
     val logEvalRate = opts.has( "logEvalRate" )
     var evalEvery =
@@ -111,11 +119,13 @@ object run {
     println( s"initialMiniBatchSize: ${initialMiniBatchSize}" )
     println( s"printItersReached: ${printItersReached}" )
     println( s"batchVB: ${batchVB}" )
+    println( s"convergeInitialMiniBatch: ${convergeInitialMiniBatch}" )
     println( s"logEvalRate: ${logEvalRate}" )
     println( s"evalEvery: ${evalEvery}" )
     println( s"alpha: ${alpha}" )
     println( s"backoffAlpha: ${backoffAlpha}" )
     println( s"notBackoffAlpha: ${notBackoffAlpha}" )
+    println( s"uposCount: ${uposCount}" )
     println( s"randomSeed: ${randomSeed}" )
     println( s"constituencyEval: ${constituencyEval}" )
     println( s"printInitialGrammar: ${printInitialGrammar}" )
@@ -134,7 +144,8 @@ object run {
     println( s"${testSet.map{_.string.size}.sum} testing words" )
     println( s"${stringsToUtts.dictionary.size} unique words" )
 
-    val p:FoldUnfoldParser[_<:ArcFactoredParameters] =
+    // val p:FoldUnfoldParser[_<:ArcFactoredParameters] =
+    val p:FoldUnfoldParser[_<:DependencyCounts,_<:ArcFactoredParameters[_]] =
       if( parserType == "TopDownDMVParser" ) {
         println( "Using TopDownDMVParser" )
         new TopDownDMVParser(
@@ -145,6 +156,13 @@ object run {
         println( "Using OriginalDMVParser" )
         new OriginalDMVParser(
           { trainSet ++ testSet }.map{ _.string.length }.max,
+          randomSeed = randomSeed
+        )
+      } else if( parserType == "NoValenceUPOSParser" ) {
+        println( "Using NoValenceUPOSParser" )
+        new NoValenceUPOSParser(
+          { trainSet ++ testSet }.map{ _.string.length }.max,
+          uposCount = uposCount,
           randomSeed = randomSeed
         )
       } else if( parserType == "NoValenceParser" ) {
@@ -175,7 +193,7 @@ object run {
 
     if( printInitialGrammar ) {
       println( "INITIAL GRAMMAR" )
-      p.theta.printOut()
+      // p.theta.printOut()
     }
 
     val r = new util.Random( randomSeed )
@@ -199,7 +217,15 @@ object run {
     ( firstMiniBatch :: subsequentMiniBatches ).foreach{ mb =>
 
       val startTime = System.currentTimeMillis
-      p.miniBatchVB( mb, incIters, incConvergence, batchVB, printItersReached )
+      val printIterScores =
+        (initialMiniBatchSize != miniBatchSize) && ( i == 0 )
+      p.miniBatchVB(
+        mb,
+        { if( convergeInitialMiniBatch && i == 0 ) 0 else incIters },
+        incConvergence,
+        batchVB || printIterScores,
+        printItersReached
+      )
       val endTime = System.currentTimeMillis
       totalDur += endTime - startTime
       miniBatchDur += endTime - startTime
@@ -274,7 +300,7 @@ object run {
 
     if( printFinalGrammar ) {
       println( "FINAL GRAMMAR" )
-      p.theta.printOut()
+      // p.theta.printOut()
     }
 
 

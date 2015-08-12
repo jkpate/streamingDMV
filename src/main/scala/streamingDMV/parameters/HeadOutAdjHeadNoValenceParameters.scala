@@ -9,7 +9,7 @@ class HeadOutAdjHeadNoValenceParameters(
   rootAlpha:Double,
   stopAlpha:Double,
   chooseAlpha:Double
-) extends ArcFactoredParameters( rootAlpha, stopAlpha, chooseAlpha ) {
+) extends NOPOSArcFactoredParameters( rootAlpha, stopAlpha, chooseAlpha ) {
 
   def possibleStopEvents( h:Int ) = {
     Seq(

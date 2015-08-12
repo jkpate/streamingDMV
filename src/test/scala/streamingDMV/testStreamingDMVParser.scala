@@ -3,6 +3,9 @@ package streamingDMV.test
 import streamingDMV.parsers._
 import streamingDMV.labels._
 
+import breeze.linalg._
+import breeze.numerics._
+
 import org.scalatest.junit.AssertionsForJUnit
 import org.scalatest.Suite
 import org.junit.Assert._
@@ -24,6 +27,9 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   }
 
 
+  // val uposCount = 10
+  val uposCount = 3
+
   // val p = new TopDownDMVParser( dmvCorpus.map{_.length}.max )
   // val p = new OriginalDMVParser( dmvCorpus.map{_.length}.max )
   // val p = new HeadOutAdjHeadNoValenceParser(
@@ -34,15 +40,20 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   //   dmvCorpus.map{_.length}.max,
   //   randomSeed = 15
   // )
-  val p = new HeadOutInterpolatedAdjHeadNoValenceParser(
+  // val p = new HeadOutInterpolatedAdjHeadNoValenceParser(
+  //   dmvCorpus.map{_.length}.max,
+  //   notBackoffAlpha = 0,
+  //   randomSeed = 15
+  // )
+  val p = new NoValenceUPOSParser(
     dmvCorpus.map{_.length}.max,
-    notBackoffAlpha = 0,
+    uposCount = uposCount,
     randomSeed = 15
   )
 
 
   // p.zerosInit( idDMVCorpus )
-  p.randomInit( idDMVCorpus, 15, 1 )
+  p.randomInit( idDMVCorpus, 15, 100 )
 
   val iters = 1//000
 
@@ -52,7 +63,9 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
     dmvCorpus.foreach{ s =>
       println( s.mkString(" " ) )
       var i = 0
-      var c = DMVCounts()
+      // var c = DMVCounts()
+      // var c = MatrixDMVCounts( uposCount = uposCount )
+      var c = p.emptyCounts
       while( i < iters ) {
         // p.populateChart( s )
         c = p.extractPartialCounts( s )
@@ -63,20 +76,23 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
       // val pObs = chart.pObs
       val pObs = p.stringProb
 
+      c.printTotalCountsByType
+      println( c.totalCounts + " total events seen" )
+
 
       println(
         {
-          p.insideHeads(0)(1).keys.map{ k => p.insideHeads(0)(1)(k) * p.outsideHeads(0)(1)(k) }.sum
-          // p.insideHeads(0)(1)( Inner ) * p.outsideHeads(0)(1)( Inner ) +
-          // p.insideHeads(0)(1)( Outermost ) * p.outsideHeads(0)(1)( Outermost ) 
-          // p.insideHeads(0)(1)( Innermost ) * p.outsideHeads(0)(1)( Innermost ) 
+          // p.insideHeads(0)(1).keys.map{ k => p.insideHeads(0)(1)(k) * p.outsideHeads(0)(1)(k) }.sum
+          p.insideHeads(0)(1).keys.map{ k =>
+            sum( p.insideHeads(0)(1)(k) :* p.outsideHeads(0)(1)(k)) }.sum
         } + " <=> " + pObs
       )
       // println( "all terminals:" )
       // (0 to ((2*s.length)-1)).foreach{ i =>
       //   println(
       //     {
-      //       p.insideHeads(i)(i+1).keys.map{ k => p.insideHeads(i)(i+1)(k) * p.outsideHeads(i)(i+1)(k) }.sum
+      //       // p.insideHeads(i)(i+1).keys.map{ k => p.insideHeads(i)(i+1)(k) * p.outsideHeads(i)(i+1)(k) }.sum
+      //       p.insideHeads(0)(1).keys.map{ k => sum( p.insideHeads(0)(1)(k) :* p.outsideHeads(0)(1)(k)) }.sum
       //     } + " <=> " + pObs
       //   )
       // }
@@ -84,14 +100,14 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
         assertTrue(
           // p.insideHeads(i)(i+1) * p.outsideHeads(i)(i+1)
           {
-            p.insideHeads(i)(i+1).keys.map{ k => p.insideHeads(i)(i+1)(k) * p.outsideHeads(i)(i+1)(k) }.sum
-            // p.insideHeads(i)(i+1)( Inner ) * p.outsideHeads(i)(i+1)( Inner ) +
-            // p.insideHeads(i)(i+1)( Outermost ) * p.outsideHeads(i)(i+1)( Outermost ) 
-            // p.insideHeads(i)(i+1)( Innermost ) * p.outsideHeads(i)(i+1)( Innermost ) 
-          } - pObs < 0.000000001
+            // p.insideHeads(i)(i+1).keys.map{ k => p.insideHeads(i)(i+1)(k) * p.outsideHeads(i)(i+1)(k) }.sum
+            p.insideHeads(i)(i+1).keys.map{ k =>
+              sum( p.insideHeads(i)(i+1)(k) :* p.outsideHeads(i)(i+1)(k)) }.sum
+          } - pObs < 0.0000001
         )
       }
       p.theta.incrementCounts( c )
+      println( "\n" )
     }
     val endTime = System.currentTimeMillis
 

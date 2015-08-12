@@ -1,14 +1,15 @@
 package streamingDMV.parsers
 
-import streamingDMV.parameters.ArcFactoredParameters
+import streamingDMV.parameters.NOPOSArcFactoredParameters
+import streamingDMV.labels.DMVCounts
 
-abstract class SecondOrderFoldUnfoldParser[P<:ArcFactoredParameters](
+abstract class SecondOrderFoldUnfoldParser[P<:NOPOSArcFactoredParameters](
   maxLength:Int,
   rootAlpha:Double = 1D,
   stopAlpha:Double = 1D,
   chooseAlpha:Double = 1D,
   randomSeed:Int = 15
-) extends FoldUnfoldParser[P](
+) extends FoldUnfoldNOPOSParser[P](
   maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed
 ) {
 

@@ -238,7 +238,7 @@ class HeadOutAdjHeadNoValenceParser(
         insideHeads( k )( intString.length )( NoValence ) *
           factor
 
-    Map[Event,Double](
+    Seq(
       RootEvent( obs ) -> marginal,
       StopEvent( obs, LeftAtt, NoValence, Stop ) -> marginal,
       StopEvent( obs, RightAtt, NoValence, Stop ) -> marginal
@@ -292,11 +292,11 @@ class HeadOutAdjHeadNoValenceParser(
         insideM( k )( j )( LeftwardM ) *
           factorAndOutside
 
-    Map[Event,Double](
-      ChooseEvent( head, LeftAtt, dep ) -> marginal,
-      StopEvent( head, LeftAtt, NoValence, NotStop ) -> marginal,
-      StopEvent( dep, RightAtt, NoValence, Stop ) -> marginal,
-      StopEvent( dep, LeftAtt, NoValence, Stop ) -> marginal
+    Seq(
+      ( ChooseEvent( head, LeftAtt, dep ) , marginal ),
+      ( StopEvent( head, LeftAtt, NoValence, NotStop ) , marginal ),
+      ( StopEvent( dep, RightAtt, NoValence, Stop ) , marginal ),
+      ( StopEvent( dep, LeftAtt, NoValence, Stop ) , marginal )
     )
   }
 
@@ -345,11 +345,11 @@ class HeadOutAdjHeadNoValenceParser(
         insideM( i )( k )( RightwardM ) *
           factorAndOutside
 
-    Map[Event,Double](
-      ChooseEvent( head, RightAtt, dep ) -> marginal,
-      StopEvent( head, RightAtt, NoValence, NotStop ) -> marginal,
-      StopEvent( dep, LeftAtt, NoValence, Stop ) -> marginal,
-      StopEvent( dep, RightAtt, NoValence, Stop ) -> marginal
+    Seq(
+      ( ChooseEvent( head, RightAtt, dep ) , marginal ),
+      ( StopEvent( head, RightAtt, NoValence, NotStop ) , marginal ),
+      ( StopEvent( dep, LeftAtt, NoValence, Stop ) , marginal ),
+      ( StopEvent( dep, RightAtt, NoValence, Stop ) , marginal )
     )
   }
 
@@ -445,7 +445,7 @@ class HeadOutAdjHeadNoValenceParser(
             insideHeads( i )( k )( NoValence )
       }
       // }
-      Map()
+      Seq()
     } else { // parent is DirectedM
       val context = intString(k) // switch context and dep for top-down second-order
 
@@ -495,21 +495,21 @@ class HeadOutAdjHeadNoValenceParser(
           insideM( i )( k )( RightwardM ) * rFactorAndOutside
 
 
-      Map(
-        ChooseEvent( rHead, context, RightAtt, rDep ) -> rMarginal,
-        StopEvent( rHead, RightAtt, NoValence, NotStop ) -> rMarginal,
-        StopEvent( rDep, LeftAtt, NoValence, Stop ) -> rMarginal,
-        StopEvent( rDep, RightAtt, NoValence, Stop ) -> rMarginal,
-        ChooseEvent( lHead, context, LeftAtt, lDep ) -> lMarginal,
-        StopEvent( lHead, LeftAtt, NoValence, NotStop ) -> lMarginal,
-        StopEvent( lDep, RightAtt, NoValence, Stop ) -> lMarginal,
-        StopEvent( lDep, LeftAtt, NoValence, Stop ) -> lMarginal
+      Seq(
+        ( ChooseEvent( rHead, context, RightAtt, rDep ) , rMarginal ),
+        ( StopEvent( rHead, RightAtt, NoValence, NotStop ) , rMarginal ),
+        ( StopEvent( rDep, LeftAtt, NoValence, Stop ) , rMarginal ),
+        ( StopEvent( rDep, RightAtt, NoValence, Stop ) , rMarginal ),
+        ( ChooseEvent( lHead, context, LeftAtt, lDep ) , lMarginal ),
+        ( StopEvent( lHead, LeftAtt, NoValence, NotStop ) , lMarginal ),
+        ( StopEvent( lDep, RightAtt, NoValence, Stop ) , lMarginal ),
+        ( StopEvent( lDep, LeftAtt, NoValence, Stop ) , lMarginal )
       )
     }
   }
 
 
-  def lexMarginals( index:Int ) = Map[Event,Double]()
+  def lexMarginals( index:Int ) = Seq()
 
 
   def viterbiRootRank = {
