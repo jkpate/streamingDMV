@@ -47,8 +47,8 @@ class HeadOutAdjHeadNoValenceParameters(
           }
         }
       }
-      println( s"${p_choose.size} choose rules" )
     }
+    println( s"${p_choose.size} choose rules" )
 
   }
 

@@ -32,24 +32,25 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
 
   // val p = new TopDownDMVParser( dmvCorpus.map{_.length}.max )
   // val p = new OriginalDMVParser( dmvCorpus.map{_.length}.max )
-  // val p = new HeadOutAdjHeadNoValenceParser(
-  //   dmvCorpus.map{_.length}.max,
-  //   randomSeed = 15
-  // )
   // val p = new NoValenceParser(
   //   dmvCorpus.map{_.length}.max,
   //   randomSeed = 15
   // )
-  // val p = new HeadOutInterpolatedAdjHeadNoValenceParser(
+  // val p = new HeadOutAdjHeadNoValenceParser(
   //   dmvCorpus.map{_.length}.max,
-  //   notBackoffAlpha = 0,
   //   randomSeed = 15
   // )
-  val p = new NoValenceUPOSParser(
+  val p = new HeadOutInterpolatedAdjHeadNoValenceParser(
     dmvCorpus.map{_.length}.max,
-    uposCount = uposCount,
+    notBackoffAlpha = 10,
+    backoffAlpha = 0,
     randomSeed = 15
   )
+  // val p = new NoValenceUPOSParser(
+  //   dmvCorpus.map{_.length}.max,
+  //   uposCount = uposCount,
+  //   randomSeed = 15
+  // )
 
 
   // p.zerosInit( idDMVCorpus )
@@ -82,17 +83,17 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
 
       println(
         {
-          // p.insideHeads(0)(1).keys.map{ k => p.insideHeads(0)(1)(k) * p.outsideHeads(0)(1)(k) }.sum
-          p.insideHeads(0)(1).keys.map{ k =>
-            sum( p.insideHeads(0)(1)(k) :* p.outsideHeads(0)(1)(k)) }.sum
+          p.insideHeads(0)(1).keys.map{ k => p.insideHeads(0)(1)(k) * p.outsideHeads(0)(1)(k) }.sum
+          // p.insideHeads(0)(1).keys.map{ k =>
+          //   sum( p.insideHeads(0)(1)(k) :* p.outsideHeads(0)(1)(k)) }.sum
         } + " <=> " + pObs
       )
       // println( "all terminals:" )
       // (0 to ((2*s.length)-1)).foreach{ i =>
       //   println(
       //     {
-      //       // p.insideHeads(i)(i+1).keys.map{ k => p.insideHeads(i)(i+1)(k) * p.outsideHeads(i)(i+1)(k) }.sum
-      //       p.insideHeads(0)(1).keys.map{ k => sum( p.insideHeads(0)(1)(k) :* p.outsideHeads(0)(1)(k)) }.sum
+      //       p.insideHeads(i)(i+1).keys.map{ k => p.insideHeads(i)(i+1)(k) * p.outsideHeads(i)(i+1)(k) }.sum
+      //       // p.insideHeads(0)(1).keys.map{ k => sum( p.insideHeads(0)(1)(k) :* p.outsideHeads(0)(1)(k)) }.sum
       //     } + " <=> " + pObs
       //   )
       // }
@@ -100,9 +101,9 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
         assertTrue(
           // p.insideHeads(i)(i+1) * p.outsideHeads(i)(i+1)
           {
-            // p.insideHeads(i)(i+1).keys.map{ k => p.insideHeads(i)(i+1)(k) * p.outsideHeads(i)(i+1)(k) }.sum
-            p.insideHeads(i)(i+1).keys.map{ k =>
-              sum( p.insideHeads(i)(i+1)(k) :* p.outsideHeads(i)(i+1)(k)) }.sum
+            p.insideHeads(i)(i+1).keys.map{ k => p.insideHeads(i)(i+1)(k) * p.outsideHeads(i)(i+1)(k) }.sum
+            // p.insideHeads(i)(i+1).keys.map{ k =>
+            //   sum( p.insideHeads(i)(i+1)(k) :* p.outsideHeads(i)(i+1)(k)) }.sum
           } - pObs < 0.0000001
         )
       }

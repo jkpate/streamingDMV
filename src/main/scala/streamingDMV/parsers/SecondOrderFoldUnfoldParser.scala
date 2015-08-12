@@ -14,7 +14,7 @@ abstract class SecondOrderFoldUnfoldParser[P<:NOPOSArcFactoredParameters](
 ) {
 
   // Second-order parsers use directed m-nodes that have undirected m-node children
-  def mSplits( i:Int, j:Int ):Iterable[Int] = ( (i+1) to (j-1) )
+  def mSplits( i:Int, j:Int ):Seq[Int] = ( (i+1) to (j-1) )
 
 }
 

@@ -124,9 +124,22 @@ class HeadOutAdjHeadNoValenceParser(
             theta( StopEvent( r, RightAtt, NoValence, Stop ) )
   }
 
+  def nearestArcFactor( head:Int, dir:AttDir, dep:Int ) = {
+    theta( ChooseEvent( head, dir, dep ) ) *
+    theta( StopEvent( head, dir, NoValence, NotStop ) ) *
+      theta( StopEvent( dep, dir.flip, NoValence, Stop ) ) *
+      theta( StopEvent( dep, dir, NoValence, Stop ) )
+  }
+  def outerArcFactor( head:Int, context:Int, dir:AttDir, dep:Int ) = {
+    theta( ChooseEvent( head, context, dir, dep ) ) *
+      theta( StopEvent( head, dir, NoValence, NotStop ) ) *
+        theta( StopEvent( dep, dir.flip, NoValence, Stop ) ) *
+        theta( StopEvent( dep, dir, NoValence, Stop ) )
+  }
+
   def populateRightwardCell( i:Int, k:Int, j:Int ) {
-    val head = intString( i )
-    val dep = intString( k )
+    // val head = intString( i )
+    // val dep = intString( k )
 
     // println( (i,k,j) + "  " + insideHeads( k )( j )( NoValence ) )
     // println( (i,k,j) + "  " + insideM( i )( k )( RightwardM ) )
@@ -137,25 +150,25 @@ class HeadOutAdjHeadNoValenceParser(
 
     insideHeads( i )( j )( NoValence ) +=
       insideHeads( k )( j )( NoValence ) *
-        insideM( i )( k )( RightwardM ) *
-          theta( ChooseEvent( head, RightAtt, dep ) ) *
-          theta( StopEvent( head, RightAtt, NoValence, NotStop ) ) *
-            theta( StopEvent( dep, LeftAtt, NoValence, Stop ) ) *
-            theta( StopEvent( dep, RightAtt, NoValence, Stop ) )
+        insideM( i )( k )( RightwardM ) // *
+          // theta( ChooseEvent( head, RightAtt, dep ) ) *
+          // theta( StopEvent( head, RightAtt, NoValence, NotStop ) ) *
+          //   theta( StopEvent( dep, LeftAtt, NoValence, Stop ) ) *
+          //   theta( StopEvent( dep, RightAtt, NoValence, Stop ) )
   }
 
   def populateLeftwardCell( i:Int, k:Int, j:Int ) {
-    val head = intString( j )
-    val dep = intString( k )
+    // val head = intString( j )
+    // val dep = intString( k )
 
 
     insideHeads( i )( j )( NoValence ) +=
       insideHeads( i )( k )( NoValence ) *
-        insideM( k )( j )( LeftwardM ) *
-          theta( ChooseEvent( head, LeftAtt, dep ) ) *
-          theta( StopEvent( head, LeftAtt, NoValence, NotStop ) ) *
-            theta( StopEvent( dep, RightAtt, NoValence, Stop ) ) *
-            theta( StopEvent( dep, LeftAtt, NoValence, Stop ) )
+        insideM( k )( j )( LeftwardM ) // *
+          // theta( ChooseEvent( head, LeftAtt, dep ) ) *
+          // theta( StopEvent( head, LeftAtt, NoValence, NotStop ) ) *
+          //   theta( StopEvent( dep, RightAtt, NoValence, Stop ) ) *
+          //   theta( StopEvent( dep, LeftAtt, NoValence, Stop ) )
   }
 
   def populateMCell( i:Int, k:Int, j:Int ) {
@@ -167,11 +180,13 @@ class HeadOutAdjHeadNoValenceParser(
       if( k-i == 1 )
         insideM( i )( j )( RightwardM ) +=
           insideHeads( i )( k )( NoValence ) *
-            insideHeads( k )( j )( NoValence )
+            insideHeads( k )( j )( NoValence ) *
+              nearestArcFactor( intString(i), RightAtt, intString(j) )
       if( j-k == 1 )
         insideM( i )( j )( LeftwardM ) +=
           insideHeads( i )( k )( NoValence ) *
-            insideHeads( k )( j )( NoValence )
+            insideHeads( k )( j )( NoValence ) *
+              nearestArcFactor( intString(j), LeftAtt, intString(i) )
     } else {
       val context = intString(k) // switch context and dep for top-down second-order
 
@@ -182,10 +197,11 @@ class HeadOutAdjHeadNoValenceParser(
       insideM( i )( j )( LeftwardM ) +=
         insideM( i )( k )( PlainM ) *
           insideM( k )( j )( LeftwardM ) *
-            theta( ChooseEvent( lHead, context, LeftAtt, lDep ) ) *
-              theta( StopEvent( lHead, LeftAtt, NoValence, NotStop ) ) *
-                theta( StopEvent( lDep, RightAtt, NoValence, Stop ) ) *
-                theta( StopEvent( lDep, LeftAtt, NoValence, Stop ) )
+            outerArcFactor( lHead, context, LeftAtt, lDep )
+              //  theta( ChooseEvent( lHead, context, LeftAtt, lDep ) ) *
+              //    theta( StopEvent( lHead, LeftAtt, NoValence, NotStop ) ) *
+              //      theta( StopEvent( lDep, RightAtt, NoValence, Stop ) ) *
+              //      theta( StopEvent( lDep, LeftAtt, NoValence, Stop ) )
 
       // Now RightwardM
       val rHead = intString(i)
@@ -194,10 +210,11 @@ class HeadOutAdjHeadNoValenceParser(
       insideM( i )( j )( RightwardM ) +=
         insideM( i )( k )( RightwardM ) *
           insideM( k )( j )( PlainM ) *
-            theta( ChooseEvent( rHead, context, RightAtt, rDep ) ) *
-              theta( StopEvent( rHead, RightAtt, NoValence, NotStop ) ) *
-                theta( StopEvent( rDep, LeftAtt, NoValence, Stop ) ) *
-                theta( StopEvent( rDep, RightAtt, NoValence, Stop ) )
+            outerArcFactor( rHead, context, RightAtt, rDep )
+              //  theta( ChooseEvent( rHead, context, RightAtt, rDep ) ) *
+              //    theta( StopEvent( rHead, RightAtt, NoValence, NotStop ) ) *
+              //      theta( StopEvent( rDep, LeftAtt, NoValence, Stop ) ) *
+              //      theta( StopEvent( rDep, RightAtt, NoValence, Stop ) )
 
     }
   }
@@ -251,20 +268,22 @@ class HeadOutAdjHeadNoValenceParser(
     val dep = intString( k )
 
 
-    val factorAndOutside =
-      theta( ChooseEvent( head, LeftAtt, dep ) ) *
-        theta( StopEvent( head, LeftAtt, NoValence, NotStop ) ) *
-          theta( StopEvent( dep, RightAtt, NoValence, Stop ) ) *
-          theta( StopEvent( dep, LeftAtt, NoValence, Stop ) ) *
-            outsideHeads( i )( j )( NoValence )
+    // val factorAndOutside =
+    //   theta( ChooseEvent( head, LeftAtt, dep ) ) *
+    //     theta( StopEvent( head, LeftAtt, NoValence, NotStop ) ) *
+    //       theta( StopEvent( dep, RightAtt, NoValence, Stop ) ) *
+    //       theta( StopEvent( dep, LeftAtt, NoValence, Stop ) ) *
+    //         outsideHeads( i )( j )( NoValence )
 
     // First, send messages to left child -- that is, the leftward-looking dependent label.
     outsideHeads( i )( k )( NoValence ) +=
-      insideM( k )( j )( LeftwardM ) * factorAndOutside
+      insideM( k )( j )( LeftwardM ) * // factorAndOutside
+        outsideHeads( i )( j )( NoValence )
 
     // First, send messages to rightward child -- that is, the leftward-looking M-label.
     outsideM( k )( j )( LeftwardM ) +=
-        insideHeads( i )( k )( NoValence ) * factorAndOutside
+      insideHeads( i )( k )( NoValence ) * // factorAndOutside
+        outsideHeads( i )( j )( NoValence )
 
   }
 
@@ -272,32 +291,36 @@ class HeadOutAdjHeadNoValenceParser(
     val head = intString( j )
     val dep = intString( k )
 
-    val factorAndOutside =
-      theta( ChooseEvent( head, LeftAtt, dep ) ) *
-        theta( StopEvent( head, LeftAtt, NoValence, NotStop ) ) *
-          theta( StopEvent( dep, LeftAtt, NoValence, Stop ) ) *
-          theta( StopEvent( dep, RightAtt, NoValence, Stop ) ) *
-            outsideHeads( i )( j )( NoValence )
+    // val factorAndOutside =
+    //   theta( ChooseEvent( head, LeftAtt, dep ) ) *
+    //     theta( StopEvent( head, LeftAtt, NoValence, NotStop ) ) *
+    //       theta( StopEvent( dep, LeftAtt, NoValence, Stop ) ) *
+    //       theta( StopEvent( dep, RightAtt, NoValence, Stop ) ) *
+    //         outsideHeads( i )( j )( NoValence )
 
     // First, send messages to left child -- that is, the leftward-looking dependent label.
     outsideHeads( i )( k )( NoValence ) +=
-      insideM( k )( j )( LeftwardM ) * factorAndOutside
+      insideM( k )( j )( LeftwardM ) * // factorAndOutside
+            outsideHeads( i )( j )( NoValence )
 
     // First, send messages to rightward child -- that is, the leftward-looking M-label.
     outsideM( k )( j )( LeftwardM ) +=
-        insideHeads( i )( k )( NoValence ) * factorAndOutside
+      insideHeads( i )( k )( NoValence ) * // factorAndOutside
+        outsideHeads( i )( j )( NoValence )
 
-    val marginal = 
-      insideHeads( i )( k )( NoValence ) *
-        insideM( k )( j )( LeftwardM ) *
-          factorAndOutside
+      // val marginal = 
+      //   insideHeads( i )( k )( NoValence ) *
+      //     insideM( k )( j )( LeftwardM ) *
+      //       factorAndOutside
 
-    Seq(
-      ( ChooseEvent( head, LeftAtt, dep ) , marginal ),
-      ( StopEvent( head, LeftAtt, NoValence, NotStop ) , marginal ),
-      ( StopEvent( dep, RightAtt, NoValence, Stop ) , marginal ),
-      ( StopEvent( dep, LeftAtt, NoValence, Stop ) , marginal )
-    )
+      // Seq(
+      //   ( ChooseEvent( head, LeftAtt, dep ) , marginal ),
+      //   ( StopEvent( head, LeftAtt, NoValence, NotStop ) , marginal ),
+      //   ( StopEvent( dep, RightAtt, NoValence, Stop ) , marginal ),
+      //   ( StopEvent( dep, LeftAtt, NoValence, Stop ) , marginal )
+      // )
+
+    Seq()
   }
 
   def outsideRight( i:Int, k:Int, j:Int ) {
@@ -305,19 +328,21 @@ class HeadOutAdjHeadNoValenceParser(
     val head = intString( i )
     val dep = intString( k )
 
-    val factorAndOutside =
-      theta( ChooseEvent( head, RightAtt, dep ) ) *
-        theta( StopEvent( head, RightAtt, NoValence, NotStop ) ) *
-          theta( StopEvent( dep, LeftAtt, NoValence, Stop ) ) *
-          theta( StopEvent( dep, RightAtt, NoValence, Stop ) ) *
-            outsideHeads( i )( j )( NoValence )
+    // val factorAndOutside =
+    //   theta( ChooseEvent( head, RightAtt, dep ) ) *
+    //     theta( StopEvent( head, RightAtt, NoValence, NotStop ) ) *
+    //       theta( StopEvent( dep, LeftAtt, NoValence, Stop ) ) *
+    //       theta( StopEvent( dep, RightAtt, NoValence, Stop ) ) *
+    //         outsideHeads( i )( j )( NoValence )
 
     // First, send messages to right child -- that is, the rightward-looking dependent label.
     outsideHeads( k )( j )( NoValence ) +=
-      insideM( i )( k )( RightwardM ) * factorAndOutside
+      insideM( i )( k )( RightwardM ) * // factorAndOutside
+        outsideHeads( i )( j )( NoValence )
 
     outsideM( i )( k )( RightwardM ) +=
-        insideHeads( k )( j )( NoValence ) * factorAndOutside
+      insideHeads( k )( j )( NoValence ) * // factorAndOutside
+        outsideHeads( i )( j )( NoValence )
 
   }
 
@@ -335,22 +360,26 @@ class HeadOutAdjHeadNoValenceParser(
 
     // First, send messages to right child -- that is, the rightward-looking dependent label.
     outsideHeads( k )( j )( NoValence ) +=
-      insideM( i )( k )( RightwardM ) * factorAndOutside
+      insideM( i )( k )( RightwardM ) * // factorAndOutside
+        outsideHeads( i )( j )( NoValence )
 
     outsideM( i )( k )( RightwardM ) +=
-        insideHeads( k )( j )( NoValence ) * factorAndOutside
+      insideHeads( k )( j )( NoValence ) * // factorAndOutside
+        outsideHeads( i )( j )( NoValence )
 
-    val marginal = 
-      insideHeads( k )( j )( NoValence ) *
-        insideM( i )( k )( RightwardM ) *
-          factorAndOutside
+        // val marginal = 
+        //   insideHeads( k )( j )( NoValence ) *
+        //     insideM( i )( k )( RightwardM ) *
+        //       factorAndOutside
 
-    Seq(
-      ( ChooseEvent( head, RightAtt, dep ) , marginal ),
-      ( StopEvent( head, RightAtt, NoValence, NotStop ) , marginal ),
-      ( StopEvent( dep, LeftAtt, NoValence, Stop ) , marginal ),
-      ( StopEvent( dep, RightAtt, NoValence, Stop ) , marginal )
-    )
+        // Seq(
+        //   ( ChooseEvent( head, RightAtt, dep ) , marginal ),
+        //   ( StopEvent( head, RightAtt, NoValence, NotStop ) , marginal ),
+        //   ( StopEvent( dep, LeftAtt, NoValence, Stop ) , marginal ),
+        //   ( StopEvent( dep, RightAtt, NoValence, Stop ) , marginal )
+        // )
+
+    Seq()
   }
 
   val mDecorations:Set[MDecoration] = Set( PlainM, LeftwardM, RightwardM )
@@ -423,29 +452,69 @@ class HeadOutAdjHeadNoValenceParser(
         outsideM( i )( j )( PlainM ) *
           insideHeads( i )( k )( NoValence )
 
-      // LeftwardM
-      if( j-k == 1 ) {
-        outsideHeads( i )( k )( NoValence ) +=
-          outsideM( i )( j )( LeftwardM ) *
-            insideHeads( k )( j )( NoValence )
+      {
+        // LeftwardM
+        if( j-k == 1 ) {
+          val head = intString(j)
+          val dep = intString(i)
 
-        outsideHeads( k )( j )( NoValence ) +=
-          outsideM( i )( j )( LeftwardM ) *
-            insideHeads( i )( k )( NoValence )
+          val factorAndOutside =
+            nearestArcFactor( head, LeftAtt, dep ) *
+              outsideM( i )( j )( LeftwardM )
+
+          outsideHeads( i )( k )( NoValence ) +=
+            insideHeads( k )( j )( NoValence ) * factorAndOutside
+
+          outsideHeads( k )( j )( NoValence ) +=
+            insideHeads( i )( k )( NoValence ) * factorAndOutside
+
+          val marginal = 
+            insideHeads( i )( k )( NoValence ) *
+              insideHeads( k )( j )( NoValence ) *
+                factorAndOutside
+
+          Seq(
+            ( ChooseEvent( head, LeftAtt, dep ) , marginal ),
+            ( StopEvent( head, LeftAtt, NoValence, NotStop ) , marginal ),
+            ( StopEvent( dep, RightAtt, NoValence, Stop ) , marginal ),
+            ( StopEvent( dep, LeftAtt, NoValence, Stop ) , marginal )
+          )
+        } else {
+          Seq()
+        }
+      } ++  {
+
+        // RightwardM
+        if( k-i == 1 ) {
+          val head = intString(i)
+          val dep = intString(j)
+
+          val factorAndOutside =
+            nearestArcFactor( head, RightAtt, dep ) *
+              outsideM( i )( j )( RightwardM )
+
+          outsideHeads( i )( k )( NoValence ) +=
+            insideHeads( k )( j )( NoValence ) * factorAndOutside
+
+          outsideHeads( k )( j )( NoValence ) +=
+            insideHeads( i )( k )( NoValence ) * factorAndOutside
+
+          val marginal = 
+            insideHeads( i )( k )( NoValence ) *
+              insideHeads( k )( j )( NoValence ) *
+                factorAndOutside
+
+          Seq(
+            ( ChooseEvent( head, RightAtt, dep ) , marginal ),
+            ( StopEvent( head, RightAtt, NoValence, NotStop ) , marginal ),
+            ( StopEvent( dep, LeftAtt, NoValence, Stop ) , marginal ),
+            ( StopEvent( dep, RightAtt, NoValence, Stop ) , marginal )
+          )
+        } else {
+          Seq()
+        }
+
       }
-
-      // RightwardM
-      if( k-i == 1 ) {
-        outsideHeads( i )( k )( NoValence ) +=
-          outsideM( i )( j )( RightwardM ) *
-            insideHeads( k )( j )( NoValence )
-
-        outsideHeads( k )( j )( NoValence ) +=
-          outsideM( i )( j )( RightwardM ) *
-            insideHeads( i )( k )( NoValence )
-      }
-      // }
-      Seq()
     } else { // parent is DirectedM
       val context = intString(k) // switch context and dep for top-down second-order
 
@@ -455,11 +524,9 @@ class HeadOutAdjHeadNoValenceParser(
       val lDep = intString(i)
 
       val lFactorAndOutside =
-        theta( ChooseEvent( lHead, context, LeftAtt, lDep ) ) *
-          theta( StopEvent( lHead, LeftAtt, NoValence, NotStop ) ) *
-            theta( StopEvent( lDep, RightAtt, NoValence, Stop ) ) *
-            theta( StopEvent( lDep, LeftAtt, NoValence, Stop ) ) *
-              outsideM( i )( j )( LeftwardM )
+        outerArcFactor( lHead, context, LeftAtt, lDep ) *
+          outsideM( i )( j )( LeftwardM )
+
       // message to left child, a PlainM node
       outsideM( i )( k )( PlainM ) +=
         insideM( k )( j )( LeftwardM ) * lFactorAndOutside
@@ -474,11 +541,9 @@ class HeadOutAdjHeadNoValenceParser(
       val rDep = intString(j)
 
       val rFactorAndOutside =
-        theta( ChooseEvent( rHead, context, RightAtt, rDep ) ) *
-          theta( StopEvent( rHead, RightAtt, NoValence, NotStop ) ) *
-            theta( StopEvent( rDep, LeftAtt, NoValence, Stop ) ) *
-            theta( StopEvent( rDep, RightAtt, NoValence, Stop ) ) *
-              outsideM( i )( j )( RightwardM )
+        outerArcFactor( rHead, context, RightAtt, rDep ) *
+          outsideM( i )( j )( RightwardM )
+
       // message to right child, a PlainM node
       outsideM( k )( j )( PlainM ) +=
         insideM( i )( k )( RightwardM ) * rFactorAndOutside
@@ -523,7 +588,7 @@ class HeadOutAdjHeadNoValenceParser(
             theta( StopEvent( r, LeftAtt, NoValence, Stop ) ) *
             theta( StopEvent( r, RightAtt, NoValence, Stop ) )
       }
-    }.toMap
+    }//.toMap
   }
 
   def viterbiRightRank( i:Int, j:Int, parentV:Decoration ) = {
@@ -539,7 +604,7 @@ class HeadOutAdjHeadNoValenceParser(
               theta( StopEvent( dep, LeftAtt, NoValence, Stop ) ) *
               theta( StopEvent( dep, RightAtt, NoValence, Stop ) )
       }
-    }.toMap
+    }//.toMap
   }
 
   def viterbiLeftRank( i:Int, j:Int, parentV:Decoration ) = {
@@ -555,7 +620,7 @@ class HeadOutAdjHeadNoValenceParser(
               theta( StopEvent( dep, RightAtt, NoValence, Stop ) ) *
               theta( StopEvent( dep, LeftAtt, NoValence, Stop ) )
       }
-    }.toMap
+    }//.toMap
   }
 
 
@@ -563,18 +628,34 @@ class HeadOutAdjHeadNoValenceParser(
   def viterbiMRank( i:Int, j:Int, decoration:MDecoration ) = {
     mSplits( i, j ).flatMap{ k =>
       if( k%2 == 0 ) {
-        // only directed children
-        if( ( decoration == LeftwardM && (j-k > 1)  ) ||
-            ( decoration == RightwardM && (k-i > 1) )
-        ) {
-          Seq()
-        } else {
-          Seq(
-            SplitSpec( k, NoValence, NoValence ) -> {
-              insideHeads( i )( k )( NoValence ) *
-                insideHeads( k )( j )( NoValence )
-            }
-          )
+        decoration match {
+          case LeftwardM =>
+            if( j-k == 1 )
+              Seq(
+                SplitSpec( k, NoValence, NoValence ) -> {
+                  insideHeads( i )( k )( NoValence ) *
+                    insideHeads( k )( j )( NoValence ) *
+                      nearestArcFactor( intString(j), LeftAtt, intString(i) )
+                }
+              )
+            else Seq()
+          case RightwardM =>
+            if( k-i == 1 )
+              Seq(
+                SplitSpec( k, NoValence, NoValence ) -> {
+                  insideHeads( i )( k )( NoValence ) *
+                    insideHeads( k )( j )( NoValence ) *
+                      nearestArcFactor( intString(i), RightAtt, intString(j) )
+                }
+              )
+            else Seq()
+          case PlainM =>
+              Seq(
+                SplitSpec( k, NoValence, NoValence ) -> {
+                  insideHeads( i )( k )( NoValence ) *
+                    insideHeads( k )( j )( NoValence )
+                }
+              )
         }
       } else {
         val context = intString(k) // switch context and dep for top-down second-order
@@ -617,7 +698,7 @@ class HeadOutAdjHeadNoValenceParser(
 
       }
     }
-  }.toMap
+  }// .toMap
 
   def viterbiLexFill( index:Int ) {
     insideHeads(index)(index+1)( NoValence ) = 1D

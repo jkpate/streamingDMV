@@ -233,10 +233,10 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
 
 
   case class SplitSpec( k:Int, leftV:Decoration, rightV:Decoration )
-  def viterbiRightRank( i:Int, j:Int, parentV:Decoration ):Iterable[Tuple2[SplitSpec,Double]]
-  def viterbiLeftRank( i:Int, j:Int, parentV:Decoration ):Iterable[Tuple2[SplitSpec,Double]]
-  def viterbiMRank( i:Int, j:Int, mDecoration:MDecoration ):Iterable[Tuple2[SplitSpec,Double]]
-  def viterbiRootRank:Iterable[Tuple2[SplitSpec,Double]]
+  def viterbiRightRank( i:Int, j:Int, parentV:Decoration ):Seq[Tuple2[SplitSpec,Double]]
+  def viterbiLeftRank( i:Int, j:Int, parentV:Decoration ):Seq[Tuple2[SplitSpec,Double]]
+  def viterbiMRank( i:Int, j:Int, mDecoration:MDecoration ):Seq[Tuple2[SplitSpec,Double]]
+  def viterbiRootRank:Seq[Tuple2[SplitSpec,Double]]
 
   def leftArcParentVs( i:Int ):Set[Decoration]
   def rightArcParentVs( j:Int ):Set[Decoration]

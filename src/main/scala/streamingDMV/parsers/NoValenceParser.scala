@@ -330,7 +330,7 @@ class NoValenceParser(
             theta( StopEvent( dep, LeftAtt, NoValence, Stop ) ) *
             theta( StopEvent( dep, RightAtt, NoValence, Stop ) )
       }
-    }.toMap
+    }// .toMap
   }
 
   def viterbiLeftRank( i:Int, j:Int, parentV:Decoration ) = {
@@ -346,7 +346,7 @@ class NoValenceParser(
             theta( StopEvent( dep, RightAtt, NoValence, Stop ) ) *
             theta( StopEvent( dep, LeftAtt, NoValence, Stop ) )
       }
-    }.toMap
+    }// .toMap
   }
 
   def viterbiMRank( i:Int, j:Int, decoration:MDecoration ) = {

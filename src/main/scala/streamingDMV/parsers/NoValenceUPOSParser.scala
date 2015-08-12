@@ -349,7 +349,7 @@ class NoValenceUPOSParser(
       scores( ::, * ) :*= insideHeads( i )( k )( NoValence )
 
       SplitSpec(k,NoValence,NoValence) -> scores.toDenseMatrix
-    }.toMap
+    }// .toMap
   }
 
   def viterbiRightRank( i:Int, j:Int, parentV:Decoration ) = {
@@ -362,7 +362,7 @@ class NoValenceUPOSParser(
       scores( ::, * ) :*= insideHeads( k )( j )( NoValence )
 
       SplitSpec(k,NoValence,NoValence) -> scores.toDenseMatrix
-    }.toMap
+    }// .toMap
   }
 
   def viterbiMRank( i:Int, j:Int, decoration:MDecoration ) = {
