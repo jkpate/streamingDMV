@@ -324,100 +324,91 @@ class TopDownDMVParser(
 
   def lexMarginals( index:Int ) = {
     val head = intString( index )
+    // Don't include stop factor -- it's actually already included in insideHeads (the *real* inside
+    // score for each terminal is 1)
     if( index%2 == 0 ) {
-      Seq( Outermost, Inner ).map{ hV =>
-        StopEvent( head, LeftAtt, hV, Stop ) ->
+      val lexVs = if( index > 1 ) Seq( Outermost, Inner ) else Seq(Outermost)
+      lexVs.map{ hV =>
+        StopEvent( head, LeftAtt, hV, Stop ) -> {
           insideHeads( index )( index +1 )( hV ) * outsideHeads( index )( index +1 )( hV )
+        }
       }
     } else {
-      Seq( Outermost, Inner ).map{ hV =>
-        StopEvent( head, RightAtt, hV, Stop ) ->
+      val lexVs = if( index < intString.length-1 ) Seq( Outermost, Inner ) else Seq(Outermost)
+      lexVs.map{ hV =>
+        StopEvent( head, RightAtt, hV, Stop ) -> {
           insideHeads( index )( index +1 )( hV ) * outsideHeads( index )( index +1 )( hV )
+        }
       }
     }
   }
 
   def outsideLeftWithMarginals( i:Int, k:Int, j:Int ) = {
     val head = intString( j )
-    if( j-i >= 3 ) {
-      // this is an Arc cell -- compute outside probs for children and return arc marginals
+    assert( j-i >= 3 )
+    // this is an Arc cell -- compute outside probs for children and return arc marginals
 
-      val dep = intString( k )
-      val hVs = if( j <= 3 ) Seq( Outermost ) else Seq( Outermost, Inner )
-      hVs.flatMap{ hV =>
-        val factorAndOutside =
-          theta( ChooseEvent( head, LeftAtt, dep ) ) *
-            theta( StopEvent( head, LeftAtt, hV, NotStop ) ) *
-              outsideHeads( i )( j )( hV )
+    val dep = intString( k )
+    val hVs = if( j <= 3 ) Seq( Outermost ) else Seq( Outermost, Inner )
+    hVs.flatMap{ hV =>
+      val factorAndOutside =
+        theta( ChooseEvent( head, LeftAtt, dep ) ) *
+          theta( StopEvent( head, LeftAtt, hV, NotStop ) ) *
+            outsideHeads( i )( j )( hV )
 
-        // First, send messages to left child -- that is, the leftward looking dependent
-        // label.
-        outsideHeads( i )( k )( Outermost ) +=
-            insideM( k )( j )( DecorationPair(Outermost, Inner ) ) * factorAndOutside
-        // Now, send messages to right child -- that is, the M-label
+      // First, send messages to left child -- that is, the leftward looking dependent
+      // label.
+      outsideHeads( i )( k )( Outermost ) +=
+          insideM( k )( j )( DecorationPair(Outermost, Inner ) ) * factorAndOutside
+      // Now, send messages to right child -- that is, the M-label
 
-        outsideM( k )( j )( DecorationPair(Outermost, Inner) ) +=
-            insideHeads( i )( k )( Outermost ) * factorAndOutside
+      outsideM( k )( j )( DecorationPair(Outermost, Inner) ) +=
+          insideHeads( i )( k )( Outermost ) * factorAndOutside
 
-        val marginal = 
-          insideHeads( i )( k )( Outermost ) *
-            insideM( k )( j )( DecorationPair(Outermost, Inner ) ) *
-              factorAndOutside
+      val marginal = 
+        insideHeads( i )( k )( Outermost ) *
+          insideM( k )( j )( DecorationPair(Outermost, Inner ) ) *
+            factorAndOutside
 
-        Seq(
-          ( ChooseEvent( head, LeftAtt, dep ) , marginal ),
-          ( StopEvent( head, LeftAtt, hV, NotStop ) , marginal )
-        )
-      }
-    } else {
-      // this is a (pre-)terminal cell -- just return stop marginals
-      Seq( Outermost, Inner ).map{ hV =>
-        ( StopEvent( head, LeftAtt, hV, Stop ) ,
-          insideHeads( i )( j )( hV ) * outsideHeads( i )( j )( hV )
-        )
-      }
+      Seq(
+        ( ChooseEvent( head, LeftAtt, dep ) , marginal ),
+        ( StopEvent( head, LeftAtt, hV, NotStop ) , marginal )
+      )
     }
   }
 
 
   def outsideRightWithMarginals( i:Int, k:Int, j:Int ) = {
     val head = intString( i )
-    if( j-i >= 3 ) {
-      // this is an Arc cell -- compute outside probs for children and return arc marginals
+    assert( j-i >= 3 )
+    // this is an Arc cell -- compute outside probs for children and return arc marginals
 
-      val dep = intString( k )
-      val hVs = if( i >= intString.length-3 ) Seq( Outermost ) else Seq( Outermost, Inner )
-      hVs.flatMap{ hV =>
-        val factorAndOutside =
-          theta( ChooseEvent( head, RightAtt, dep ) ) *
-            theta( StopEvent( head, RightAtt, hV, NotStop ) ) *
-              outsideHeads( i )( j )( hV )
+    val dep = intString( k )
+    val hVs = if( i >= intString.length-3 ) Seq( Outermost ) else Seq( Outermost, Inner )
+    hVs.flatMap{ hV =>
+      val factorAndOutside =
+        theta( ChooseEvent( head, RightAtt, dep ) ) *
+          theta( StopEvent( head, RightAtt, hV, NotStop ) ) *
+            outsideHeads( i )( j )( hV )
 
-        // First, send messages to right child -- that is, the rightward looking dependent
-        // label.
-        outsideHeads( k )( j )( Outermost ) +=
-            insideM( i )( k )( DecorationPair(Outermost, Inner ) ) * factorAndOutside
+      // First, send messages to right child -- that is, the rightward looking dependent
+      // label.
+      outsideHeads( k )( j )( Outermost ) +=
+          insideM( i )( k )( DecorationPair(Inner, Outermost ) ) * factorAndOutside
 
-        // Now, send messages to left child -- that is, the M-label
-        outsideM( i )( k )( DecorationPair(Outermost, Inner) ) +=
-            insideHeads( k )( j )( Outermost ) * factorAndOutside
+      // Now, send messages to left child -- that is, the M-label
+      outsideM( i )( k )( DecorationPair(Inner, Outermost) ) +=
+          insideHeads( k )( j )( Outermost ) * factorAndOutside
 
-        val marginal = 
-          insideHeads( k )( j )( Outermost ) *
-            insideM( i )( k )( DecorationPair(Outermost, Inner ) ) *
-              factorAndOutside
+      val marginal = 
+        insideHeads( k )( j )( Outermost ) *
+          insideM( i )( k )( DecorationPair(Inner, Outermost) ) *
+            factorAndOutside
 
-        Seq(
-          ChooseEvent( head, RightAtt, dep ) -> marginal,
-          StopEvent( head, RightAtt, hV, NotStop ) -> marginal
-        )
-      }
-    } else {
-      // this is a (pre-)terminal cell -- just return stop marginals
-      Seq( Outermost, Inner ).map{ hV =>
-        StopEvent( head, RightAtt, hV, Stop ) ->
-          insideHeads( i )( j )( hV ) * outsideHeads( i )( j )( hV )
-      }
+      Seq(
+        ChooseEvent( head, RightAtt, dep ) -> marginal,
+        StopEvent( head, RightAtt, hV, NotStop ) -> marginal
+      )
     }
   }
 
