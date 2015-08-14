@@ -77,6 +77,9 @@ case class ChooseEvent( head:Int, context:Int, dir:AttDir, v:Decoration, dep:Int
 object ChooseEvent {
   // some parameterizations don't use valence or context for choose
 
+  def apply( dir:AttDir, dep:Int ):ChooseEvent =
+    new ChooseEvent( -1, -1, dir, NoValence, dep )
+
   def apply( head:Int, dir:AttDir, dep:Int ):ChooseEvent =
     new ChooseEvent( head, -1, dir, NoValence, dep )
 
@@ -109,6 +112,30 @@ case class LambdaChooseEvent(
   def backOff = bo
 }
 
+case class LambdaStopNorm(
+  head:Int,
+  context:Int,
+  dir:AttDir,
+  v:Decoration
+) extends NormKey
+
+object LambdaStopEvent {
+  def apply( head:Int, dir:AttDir, bo:BackoffDecision ):LambdaStopEvent =
+    LambdaStopEvent( head, -1, dir, NoValence, bo )
+}
+
+case class LambdaStopEvent(
+  head:Int,
+  context:Int,
+  dir:AttDir,
+  v:Decoration,
+  bo:BackoffDecision
+) extends Event with BackingOffEvent {
+  def normKey = LambdaStopNorm( head, context, dir, v )
+  def backOff = bo
+}
+
+
 
 object LambdaChooseEvent {
   def apply(
@@ -133,12 +160,17 @@ object LambdaChooseEvent {
 object StopEvent {
   def apply( head:Int, dir:AttDir, dec:StopDecision ):StopEvent =
     StopEvent( head, dir, NoValence, dec )
+  def apply( dir:AttDir, dec:StopDecision ):StopEvent =
+    StopEvent( -1, dir, NoValence, dec )
 }
 case class StopEvent( head:Int, dir:AttDir, v:Decoration, dec:StopDecision ) extends Event {
   def normKey = StopNorm( head, dir, v )
 }
 case class StopNorm( head:Int, dir:AttDir, v:Decoration ) extends NormKey
 
+object RootEvent {
+  def apply():RootEvent = RootEvent( -1 )
+}
 case class RootEvent( root:Int ) extends Event {
   def normKey = RootNorm
 }

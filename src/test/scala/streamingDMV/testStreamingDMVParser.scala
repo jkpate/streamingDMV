@@ -30,7 +30,7 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   // val uposCount = 10
   val uposCount = 3
 
-  val p = new TopDownDMVParser( dmvCorpus.map{_.length}.max )
+  // val p = new TopDownDMVParser( dmvCorpus.map{_.length}.max )
   // val p = new OriginalDMVParser( dmvCorpus.map{_.length}.max )
   // val p = new NoValenceParser(
   //   dmvCorpus.map{_.length}.max,
@@ -40,12 +40,12 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   //   dmvCorpus.map{_.length}.max,
   //   randomSeed = 15
   // )
-  // val p = new HeadOutInterpolatedAdjHeadNoValenceParser(
-  //   dmvCorpus.map{_.length}.max,
-  //   notBackoffAlpha = 10,
-  //   backoffAlpha = 0,
-  //   randomSeed = 15
-  // )
+  val p = new HeadOutInterpolatedAdjHeadNoValenceParser(
+    dmvCorpus.map{_.length}.max,
+    notBackoffAlpha = 10,
+    backoffAlpha = 0,
+    randomSeed = 15
+  )
   // val p = new NoValenceUPOSParser(
   //   dmvCorpus.map{_.length}.max,
   //   uposCount = uposCount,

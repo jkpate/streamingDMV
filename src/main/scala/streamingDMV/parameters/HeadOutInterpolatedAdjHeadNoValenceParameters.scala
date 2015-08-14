@@ -75,6 +75,10 @@ class HeadOutInterpolatedAdjHeadNoValenceParameters(
     p_root.increment( counts.rootCounts )
     p_stop.increment( counts.stopCounts )
     p_choose.increment( counts.chooseCounts )
+
+    // var backoffEvents = 0D
+    // var notBackoffEvents = 0D
+
     if( notBackoffAlpha > 0 )
       counts.chooseCounts.counts.foreach{ case (event, count) =>
         event match {
@@ -84,10 +88,21 @@ class HeadOutInterpolatedAdjHeadNoValenceParameters(
                 LambdaChooseEvent( head, context, dir, NotBackoff ),
                 count
               )
+            //  notBackoffEvents += count
+            } else {
+              lambda_choose.increment(
+                LambdaChooseEvent( head, context, dir, Backoff ),
+                count
+              )
+            //   backoffEvents += count
             }
           case _ =>
         }
       }
+
+    // println( s"$notBackoffEvents not backoff events" )
+    // println( s"$backoffEvents backoff events" )
+    // println( s"${notBackoffEvents + backoffEvents} lambda events\n\n" )
   }
 
   override def decrementCounts( counts:DMVCounts ) {
@@ -101,6 +116,11 @@ class HeadOutInterpolatedAdjHeadNoValenceParameters(
             if( context >= 0 ) {
               lambda_choose.decrement(
                 LambdaChooseEvent( head, context, dir, NotBackoff ),
+                count
+              )
+            } else {
+              lambda_choose.decrement(
+                LambdaChooseEvent( head, context, dir, Backoff ),
                 count
               )
             }

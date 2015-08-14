@@ -82,6 +82,7 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,+P<:ArcFactoredParameters[C]
       // if( iter > 0 )
       // decrement every time now since lastFHat may not be zero
       theta.decrementCounts( lastFHat )
+      // println( miniBatch.map{_.string.length}.sum )
       theta.incrementCounts( fHat )
 
       deltaScores = ( lastMiniBatchScores - thisMiniBatchScores ) / lastMiniBatchScores
