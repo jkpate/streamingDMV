@@ -106,8 +106,8 @@ class NoValenceUPOSParser(
   def rootFactor( k:Int ) = {
     val r = intString( k )
     theta( RootEvent( r ) ) :*
-      theta( StopEvent( r, LeftAtt, NoValence, Stop ) ) :*
-      theta( StopEvent( r, RightAtt, NoValence, Stop ) )
+      theta( StopEvent( r, LeftAtt, NoValence, Stop ) ).t :*
+      theta( StopEvent( r, RightAtt, NoValence, Stop ) ).t
   }
 
   def populateRightwardCell( i:Int, k:Int, j:Int ) {
@@ -240,7 +240,7 @@ class NoValenceUPOSParser(
         outsideHeads(i)(j)(NoValence).t
       ) :* arcFactor( head, LeftAtt, dep ) :* insideM(k)(j)(PlainM)
 
-    val headStopMarginal = sum( marginal( ::,* ) ).toDenseMatrix
+    val headStopMarginal = sum( marginal( ::,* ) ).t.asDenseMatrix
     val depStopMarginal = sum( marginal( *,:: ) ).toDenseMatrix
 
     Seq(
@@ -306,7 +306,7 @@ class NoValenceUPOSParser(
     // val marginal = factorAndOutside :* insideM( i )( k )( PlainM )
     // marginal( *, :: ) :*= insideHeads( k )( j )( NoValence )
 
-    val headStopMarginal = sum( marginal( ::,* ) ).toDenseMatrix
+    val headStopMarginal = sum( marginal( ::,* ) ).t.asDenseMatrix
     val depStopMarginal = sum( marginal( *,:: ) ).toDenseMatrix
 
     Seq(

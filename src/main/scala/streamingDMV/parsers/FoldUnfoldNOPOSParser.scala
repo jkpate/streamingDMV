@@ -16,11 +16,9 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
   randomSeed:Int = 15
 ) extends FoldUnfoldParser[DMVCounts,P]( maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed ) {
 
-  // Inside-Outside definitions
-  val insideHeads:Array[Array[MMap[Decoration,Double]]]
-  val insideM:Array[Array[MMap[MDecoration,Double]]]
-  val outsideHeads:Array[Array[MMap[Decoration,Double]]]
-  val outsideM:Array[Array[MMap[MDecoration,Double]]]
+
+  val insideChart:Array[Array[MMap[Decoration,Double]]]
+  val outsideChart:Array[Array[MMap[Decoration,Double]]]
 
   def lexFill( index:Int ):Unit
   def insidePass( s:Array[Int] ) = {
@@ -35,43 +33,135 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
     }
   }
 
-  def populateRightwardCell( i:Int, k:Int, j:Int ):Unit
-  def populateLeftwardCell( i:Int, k:Int, j:Int ):Unit
-  def populateMCell( i:Int, k:Int, j:Int ):Unit
-  def populateRootCell( k:Int ):Unit
+  def mSplitSpecs( i:Int, j:Int ):Seq[Tuple2[MDecoration,Seq[Int]]]
+  def rootSplitSpecs():Seq[Tuple2[Int,DecorationPair]]
+  def rightwardSplitSpecs(i:Int,j:Int):Seq[Tuple2[Decoration,Seq[Tuple3[Int,MDecoration,Decoration]]]]
+  def leftwardSplitSpecs(i:Int,j:Int):Seq[Tuple2[Decoration,Seq[Tuple3[Int,MDecoration,Decoration]]]]
 
-  def synFill( i:Int, j:Int ) {
-    // println( s"${(i,j)}" )
-    if( i%2 == 1 && j%2 == 0 ) {
-      // Rightward
-      ( (i+2) to (j-1) by 2 ).foreach{ k =>
-        populateRightwardCell( i, k, j )
+  def rightwardCellScore( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = {
+    insideChart( i )( k )( mDec ) *
+      insideChart( k )( j )( cDec ) *
+        rightwardCellFactor( i, k, j, pDec, mDec, cDec )
+  }
+  def leftwardCellScore( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = {
+    insideChart( i )( k )( cDec ) *
+      insideChart( k )( j )( mDec ) *
+        leftwardCellFactor( i, k, j, pDec, mDec, cDec )
+  }
+  def mCellScore( i:Int, k:Int, j:Int, mDecoration:MDecoration ) = {
+    if( k%2 == 0 ) 
+      insideChart( i )( k )( mDecoration.evenLeft ) *
+        insideChart( k )( j )( mDecoration.evenRight ) *
+          mCellFactor( i, k, j, mDecoration )
+    else
+      insideChart( i )( k )( mDecoration.oddLeft ) *
+        insideChart( k )( j )( mDecoration.oddRight ) *
+          mCellFactor( i, k, j, mDecoration )
+  }
+  def rootCellScore( k:Int, leftDec:Decoration, rightDec:Decoration ) = {
+    insideChart( 0 )( k )( leftDec ) *
+      insideChart( k )( intString.length )( rightDec ) *
+        rootCellFactor( k )
+  }
+
+  def computeInsideMScore( i:Int, j:Int ) {
+    mSplitSpecs(i,j).foreach{ case (mDecoration, splits) =>
+      splits.foreach{ k =>
+        insideChart( i )( j )( mDecoration ) += mCellScore( i, k, j, mDecoration )
       }
-    } else if( i%2 == 0 && j%2 == 1 ) {
-      // Leftward
-      ( (i+1) to (j-2) by 2 ).foreach{ k =>
-        populateLeftwardCell( i, k, j )
+    }
+  }
+  def computeInsideRootScore() {
+    rootSplitSpecs().foreach{ case ( k, decorationPair ) =>
+      val r = intString( k )
+
+      stringProb +=
+        insideChart( 0 )( k )( decorationPair.evenLeft ) *
+          insideChart( k )( intString.length )( decorationPair.evenRight ) *
+            rootCellFactor( k )
+    }
+  }
+  def computeInsideRightwardScore( i:Int, j:Int ) {
+    rightwardSplitSpecs( i, j ).foreach{ case ( pDec, splits ) =>
+      splits.foreach{ case ( k, mDec, cDec ) =>
+        insideChart( i )( j )( pDec ) +=
+          rightwardCellScore( i, k, j, pDec, mDec, cDec )
       }
-    } else if( i%2 == 1 && j%2 == 1 ) {
-      // M
-      // println( s"${(i,j)}" )
-      // ( (i+1) to (j-1) by 2 ).foreach{ k =>
-      mSplits( i, j ).foreach{ k =>
-        populateMCell( i, k, j )
+    }
+  }
+  def computeInsideLeftwardScore( i:Int, j:Int ) {
+    leftwardSplitSpecs( i, j ).foreach{ case ( pDec, splits ) =>
+      splits.foreach{ case ( k, mDec, cDec ) =>
+        insideChart( i )( j )( pDec ) +=
+          leftwardCellScore( i, k, j, pDec, mDec, cDec )
       }
-    } else {
-      // Root
-      if( i == 0 && j == intString.length )
-        (1 to (j-1) by 2).foreach{ k =>
-          populateRootCell( k )
-        }
     }
   }
 
-  def outsideRoot( k:Int ):Unit
-  def outsideLeft( i:Int, k:Int, j:Int ):Unit
-  def outsideRight( i:Int, k:Int, j:Int ):Unit
-  def outsideM( i:Int, k:Int, j:Int ):Unit
+  def rootCellFactor( k:Int ):Double
+  def rightwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ):Double
+  def leftwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ):Double
+  def mCellFactor( i:Int, k:Int, j:Int, mDecoration:MDecoration ):Double
+
+  def rightwardCellScores( i:Int, j:Int ) = {
+    rightwardSplitSpecs( i, j ).map{ case ( pDec, splits ) =>
+      (
+        pDec,
+        splits.map{ case ( k, mDec, cDec ) =>
+          (
+            (k,mDec, cDec),
+            rightwardCellScore( i, k, j, pDec, mDec, cDec )
+          )
+        }
+      )
+    }
+  }
+  def leftwardCellScores( i:Int, j:Int ) = {
+    leftwardSplitSpecs( i, j ).map{ case ( pDec, splits ) =>
+      (
+        pDec,
+        splits.map{ case ( k, mDec, cDec ) =>
+          (
+            (k,mDec, cDec),
+            leftwardCellScore( i, k, j, pDec, mDec, cDec )
+          )
+        }
+      )
+    }
+  }
+  def mCellScores( i:Int, j:Int ) = {
+    mSplitSpecs( i, j ).map{ case (mDecoration, splits) =>
+      (
+        mDecoration,
+        splits.map{ k => 
+          (k, mCellScore( i, k, j, mDecoration ) )
+        }
+      )
+    }
+  }
+
+  def rootCellScores() = {
+    rootSplitSpecs().map{ case ( k, decorationPair ) =>
+      (
+        k,
+        rootCellScore( k, decorationPair.evenLeft, decorationPair.evenRight )
+      )
+    }
+  }
+
+  def synFill( i:Int, j:Int ) {
+    if( i%2 == 1 && j%2 == 0 ) {
+      computeInsideRightwardScore( i, j )
+    } else if( i%2 == 0 && j%2 == 1 ) {
+      computeInsideLeftwardScore( i, j )
+    } else if( i%2 == 1 && j%2 == 1 ) {
+      computeInsideMScore( i, j )
+    } else {
+      // Root
+      if( i == 0 && j == intString.length )
+        computeInsideRootScore()
+    }
+  }
 
   def outsidePass {
     ( 1 to intString.length ).reverse.foreach{ length =>
@@ -79,25 +169,85 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
         val j = i + length
         if( i%2 == 0 && j%2 == 0 ) { // Root
           if( i == 0 && j == intString.length ) {
-            ( 1 to (intString.length-1) by 2 ).foreach{ k =>
-              outsideRoot( k )
+            rootSplitSpecs().foreach{ case ( k, decorationPair ) =>
+              val r = intString( k )
+              val factorAndOutside = rootCellFactor( k )
+
+              outsideChart( 0 )( k )( decorationPair.evenLeft ) +=
+                insideChart( k )( intString.length )( decorationPair.evenRight ) * factorAndOutside
+
+              outsideChart( k )( intString.length )( decorationPair.evenRight ) +=
+                insideChart( 0 )( k )( decorationPair.evenLeft ) * factorAndOutside
             }
           }
         } else if( i%2 == 0 && j%2 == 1 ) { // Leftward label
           if( j-i >= 3 ) {
-            ( (i+1) to (j-2) by 2 ).foreach{ k =>
-              outsideLeft( i, k, j )
+            leftwardSplitSpecs( i, j ).foreach{ case ( decoration, splits ) =>
+              splits.foreach{ case ( k, mDec, cDec ) =>
+                val factorAndOutside =
+                  outsideChart( i )( j )( decoration ) *
+                    leftwardCellFactor( i, k, j, decoration, mDec, cDec )
+
+                // to left child
+                outsideChart( i )( k )( cDec ) +=
+                  insideChart( k )( j )( mDec ) *
+                    factorAndOutside
+
+                // to right child
+                outsideChart( k )( j )( mDec ) +=
+                  insideChart( i )( k )( cDec ) *
+                    factorAndOutside
+              }
             }
           }
         } else if( i%2 == 1 && j%2 == 0 ) { // Rightward label
           if( j-i >= 3 ) {
-            ( (i+2) to (j-1) by 2 ).foreach{ k =>
-              outsideRight( i, k, j )
+            rightwardSplitSpecs( i, j ).foreach{ case ( decoration, splits ) =>
+              splits.foreach{ case ( k, mDec, cDec ) =>
+                val factorAndOutside =
+                  outsideChart( i )( j )( decoration ) *
+                    rightwardCellFactor( i, k, j, decoration, mDec, cDec )
+
+                // to left child
+                outsideChart( i )( k )( mDec ) +=
+                  insideChart( k )( j )( cDec ) *
+                    factorAndOutside
+
+                // to right child
+                outsideChart( k )( j )( cDec ) +=
+                  insideChart( i )( k )( mDec ) *
+                    factorAndOutside
+              }
             }
           }
         } else if( i%2 == 1 && j%2 == 1 ) { // M label
-          ( (i+1) to (j-1) by 2 ).foreach{ k =>
-            outsideM( i, k, j )
+          mSplitSpecs( i, j ).foreach{ case (mDecoration, splits) =>
+            splits.foreach{ k =>
+              val factorAndOutside =
+                outsideChart( i )( j )( mDecoration ) * mCellFactor( i, k, j, mDecoration )
+
+              if( k%2 == 0 ) {
+                // to left child
+                outsideChart( i )( k )( mDecoration.evenLeft ) +=
+                  insideChart( k )( j )( mDecoration.evenRight ) *
+                    factorAndOutside
+
+                // to right child
+                outsideChart( k )( j )( mDecoration.evenRight ) +=
+                  insideChart( i )( k )( mDecoration.evenLeft ) *
+                    factorAndOutside
+              } else {
+                // to left child
+                outsideChart( i )( k )( mDecoration.oddLeft ) +=
+                  insideChart( k )( j )( mDecoration.oddRight ) *
+                    factorAndOutside
+
+                // to right child
+                outsideChart( k )( j )( mDecoration.oddRight ) +=
+                  insideChart( i )( k )( mDecoration.oddLeft ) *
+                    factorAndOutside
+              }
+            }
           }
         }
       }
@@ -149,8 +299,6 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
 
 
   case class RootEntry( k:Int ) extends BinaryEntry( 0, k, intString.length ) {
-    // val leftChild = headTrace( 0 )( k )( Outermost )
-    // val rightChild = headTrace( k )( intString.length )( Outermost )
     val leftChild = findLeftRootChild( k )
     val rightChild = findRightRootChild( k )
 
@@ -162,10 +310,7 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
 
   case class MEntry(
     i:Int, k:Int, j:Int, decoration:MDecoration
-    // leftV:Decoration, rightV:Decoration
   ) extends BinaryEntry( i, k, j ) {
-    // val leftChild = headTrace( i )( k )( leftV )
-    // val rightChild = headTrace( k )( j )( rightV )
     val leftChild = findLeftMChild( i, k, decoration )
     val rightChild = findRightMChild( k, j, decoration )
 
@@ -181,8 +326,6 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
   }
 
   case class LeftwardEntry( i:Int, k:Int, j:Int, hV:Decoration, mDV:Decoration ) extends BinaryEntry( i, k, j ) {
-    // val leftChild = headTrace( i )( k )( Outermost )
-    // val rightChild = mTrace( k )( j )( ( Outermost, Inner ) )
     val leftChild = findLeftLeftwardChild( i, k )
     val rightChild = findRightLeftwardChild( k, j, hV, mDV )
 
@@ -192,8 +335,6 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
   }
 
   case class RightwardEntry( i:Int, k:Int, j:Int, hV:Decoration, mDV:Decoration ) extends BinaryEntry( i, k, j ) {
-    // val leftChild = mTrace( i )( k )( ( Inner, Outermost ) )
-    // val rightChild = headTrace( k )( j )( ( Outermost ) )
     val leftChild = findLeftRightwardChild( i , k, hV, mDV )
     val rightChild = findRightRightwardChild( k, j )
 
@@ -203,23 +344,22 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
   }
 
 
-  var viterbiRoot:RootEntry = null
+  var treeRoot:RootEntry = null
   def viterbiLexFill( index:Int ):Unit
 
-  // def argMax[K]( seq:Iterable[Tuple2[K,Double]] ):Tuple2[K,Double] = {
   def argMax[K]( seq:Iterable[Tuple2[K,Double]] ):Tuple2[K,Double] = {
     var bestIdx = List[K]()
-    // var bestScore = 0D::Nil
     var bestScore = Double.NegativeInfinity
+
     seq.foreach{ case ( idx, score ) =>
       if( score > bestScore ) {
         bestScore = score
         bestIdx = idx :: Nil
       } else if( score == bestScore ) {
-        // bestScore = score
         bestIdx = idx :: bestIdx
       }
     }
+
     if( bestIdx.length == 1 ) {
       (bestIdx.head, bestScore)
     } else {
@@ -232,63 +372,40 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
   }
 
 
-  case class SplitSpec( k:Int, leftV:Decoration, rightV:Decoration )
-  def viterbiRightRank( i:Int, j:Int, parentV:Decoration ):Seq[Tuple2[SplitSpec,Double]]
-  def viterbiLeftRank( i:Int, j:Int, parentV:Decoration ):Seq[Tuple2[SplitSpec,Double]]
-  def viterbiMRank( i:Int, j:Int, mDecoration:MDecoration ):Seq[Tuple2[SplitSpec,Double]]
-  def viterbiRootRank:Seq[Tuple2[SplitSpec,Double]]
-
-  def leftArcParentVs( i:Int ):Set[Decoration]
-  def rightArcParentVs( j:Int ):Set[Decoration]
-  def mNodeParentVs( i:Int, j:Int ):Set[MDecoration]
-
   def viterbiSynFill( i:Int, j:Int ) {
     if( i%2 == 1 && j%2 == 0 ) {
       // Rightward
-      // val parentVs = if( j == intString.length ) Set( Outermost ) else Set( Outermost, Inner )
-
-      rightArcParentVs(j).foreach{ parentV =>
-        val expansions = viterbiRightRank( i, j, parentV )
-
-        val ( bestSplit, bestScore ) = argMax( expansions )
-        insideHeads( i )( j )( parentV ) = bestScore
-        headTrace( i )( j )( parentV ) =
-          RightwardEntry( i, bestSplit.k, j, bestSplit.leftV, bestSplit.rightV )
+      rightwardCellScores( i, j ).foreach{ case( pDec, splitsAndScores ) =>
+        val ( (k,mDec,cDec), bestScore ) = argMax( splitsAndScores )
+        insideChart( i )( j )( pDec ) = bestScore
+        headTrace( i )( j )( pDec ) =
+          RightwardEntry( i, k, j, mDec.evenLeft, mDec.evenRight )
       }
     } else if( i%2 == 0 && j%2 == 1 ) {
       // Leftward
 
-      // val hVs = if( i == 0 ) Set( Outermost ) else Set( Outermost, Inner )
-
-      leftArcParentVs(i).foreach{ parentV =>
-        val expansions = viterbiLeftRank( i, j, parentV )
-
-        val ( bestSplit, bestScore ) = argMax( expansions )
-        insideHeads( i )( j )( parentV ) = bestScore
-        headTrace( i )( j )( parentV ) =
-          LeftwardEntry( i, bestSplit.k, j, bestSplit.rightV, bestSplit.leftV )
+      leftwardCellScores( i, j ).foreach{ case( pDec, splitsAndScores ) =>
+        val ( (k,mDec,cDec), bestScore ) = argMax( splitsAndScores )
+        insideChart( i )( j )( pDec ) = bestScore
+        headTrace( i )( j )( pDec ) =
+          LeftwardEntry( i, k, j, mDec.evenRight, mDec.evenLeft )
       }
     } else if( i%2 == 1 && j%2 == 1 ) {
       // M
 
-      mNodeParentVs( i, j ).foreach{ mDecoration  =>
-        // val (leftV, rightV) = vs
-        val expansions = viterbiMRank( i, j, mDecoration )
-
-        val (bestSplit, bestScore) = argMax( expansions )
-        insideM( i )( j )( mDecoration ) = bestScore
+      mCellScores(i,j).foreach{ case (mDecoration, splitsAndScores) =>
+        val ( bestK, bestScore ) = argMax( splitsAndScores )
+        insideChart( i )( j )( mDecoration ) = bestScore
         mTrace( i )( j )( mDecoration ) =
-          MEntry( i, bestSplit.k, j, mDecoration )
+          MEntry( i, bestK, j, mDecoration )
       }
     } else {
       // Root
+
       if( i == 0 && j == intString.length ) {
-        val expansions = viterbiRootRank
-
-        val (bestSplit, bestScore) = argMax( expansions )
-
+        val ( bestK, bestScore ) = argMax( rootCellScores() )
         stringProb = bestScore
-        viterbiRoot = RootEntry( bestSplit.k )
+        treeRoot = RootEntry( bestK )
       }
     }
   }
@@ -306,8 +423,8 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
     }
     Parse(
       utt.id,
-      viterbiRoot.toConParse,
-      viterbiRoot.toDepParse
+      treeRoot.toConParse,
+      treeRoot.toDepParse
     )
   }
 
@@ -322,37 +439,39 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
           viterbiSynFill( i , j )
         }
     }
-    Parse( utt.id, "", viterbiRoot.toDepParse )
+    Parse( utt.id, "", treeRoot.toDepParse )
+  }
+
+  def argSample[K]( seq:Iterable[Tuple2[K,Double]] ):Tuple2[K,Double] = {
+    val total = seq.map{_._2}.sum
+    val r = rand.nextDouble()*total
+    var runningTotal = 0D
+
+    seq.takeWhile( pair => {
+        val result = ( runningTotal + pair._2 ) < r
+        runningTotal += pair._2
+        result
+      }
+    ).last
   }
 
 
-
-  // Reset after each sentence
-  def clearHeadCells( i:Int, j:Int ) {
-    insideHeads(i)(j).keys.foreach{ v =>
-      insideHeads(i)(j)(v) = 0D
-      outsideHeads(i)(j)(v) = 0D
-    }
-  }
-  def clearMCells( i:Int, j:Int ) {
-    insideM(i)(j).keys.foreach{ vs =>
-      insideM(i)(j)(vs) = 0D
-      outsideM(i)(j)(vs) = 0D
-    }
-  }
 
   def clearCharts {
     (0 until 2*maxLength ).foreach{ i =>
       (0 until (2*maxLength)+1 ).foreach{ j =>
+        insideChart(i)(j).keys.foreach{ vs =>
+          insideChart(i)(j)(vs) = 0D
+          outsideChart(i)(j)(vs) = 0D
+        }
         if( i%2 != j%2 ) {
-          clearHeadCells( i, j )
           headTrace(i)(j).clear
-        } else if( i%2 == 1 ) {
-          clearMCells( i, j )
+        } else if( i%2 == 1 && j%2 == 1 ) {
           mTrace(i)(j).clear
         }
       }
     }
+    treeRoot = null
     stringProb = 0D
   }
 
@@ -370,15 +489,15 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
 
   // training stuff
 
-  def outsideRootWithMarginals( k:Int ):Seq[Tuple2[Event,Double]]
-  def outsideLeftWithMarginals( i:Int, k:Int, j:Int ):Seq[Tuple2[Event,Double]]
-  def outsideRightWithMarginals( i:Int, k:Int, j:Int ):Seq[Tuple2[Event,Double]]
-  def outsideMWithMarginals( i:Int, k:Int, j:Int ):Seq[Tuple2[Event,Double]]
   def lexMarginals( index:Int ):Seq[Tuple2[Event,Double]]
 
-  def mSplits( i:Int, j:Int ):Iterable[Int]
 
-
+  def rootEventCounts( k:Int, marginal:Double ):Seq[Tuple2[Event,Double]]
+  def leftwardEventCounts( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration,
+    cDec:Decoration, marginal:Double ):Seq[Tuple2[Event,Double]]
+  def rightwardEventCounts( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration,
+    cDec:Decoration, marginal:Double ):Seq[Tuple2[Event,Double]]
+  def mEventCounts( i:Int, k:Int, j:Int, mDecoration:MDecoration, marginal:Double ):Seq[Tuple2[Event,Double]]
   def outsidePassWithCounts( s:Array[Int] ):DMVCounts = {
     val c = DMVCounts(
       new CPT[RootEvent]( rootAlpha ),
@@ -391,8 +510,22 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
         val j = i + length
         if( i%2 == 0 && j%2 == 0 ) { // Root
           if( i == 0 && j == s.length ) {
-            ( 1 to (s.length-1) by 2 ).foreach{ k =>
-              outsideRootWithMarginals( k ).foreach{ case ( event, count ) =>
+            rootSplitSpecs().foreach{ case ( k, decorationPair ) =>
+              val r = intString( k )
+              val factorAndOutside = rootCellFactor( k )
+
+              outsideChart( 0 )( k )( decorationPair.evenLeft ) +=
+                insideChart( k )( intString.length )( decorationPair.evenRight ) * factorAndOutside
+
+              outsideChart( k )( intString.length )( decorationPair.evenRight ) +=
+                insideChart( 0 )( k )( decorationPair.evenLeft ) * factorAndOutside
+
+              val marginal =
+                insideChart( 0 )( k )( decorationPair.evenLeft ) *
+                  insideChart( k )( intString.length )( decorationPair.evenRight ) *
+                    factorAndOutside
+
+              rootEventCounts( k, marginal ).foreach{ case (event, count) =>
                 event match {
                   case e:StopEvent => c.stopCounts.increment( e, count )
                   case e:RootEvent => c.rootCounts.increment( e, count )
@@ -402,11 +535,32 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
           }
         } else if( i%2 == 0 && j%2 == 1 ) { // Leftward label
           if( length > 1 ) {
-            ( (i+1) to (j-2) by 2 ).foreach{ k =>
-              outsideLeftWithMarginals( i, k, j ).foreach{ case (event, count) =>
-                event match {
-                  case e:StopEvent => c.stopCounts.increment( e, count )
-                  case e:ChooseEvent => c.chooseCounts.increment( e, count )
+            leftwardSplitSpecs( i, j ).foreach{ case ( pDec, splits ) =>
+              splits.foreach{ case ( k, mDec, cDec ) =>
+                val factorAndOutside =
+                  outsideChart( i )( j )( pDec ) *
+                    leftwardCellFactor( i, k, j, pDec, mDec, cDec )
+
+                // to left child
+                outsideChart( i )( k )( cDec ) +=
+                  insideChart( k )( j )( mDec ) *
+                    factorAndOutside
+
+                // to right child
+                outsideChart( k )( j )( mDec ) +=
+                  insideChart( i )( k )( cDec ) *
+                    factorAndOutside
+
+                val marginal = 
+                  insideChart( i )( k )( cDec ) *
+                    insideChart( k )( j )( mDec ) *
+                      factorAndOutside
+
+                leftwardEventCounts( i, k, j, pDec, mDec, cDec, marginal ).foreach{ case (event, count) =>
+                  event match {
+                    case e:StopEvent => c.stopCounts.increment( e, count )
+                    case e:ChooseEvent => c.chooseCounts.increment( e, count )
+                  }
                 }
               }
             }
@@ -420,11 +574,32 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
           }
         } else if( i%2 == 1 && j%2 == 0 ) { // Rightward label
           if( length > 1 ) {
-            ( (i+2) to (j-1) by 2 ).foreach{ k =>
-              outsideRightWithMarginals( i, k, j ).foreach{ case (event, count) =>
-                event match {
-                  case e:StopEvent => c.stopCounts.increment( e, count )
-                  case e:ChooseEvent => c.chooseCounts.increment( e, count )
+            rightwardSplitSpecs( i, j ).foreach{ case ( pDec, splits ) =>
+              splits.foreach{ case ( k, mDec, cDec ) =>
+                val factorAndOutside =
+                  outsideChart( i )( j )( pDec ) *
+                    rightwardCellFactor( i, k, j, pDec, mDec, cDec )
+
+                // to left child
+                outsideChart( i )( k )( mDec ) +=
+                  insideChart( k )( j )( cDec ) *
+                    factorAndOutside
+
+                // to right child
+                outsideChart( k )( j )( cDec ) +=
+                  insideChart( i )( k )( mDec ) *
+                    factorAndOutside
+
+                val marginal = 
+                  insideChart( i )( k )( mDec ) *
+                    insideChart( k )( j )( cDec ) *
+                      factorAndOutside
+
+                rightwardEventCounts( i, k, j, pDec, mDec, cDec, marginal ).foreach{ case (event, count) =>
+                  event match {
+                    case e:StopEvent => c.stopCounts.increment( e, count )
+                    case e:ChooseEvent => c.chooseCounts.increment( e, count )
+                  }
                 }
               }
             }
@@ -437,13 +612,49 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
             }
           }
         } else if( i%2 == 1 && j%2 == 1 ) { // M label
-          // ( (i+1) to (j-1) by 2 ).foreach{ k =>
-          mSplits(i,j).foreach{ k =>
-            outsideMWithMarginals( i, k, j ).foreach{ case (event, count) =>
-              event match {
-                case e:StopEvent => c.stopCounts.increment( e, count )
-                case e:ChooseEvent => c.chooseCounts.increment( e, count )
+          mSplitSpecs( i, j ).foreach{ case (mDecoration, splits) =>
+            splits.foreach{ k =>
+              val factorAndOutside =
+                outsideChart( i )( j )( mDecoration ) * mCellFactor( i, k, j, mDecoration )
+
+              val marginal = 
+                if( k%2 == 0 ) {
+                  // to left child
+                  outsideChart( i )( k )( mDecoration.evenLeft ) +=
+                    insideChart( k )( j )( mDecoration.evenRight ) *
+                      factorAndOutside
+
+                  // to right child
+                  outsideChart( k )( j )( mDecoration.evenRight ) +=
+                    insideChart( i )( k )( mDecoration.evenLeft ) *
+                      factorAndOutside
+
+                  insideChart( i )( k )( mDecoration.evenLeft ) *
+                    insideChart( k )( j )( mDecoration.evenRight ) *
+                      factorAndOutside
+                } else {
+                  // to left child
+                  outsideChart( i )( k )( mDecoration.oddLeft ) +=
+                    insideChart( k )( j )( mDecoration.oddRight ) *
+                      factorAndOutside
+
+                  // to right child
+                  outsideChart( k )( j )( mDecoration.oddRight ) +=
+                    insideChart( i )( k )( mDecoration.oddLeft ) *
+                      factorAndOutside
+
+                  insideChart( i )( k )( mDecoration.oddLeft ) *
+                    insideChart( k )( j )( mDecoration.oddRight ) *
+                      factorAndOutside
+                }
+
+              mEventCounts( i, k, j, mDecoration, marginal ).foreach{ case (event, count) =>
+                event match {
+                  case e:StopEvent => c.stopCounts.increment( e, count )
+                  case e:ChooseEvent => c.chooseCounts.increment( e, count )
+                }
               }
+
             }
           }
         }
@@ -494,7 +705,7 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
 
     // def seeInsideHeads( logSpace:Boolean = true ) {
     //   println(
-    //     chartToString( "Inside Heads", insideHeads, logSpace )
+    //     chartToString( "Inside Heads", insideChart, logSpace )
     //   )
     // }
 

@@ -27,27 +27,26 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   }
 
 
-  // val uposCount = 10
-  val uposCount = 3
+  val uposCount = 20
+  // val uposCount = 3
 
-  // val p = new TopDownDMVParser( dmvCorpus.map{_.length}.max )
-  // val p = new OriginalDMVParser( dmvCorpus.map{_.length}.max )
-  // val p = new NoValenceParser(
-  //   dmvCorpus.map{_.length}.max,
-  //   randomSeed = 15
-  // )
+  val maxLength = dmvCorpus.map{_.length}.max
+
+  // val p = new TopDownDMVParser( maxLength, randomSeed = 15 )
+  val p = new OriginalDMVParser( maxLength, randomSeed = 15 )
+  // val p = new NoValenceParser( maxLength, randomSeed = 15 )
   // val p = new HeadOutAdjHeadNoValenceParser(
-  //   dmvCorpus.map{_.length}.max,
+  //   maxLength,
   //   randomSeed = 15
   // )
-  val p = new HeadOutInterpolatedAdjHeadNoValenceParser(
-    dmvCorpus.map{_.length}.max,
-    notBackoffAlpha = 10,
-    backoffAlpha = 0,
-    randomSeed = 15
-  )
+  // val p = new HeadOutInterpolatedAdjHeadNoValenceParser(
+  //   maxLength,
+  //   notBackoffAlpha = 10,
+  //   backoffAlpha = 0,
+  //   randomSeed = 15
+  // )
   // val p = new NoValenceUPOSParser(
-  //   dmvCorpus.map{_.length}.max,
+  //   maxLength,
   //   uposCount = uposCount,
   //   randomSeed = 15
   // )
@@ -56,7 +55,7 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   // p.zerosInit( idDMVCorpus )
   p.randomInit( idDMVCorpus, 15, 100 )
 
-  val iters = 1//000
+  val iters = 10//00
 
   @Test def testInsideOutside {
 
@@ -83,27 +82,24 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
 
       println(
         {
-          p.insideHeads(0)(1).keys.map{ k => p.insideHeads(0)(1)(k) * p.outsideHeads(0)(1)(k) }.sum
-          // p.insideHeads(0)(1).keys.map{ k =>
-          //   sum( p.insideHeads(0)(1)(k) :* p.outsideHeads(0)(1)(k)) }.sum
+          p.insideChart(0)(1).keys.map{ k => p.insideChart(0)(1)(k) * p.outsideChart(0)(1)(k) }.sum
+          // p.insideChart(0)(1).keys.map{ k => sum( p.insideChart(0)(1)(k) :* p.outsideChart(0)(1)(k)) }.sum
         } + " <=> " + pObs
       )
       // println( "all terminals:" )
       // (0 to ((2*s.length)-1)).foreach{ i =>
       //   println(
       //     {
-      //       p.insideHeads(i)(i+1).keys.map{ k => p.insideHeads(i)(i+1)(k) * p.outsideHeads(i)(i+1)(k) }.sum
-      //       // p.insideHeads(0)(1).keys.map{ k => sum( p.insideHeads(0)(1)(k) :* p.outsideHeads(0)(1)(k)) }.sum
+      //       p.insideChart(i)(i+1).keys.map{ k => p.insideChart(i)(i+1)(k) * p.outsideChart(i)(i+1)(k) }.sum
+      //       // p.insideChart(0)(1).keys.map{ k => sum( p.insideChart(0)(1)(k) :* p.outsideChart(0)(1)(k)) }.sum
       //     } + " <=> " + pObs
       //   )
       // }
       (0 to ((2*s.length)-1)).foreach{ i =>
         assertTrue(
-          // p.insideHeads(i)(i+1) * p.outsideHeads(i)(i+1)
           {
-            p.insideHeads(i)(i+1).keys.map{ k => p.insideHeads(i)(i+1)(k) * p.outsideHeads(i)(i+1)(k) }.sum
-            // p.insideHeads(i)(i+1).keys.map{ k =>
-            //   sum( p.insideHeads(i)(i+1)(k) :* p.outsideHeads(i)(i+1)(k)) }.sum
+            p.insideChart(i)(i+1).keys.map{ k => p.insideChart(i)(i+1)(k) * p.outsideChart(i)(i+1)(k) }.sum
+            // p.insideChart(i)(i+1).keys.map{ k => sum( p.insideChart(i)(i+1)(k) :* p.outsideChart(i)(i+1)(k)) }.sum
           } - pObs < 0.0000001
         )
       }

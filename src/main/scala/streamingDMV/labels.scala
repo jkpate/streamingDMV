@@ -31,7 +31,6 @@ case object NotBackoff extends BackoffDecision
 
 abstract class Decoration
 
-
 abstract class Valence extends Decoration
 case object NoValence extends Valence
 case object Outermost extends Valence
@@ -39,18 +38,35 @@ case object Inner extends Valence
 case object Outer extends Valence
 case object Innermost extends Valence
 
+case object RootDecoration extends Decoration
 abstract class MDecoration extends Decoration {
-  val left:Decoration
-  val right:Decoration
+  val evenLeft:Decoration
+  val evenRight:Decoration
+  val oddLeft:MDecoration
+  val oddRight:MDecoration
 }
-case class DecorationPair( left:Decoration, right:Decoration ) extends MDecoration
-abstract class NoValenceM extends MDecoration {
-  val left = NoValence
-  val right = NoValence
+case class DecorationPair( evenLeft:Decoration, evenRight:Decoration ) extends MDecoration {
+  lazy val oddLeft = null
+  lazy val oddRight = null
 }
-case object PlainM extends NoValenceM
-case object LeftwardM extends NoValenceM
-case object RightwardM extends NoValenceM
+case object PlainM extends MDecoration {
+  val evenLeft = NoValence
+  val evenRight = NoValence
+  lazy val oddLeft = null
+  lazy val oddRight = null
+}
+case object LeftwardM extends MDecoration {
+  val evenLeft = NoValence
+  val evenRight = NoValence
+  val oddLeft = PlainM
+  val oddRight = LeftwardM
+}
+case object RightwardM extends MDecoration {
+  val evenLeft = NoValence
+  val evenRight = NoValence
+  val oddLeft = RightwardM
+  val oddRight = PlainM
+}
 
 
 abstract class NormKey 
@@ -200,6 +216,7 @@ case class DMVCounts(
       }
     }
   }
+
   def totalCounts = 
     rootCounts.counts.values.sum +
     stopCounts.counts.values.sum +
@@ -237,11 +254,10 @@ case class MatrixDMVCounts(
       }
     }
   }
-  def totalCounts = sum(
-    rootCounts.counts.values.reduce(_ :+ _) :+
-    stopCounts.counts.values.reduce(_ :+ _) :+
-    chooseCounts.counts.values.reduce(_ :+ _)
-  )
+  def totalCounts =
+    sum( rootCounts.counts.values.reduce(_ :+ _) ) +
+    sum( stopCounts.counts.values.reduce(_ :+ _) ) +
+    sum( chooseCounts.counts.values.reduce(_ :+ _) )
 
   def printTotalCountsByType {
     println(

@@ -43,6 +43,7 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,+P<:ArcFactoredParameters[C]
   def initialCounts( utts:List[Utt] ):C
 
   def extractPartialCounts( string:Array[Int] ):C
+  // def sampleTreeCounts( miniBatch:List[Utt] ):C
 
   def miniBatchVB(
     miniBatch:List[Utt],

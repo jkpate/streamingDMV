@@ -72,7 +72,7 @@ class MatrixCPT[E<:Event]( alpha:Double, rows:Int, cols:Int ) {
 
     val n = event.normKey
     denomCounts +=
-      n -> { denomCounts.getOrElse( n, zeroVector ) :+ sum( inc(::,*) ).toDenseVector }
+      n -> { denomCounts.getOrElse( n, zeroVector ) :+ sum( inc(::,*) ).t /*.toDenseVector*/ }
 
     denoms.getOrElseUpdate( n, MSet() ) += event
   }
@@ -106,7 +106,7 @@ class MatrixCPT[E<:Event]( alpha:Double, rows:Int, cols:Int ) {
   def decrement( event:E, dec:DenseMatrix[Double] ) = {
     counts( event ) -= dec
     val n = event.normKey
-    denomCounts( n ) -= sum( dec(::,*) ).toDenseVector
+    denomCounts( n ) -= sum( dec(::,*) ).t /*.toDenseVector*/
   }
 
   def clear {

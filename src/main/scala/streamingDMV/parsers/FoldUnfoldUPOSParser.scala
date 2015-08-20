@@ -112,6 +112,10 @@ abstract class FoldUnfoldUPOSParser[P<:UPOSArcFactoredParameters](
 
   // Viterbi definitions
 
+  var viterbiRoot:RootEntry = null
+  def viterbiLexFill( index:Int ):Unit
+
+
   val headTrace = Array.tabulate( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
     MMap[Tuple2[Decoration,Int],Entry]()
   )
@@ -225,8 +229,6 @@ abstract class FoldUnfoldUPOSParser[P<:UPOSArcFactoredParameters](
   }
 
 
-  var viterbiRoot:RootEntry = null
-  def viterbiLexFill( index:Int ):Unit
 
   // def argMax[K]( seq:Iterable[Tuple2[K,Double]] ):Tuple2[K,Double] = {
   def argMax[K]( seq:Iterable[Tuple2[K,Double]] ):Tuple2[K,Double] = {
@@ -280,7 +282,6 @@ abstract class FoldUnfoldUPOSParser[P<:UPOSArcFactoredParameters](
       ( bestIdx(which), bestDPos(which), bestScore )
     }
   }
-
 
 
   // dPos corresponds to row of (column) DenseVector
@@ -419,6 +420,7 @@ abstract class FoldUnfoldUPOSParser[P<:UPOSArcFactoredParameters](
         }
       }
     }
+    viterbiRoot = null
     stringProb = 0D
   }
 
@@ -427,7 +429,7 @@ abstract class FoldUnfoldUPOSParser[P<:UPOSArcFactoredParameters](
   def normedMatrix( rows:Int, cols:Int ) = {
     // val m = DenseMatrix.rand[Double]( rows, cols )
     val m = DenseMatrix.fill[Double]( rows, cols )( rand.nextDouble )
-    m( *,:: ) :/= sum( m( :: , * ) ).toDenseVector
+    m( *,:: ) :/= sum( m( :: , * ) ).t/*.toDenseVector*/
     m
   }
 

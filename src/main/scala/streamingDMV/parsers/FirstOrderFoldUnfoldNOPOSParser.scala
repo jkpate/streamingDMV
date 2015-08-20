@@ -1,6 +1,6 @@
 package streamingDMV.parsers
 
-import streamingDMV.labels.{Event,DMVCounts}
+import streamingDMV.labels._
 import streamingDMV.parameters.NOPOSArcFactoredParameters
 
 import breeze.linalg._
@@ -16,11 +16,8 @@ abstract class FirstOrderFoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
   maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed
 ) {
 
-  def mSplits( i:Int, j:Int ):Iterable[Int] = ( (i+1) to (j-1) by 2 )
-  def outsideMWithMarginals( i:Int, k:Int, j:Int ):Seq[Tuple2[Event,Double]] = {
-    outsideM( i, k, j )
-    Seq()
-  }
+  def mCellFactor( i:Int, k:Int, j:Int, decoration:MDecoration ) = 1D
+  def mEventCounts( i:Int, k:Int, j:Int, mDecoration:MDecoration, marginal:Double ) = Seq()
 
 }
 
