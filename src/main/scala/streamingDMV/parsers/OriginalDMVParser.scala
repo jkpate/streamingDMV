@@ -104,21 +104,6 @@ class OriginalDMVParser(
   def lexMarginals( index:Int ) = Seq[Tuple2[Event,Double]]()
 
 
-
-  def populateRootCell( k:Int ) {
-    val r = intString( k )
-
-    val leftV = adj( 0, k )
-    val rightV = adj( k, intString.length )
-
-    stringProb +=
-      insideChart(0)(k)(leftV) *
-        insideChart(k)(intString.length)(rightV) *
-          theta( RootEvent( r ) ) *
-          theta( StopEvent( r, LeftAtt, leftV, Stop ) ) *
-          theta( StopEvent( r, RightAtt, rightV, Stop ) )
-  }
-
   def viterbiLexFill( index:Int ) {
     insideChart(index)(index+1)( Innermost ) = 1D
     headTrace(index)(index+1) += Innermost -> LexEntry( index )
@@ -167,6 +152,7 @@ class OriginalDMVParser(
                 )
               )
             } else { // k-i == 2
+              assert( k-i == 2 )
               Seq(
                 (
                   k,
@@ -219,6 +205,7 @@ class OriginalDMVParser(
                 )
               )
             } else { // j-k == 2
+              assert( j-k == 2 )
               Seq(
                 (
                   k,
@@ -243,8 +230,7 @@ class OriginalDMVParser(
         (
           DecorationPair( Outer, Innermost ),
           Seq( j-1 )
-        )
-      ) ++ Seq(
+        ),
         (
           DecorationPair( Outer, Outer ),
           ( (i+3) to (j-3) by 2 )
@@ -332,8 +318,8 @@ class OriginalDMVParser(
     val dep = intString( k )
     Seq(
       ( ChooseEvent( head, RightAtt, dep ), marginal ),
-      ( StopEvent( head, RightAtt, mDec.evenRight, NotStop ), marginal ),
-      ( StopEvent( dep, LeftAtt, mDec.evenLeft, Stop ), marginal ),
+      ( StopEvent( head, RightAtt, mDec.evenLeft, NotStop ), marginal ),
+      ( StopEvent( dep, LeftAtt, mDec.evenRight, Stop ), marginal ),
       ( StopEvent( dep, RightAtt, cDec, Stop ), marginal )
     )
   }

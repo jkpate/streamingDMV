@@ -76,9 +76,10 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
       val r = intString( k )
 
       stringProb +=
-        insideChart( 0 )( k )( decorationPair.evenLeft ) *
-          insideChart( k )( intString.length )( decorationPair.evenRight ) *
-            rootCellFactor( k )
+        rootCellScore( k, decorationPair.evenLeft, decorationPair.evenRight )
+        // insideChart( 0 )( k )( decorationPair.evenLeft ) *
+        //   insideChart( k )( intString.length )( decorationPair.evenRight ) *
+        //     rootCellFactor( k )
     }
   }
   def computeInsideRightwardScore( i:Int, j:Int ) {
@@ -352,6 +353,7 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
     var bestScore = Double.NegativeInfinity
 
     seq.foreach{ case ( idx, score ) =>
+      assert( score > 0 )
       if( score > bestScore ) {
         bestScore = score
         bestIdx = idx :: Nil
@@ -537,6 +539,7 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
           if( length > 1 ) {
             leftwardSplitSpecs( i, j ).foreach{ case ( pDec, splits ) =>
               splits.foreach{ case ( k, mDec, cDec ) =>
+                // println( (i,k,j,pDec, mDec, cDec ) )
                 val factorAndOutside =
                   outsideChart( i )( j )( pDec ) *
                     leftwardCellFactor( i, k, j, pDec, mDec, cDec )
@@ -604,7 +607,7 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
               }
             }
           } else {
-            lexMarginals( i ).foreach{ case (event, count) =>
+            lexMarginals( j ).foreach{ case (event, count) =>
               event match {
                 case e:StopEvent => c.stopCounts.increment( e, count )
                 case e:ChooseEvent => c.chooseCounts.increment( e, count )

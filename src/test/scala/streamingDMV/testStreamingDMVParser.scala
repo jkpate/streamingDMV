@@ -17,6 +17,7 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   val r = new util.Random( 16747 )
   val dmvCorpus = List(
     Array( 0, 5, 3, 1, 2, 4 ),
+    // Array( 0, 5, 3, 1, 2, 4 ),
     Array( 1, 2, 3, 1, 6 ),
     Array.fill( 9 )( r.nextInt( 15 ) ),
     Array.fill( 15 )( r.nextInt( 15 ) )
@@ -31,6 +32,7 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   // val uposCount = 3
 
   val maxLength = dmvCorpus.map{_.length}.max
+  println( s"maxLength: $maxLength" )
 
   // val p = new TopDownDMVParser( maxLength, randomSeed = 15 )
   val p = new OriginalDMVParser( maxLength, randomSeed = 15 )
@@ -55,7 +57,7 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   // p.zerosInit( idDMVCorpus )
   p.randomInit( idDMVCorpus, 15, 100 )
 
-  val iters = 10//00
+  val iters = 1//0//00
 
   @Test def testInsideOutside {
 
@@ -103,7 +105,10 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
           } - pObs < 0.0000001
         )
       }
+      // p.theta.p_stop.printOut()
       p.theta.incrementCounts( c )
+      // println( "\n\n===================\n\n" )
+      // p.theta.p_stop.printOut()
       println( "\n" )
     }
     val endTime = System.currentTimeMillis
