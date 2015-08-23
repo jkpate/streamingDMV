@@ -16,14 +16,20 @@ abstract class AttDir {
 }
 case object LeftAtt extends AttDir {
   val flip = RightAtt
+  override val hashCode = 41
 }
 case object RightAtt extends AttDir {
   val flip = LeftAtt
+  override val hashCode = 47
 }
 
 abstract class StopDecision
-case object Stop extends StopDecision
-case object NotStop extends StopDecision
+case object Stop extends StopDecision {
+  override val hashCode = 1
+}
+case object NotStop extends StopDecision {
+  override val hashCode = 107
+}
 
 abstract class BackoffDecision
 case object Backoff extends BackoffDecision
@@ -32,11 +38,21 @@ case object NotBackoff extends BackoffDecision
 abstract class Decoration
 
 abstract class Valence extends Decoration
-case object NoValence extends Valence
-case object Outermost extends Valence
-case object Inner extends Valence
-case object Outer extends Valence
-case object Innermost extends Valence
+case object NoValence extends Valence {
+  override val hashCode = 31
+}
+case object Outermost extends Valence {
+  override val hashCode = 37
+}
+case object Inner extends Valence {
+  override val hashCode = 53
+}
+case object Outer extends Valence {
+  override val hashCode = 79
+}
+case object Innermost extends Valence {
+  override val hashCode = 57
+}
 
 case object RootDecoration extends Decoration
 abstract class MDecoration extends Decoration {
@@ -48,24 +64,28 @@ abstract class MDecoration extends Decoration {
 case class DecorationPair( evenLeft:Decoration, evenRight:Decoration ) extends MDecoration {
   lazy val oddLeft = null
   lazy val oddRight = null
+  override val hashCode = ( 73 + evenLeft.hashCode ) * 73 + evenRight.hashCode
 }
 case object PlainM extends MDecoration {
   val evenLeft = NoValence
   val evenRight = NoValence
   lazy val oddLeft = null
   lazy val oddRight = null
+  override val hashCode = 17
 }
 case object LeftwardM extends MDecoration {
   val evenLeft = NoValence
   val evenRight = NoValence
   val oddLeft = PlainM
   val oddRight = LeftwardM
+  override val hashCode = 89
 }
 case object RightwardM extends MDecoration {
   val evenLeft = NoValence
   val evenRight = NoValence
   val oddLeft = RightwardM
   val oddRight = PlainM
+  override val hashCode = 97
 }
 
 
@@ -86,24 +106,50 @@ abstract class Event {
 // object ChooseNorm {
 //   def apply( head:Int, dir:AttDir ) = new ChooseNorm( head, -1, dir )
 // }
-case class ChooseNorm( head:Int, context:Int, dir:AttDir ) extends NormKey
-case class ChooseEvent( head:Int, context:Int, dir:AttDir, v:Decoration, dep:Int ) extends Event {
+case class ChooseNorm( head:Int, context:Int, dir:AttDir ) extends NormKey {
+  // override lazy val hashCode: Int= scala.runtime.ScalaRunTime._hashCode(ChooseNorm.this)
+  override val hashCode =
+    ( (head + 1 ) * 83 ) + ( (context + 107) * 107) + dir.hashCode()
+
+  override def equals( o:Any ) = {
+    o match {
+      case that:ChooseNorm =>
+          ( head == that.head ) &&
+          ( context == that.context ) &&
+          ( dir == that.dir )
+      case _ => false
+    }
+  }
+}
+case class ChooseEvent( head:Int, context:Int, dir:AttDir, /*v:Decoration,*/ dep:Int ) extends Event {
   def normKey = ChooseNorm( head, context, dir )
+  override val hashCode =
+    ( (head + 107 ) * 83 ) + ( ( context + 37 ) * 37 ) + ( dep + 107 ) * 107 + dir.hashCode()
+
+  override def equals( o:Any ) = {
+    o match {
+      case that:ChooseEvent => ( head == that.head ) &&
+          ( context == that.context ) &&
+          ( dep == that.dep ) &&
+          ( dir == that.dir )
+      case _ => false
+    }
+  }
 }
 object ChooseEvent {
   // some parameterizations don't use valence or context for choose
 
   def apply( dir:AttDir, dep:Int ):ChooseEvent =
-    new ChooseEvent( -1, -1, dir, NoValence, dep )
+    new ChooseEvent( -1, -1, dir, /*NoValence,*/ dep )
 
   def apply( head:Int, dir:AttDir, dep:Int ):ChooseEvent =
-    new ChooseEvent( head, -1, dir, NoValence, dep )
+    new ChooseEvent( head, -1, dir, /*NoValence,*/ dep )
 
-  def apply( head:Int, context:Int, dir:AttDir, dep:Int ):ChooseEvent =
-    new ChooseEvent( head, context, dir, NoValence, dep )
+  // def apply( head:Int, context:Int, dir:AttDir, dep:Int ):ChooseEvent =
+  //   new ChooseEvent( head, context, dir, /*NoValence,*/ dep )
 
-  def apply( head:Int, dir:AttDir, v:Decoration, dep:Int ):ChooseEvent =
-    new ChooseEvent( head, -1, dir, v, dep )
+  // def apply( head:Int, dir:AttDir, /*v:Decoration,*/ dep:Int ):ChooseEvent =
+  //   new ChooseEvent( head, -1, dir, /*v,*/ dep )
 }
 
 trait BackingOffEvent {
@@ -113,18 +159,18 @@ trait BackingOffEvent {
 case class LambdaChooseNorm(
   head:Int,
   context:Int,
-  dir:AttDir,
-  v:Decoration
+  dir:AttDir/*,
+  v:Decoration*/
 ) extends NormKey
 
 case class LambdaChooseEvent(
   head:Int,
   context:Int,
   dir:AttDir,
-  v:Decoration,
+  // v:Decoration,
   bo:BackoffDecision
 ) extends Event with BackingOffEvent {
-  def normKey = LambdaChooseNorm( head, context, dir, v )
+  def normKey = LambdaChooseNorm( head, context, dir/*, v*/ )
   def backOff = bo
 }
 
@@ -154,23 +200,23 @@ case class LambdaStopEvent(
 
 
 object LambdaChooseEvent {
+  // def apply(
+  //   head:Int,
+  //   dir:AttDir,
+  //   v:Decoration,
+  //   bo:BackoffDecision
+  // ):LambdaChooseEvent = LambdaChooseEvent( head, -1, dir, v, bo )
   def apply(
     head:Int,
     dir:AttDir,
-    v:Decoration,
     bo:BackoffDecision
-  ):LambdaChooseEvent = LambdaChooseEvent( head, -1, dir, v, bo )
-  def apply(
-    head:Int,
-    dir:AttDir,
-    bo:BackoffDecision
-  ):LambdaChooseEvent = LambdaChooseEvent( head, -1, dir, NoValence, bo )
-  def apply(
-    head:Int,
-    context:Int,
-    dir:AttDir,
-    bo:BackoffDecision
-  ):LambdaChooseEvent = LambdaChooseEvent( head, context, dir, NoValence, bo )
+  ):LambdaChooseEvent = LambdaChooseEvent( head, -1, dir, /*NoValence,*/ bo )
+  // def apply(
+  //   head:Int,
+  //   context:Int,
+  //   dir:AttDir,
+  //   bo:BackoffDecision
+  // ):LambdaChooseEvent = LambdaChooseEvent( head, context, dir, NoValence, bo )
 }
 
 object StopEvent {
@@ -181,16 +227,56 @@ object StopEvent {
 }
 case class StopEvent( head:Int, dir:AttDir, v:Decoration, dec:StopDecision ) extends Event {
   def normKey = StopNorm( head, dir, v )
+  // override lazy val hashCode: Int= scala.runtime.ScalaRunTime._hashCode(StopEvent.this)
+  override val hashCode =
+    ( (head + 107 ) * 107 ) + dir.hashCode() + v.hashCode() + dec.hashCode()
+
+  override def equals( o:Any ) = {
+    o match {
+      case that:StopEvent => ( head == that.head ) &&
+          ( v == that.v ) &&
+          ( dir == that.dir ) &&
+          ( dec == that.dec )
+      case _ => false
+    }
+  }
 }
-case class StopNorm( head:Int, dir:AttDir, v:Decoration ) extends NormKey
+case class StopNorm( head:Int, dir:AttDir, v:Decoration ) extends NormKey {
+  // override lazy val hashCode: Int= scala.runtime.ScalaRunTime._hashCode(StopNorm.this)
+  override val hashCode =
+    ( (head + 107 ) * 107 ) + dir.hashCode() + v.hashCode()
+  override def equals( o:Any ) = {
+    o match {
+      case that:StopNorm => ( head == that.head ) &&
+          ( v == that.v ) &&
+          ( dir == that.dir )
+      case _ => false
+    }
+  }
+}
 
 object RootEvent {
   def apply():RootEvent = RootEvent( -1 )
 }
 case class RootEvent( root:Int ) extends Event {
   def normKey = RootNorm
+  override val hashCode = root
+  override def equals( o:Any ) = {
+    o match {
+      case that:RootEvent => root == that.root
+      case _ => false
+    }
+  }
 }
-case object RootNorm extends NormKey
+case object RootNorm extends NormKey {
+  override val hashCode = 1
+  override def equals( o:Any ) = {
+    o match {
+      case that:RootNorm.type => true
+      case _ => false
+    }
+  }
+}
 
 
 abstract class DependencyCounts {

@@ -82,7 +82,7 @@ class HeadOutInterpolatedAdjHeadNoValenceParameters(
     if( notBackoffAlpha > 0 )
       counts.chooseCounts.counts.foreach{ case (event, count) =>
         event match {
-          case ChooseEvent( head, context, dir, _, dep ) =>
+          case ChooseEvent( head, context, dir, /*_,*/ dep ) =>
             if( context >= 0 ) {
               lambda_choose.increment(
                 LambdaChooseEvent( head, context, dir, NotBackoff ),
@@ -112,7 +112,7 @@ class HeadOutInterpolatedAdjHeadNoValenceParameters(
     if( notBackoffAlpha > 0 )
       counts.chooseCounts.counts.foreach{ case (event, count) =>
         event match {
-          case ChooseEvent( head, context, dir, _, dep ) =>
+          case ChooseEvent( head, context, dir, /*_,*/ dep ) =>
             if( context >= 0 ) {
               lambda_choose.decrement(
                 LambdaChooseEvent( head, context, dir, NotBackoff ),

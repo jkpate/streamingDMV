@@ -238,9 +238,9 @@ object run {
 
       val timePerSentence =
         if( i == 0 )
-          miniBatchDur/((initialMiniBatchSize + (evalEvery-1)*miniBatchSize))
+          miniBatchDur/(((initialMiniBatchSize + (evalEvery-1)*miniBatchSize)).toDouble)
         else
-          miniBatchDur/(evalEvery*miniBatchSize)
+          miniBatchDur/((evalEvery*miniBatchSize).toDouble)
 
       val sentencesProcessed = initialMiniBatchSize + miniBatchSize*i
       if( sentencesProcessed%evalEvery == 0 ) {
@@ -277,7 +277,7 @@ object run {
         println( s"after processing $sentencesProcessed we eval every $evalEvery" )
       }
     }
-    println( s"overall training took ${totalDur/trainSet.size}ms/sentence" )
+    println( s"overall training took ${totalDur/(trainSet.size.toDouble)}ms/sentence" )
 
     val trainingSentCount =
       ( firstMiniBatch :: subsequentMiniBatches ).map{ _.size }.sum

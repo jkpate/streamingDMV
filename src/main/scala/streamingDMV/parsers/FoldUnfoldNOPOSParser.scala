@@ -414,7 +414,8 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
 
   def viterbiParse( utt:Utt ) = {
     clearCharts
-    intString = utt.string.flatMap{ w => Seq(w,w) }
+    // intString = utt.string.flatMap{ w => Seq(w,w) }
+    intString = doubleString( utt.string )
     (1 to ( intString.length )).foreach{ j =>
       viterbiLexFill( j-1 )
 
@@ -432,7 +433,8 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
 
   def viterbiDepParse( utt:Utt ) = {
     clearCharts
-    intString = utt.string.flatMap{ w => Seq(w,w) }
+    // intString = utt.string.flatMap{ w => Seq(w,w) }
+    intString = doubleString( utt.string )
     (1 to ( intString.length )).foreach{ j =>
       viterbiLexFill( j-1 )
 
@@ -481,7 +483,8 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
   def initialCounts( utts:List[Utt] ) = emptyCounts
 
   def logProb( string:Array[Int] ) = {
-    val s = string.flatMap{ w => Seq(w,w) }
+    // val s = string.flatMap{ w => Seq(w,w) }
+    val s = doubleString( string )
     clearCharts
     theta.fullyNormalized = true
     insidePass( s )
@@ -620,32 +623,35 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
               val factorAndOutside =
                 outsideChart( i )( j )( mDecoration ) * mCellFactor( i, k, j, mDecoration )
 
+              if( k%2 == 0 ) {
+                // to left child
+                outsideChart( i )( k )( mDecoration.evenLeft ) +=
+                  insideChart( k )( j )( mDecoration.evenRight ) *
+                    factorAndOutside
+
+                // to right child
+                outsideChart( k )( j )( mDecoration.evenRight ) +=
+                  insideChart( i )( k )( mDecoration.evenLeft ) *
+                    factorAndOutside
+              } else {
+                // to left child
+                outsideChart( i )( k )( mDecoration.oddLeft ) +=
+                  insideChart( k )( j )( mDecoration.oddRight ) *
+                    factorAndOutside
+
+                // to right child
+                outsideChart( k )( j )( mDecoration.oddRight ) +=
+                  insideChart( i )( k )( mDecoration.oddLeft ) *
+                    factorAndOutside
+              }
+
+
               val marginal = 
                 if( k%2 == 0 ) {
-                  // to left child
-                  outsideChart( i )( k )( mDecoration.evenLeft ) +=
-                    insideChart( k )( j )( mDecoration.evenRight ) *
-                      factorAndOutside
-
-                  // to right child
-                  outsideChart( k )( j )( mDecoration.evenRight ) +=
-                    insideChart( i )( k )( mDecoration.evenLeft ) *
-                      factorAndOutside
-
                   insideChart( i )( k )( mDecoration.evenLeft ) *
                     insideChart( k )( j )( mDecoration.evenRight ) *
                       factorAndOutside
                 } else {
-                  // to left child
-                  outsideChart( i )( k )( mDecoration.oddLeft ) +=
-                    insideChart( k )( j )( mDecoration.oddRight ) *
-                      factorAndOutside
-
-                  // to right child
-                  outsideChart( k )( j )( mDecoration.oddRight ) +=
-                    insideChart( i )( k )( mDecoration.oddLeft ) *
-                      factorAndOutside
-
                   insideChart( i )( k )( mDecoration.oddLeft ) *
                     insideChart( k )( j )( mDecoration.oddRight ) *
                       factorAndOutside
@@ -671,14 +677,18 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
     c
   }
   def populateChart( string:Array[Int] ) {
-    val s = string.flatMap{ w=> Seq(w,w) }
+    // val s = string.flatMap{ w=> Seq(w,w) }
+    val s = doubleString( string )
     clearCharts
     insidePass( s )
     outsidePass
   }
 
+  def doubleString( string:Array[Int] ) = {
+    string.toSeq.flatMap{ w => List(w,w) }.toArray
+  }
   def extractPartialCounts( string:Array[Int] ) = {
-    val s = string.flatMap{ w=> Seq(w,w) }
+    val s = doubleString( string )
     clearCharts
     insidePass( s )
     outsidePassWithCounts( s )

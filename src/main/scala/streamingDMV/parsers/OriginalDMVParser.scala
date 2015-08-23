@@ -114,56 +114,172 @@ class OriginalDMVParser(
   // NEW DEFINITIONS
 
   def rightwardSplitSpecs( i:Int, j:Int ) = {
-    Seq(
-      (
-        Outer,
-          ( (i+2) to (j-1) by 2 ).flatMap{ k =>
-            val childDec =
-              if( j-k == 1 ) Innermost else Outer
-            if( k-i >= 6 ) {
-              Seq(
-                (
-                  k,
-                  DecorationPair( Innermost, Outer ),
-                  childDec
-                ),
-                (
-                  k,
-                  DecorationPair( Outer, Innermost ),
-                  childDec
-                ),
-                (
-                  k,
-                  DecorationPair( Outer, Outer ),
-                  childDec
+    // println( "." )
+    // val rwSpecs =
+      Seq(
+        (
+          Outer,
+                  // if( j-i == 3 )
+                  //   Seq(
+                  //     (
+                  //       i+2,
+                  //       DecorationPair( Innermost, Innermost ),
+                  //       Innermost
+                  //     )
+                  //   )
+                  // else if( j-i == 5 )
+                  //   Seq(
+                  //     (
+                  //       i+2,
+                  //       DecorationPair( Innermost, Innermost ),
+                  //       Outer
+                  //     ),
+                  //     (
+                  //       i+4,
+                  //       DecorationPair( Outer, Innermost ),
+                  //       Innermost
+                  //     ),
+                  //     (
+                  //       i+4,
+                  //       DecorationPair( Innermost, Outer ),
+                  //       Innermost
+                  //     )
+                  //   )
+                  // else if( j-i == 7 )
+                  //   Seq(
+                  //     (
+                  //       i+2,
+                  //       DecorationPair( Innermost, Innermost ),
+                  //       Outer
+                  //     ),
+                  //     (
+                  //       i+4,
+                  //       DecorationPair( Outer, Innermost ),
+                  //       Outer
+                  //     ),
+                  //     (
+                  //       i+4,
+                  //       DecorationPair( Innermost, Outer ),
+                  //       Outer
+                  //     ),
+                  //     (
+                  //       j-1,
+                  //       DecorationPair( Outer, Innermost ),
+                  //       Innermost
+                  //     ),
+                  //     (
+                  //       j-1,
+                  //       DecorationPair( Innermost, Outer ),
+                  //       Innermost
+                  //     ),
+                  //     (
+                  //       j-1,
+                  //       DecorationPair( Outer, Outer ),
+                  //       Innermost
+                  //     )
+                  //   )
+                  // else // j-i >= 9
+                  //   Seq(
+                  //     (
+                  //       i+2,
+                  //       DecorationPair( Innermost, Innermost ),
+                  //       Outer
+                  //     ),
+                  //     (
+                  //       i+4,
+                  //       DecorationPair( Outer, Innermost ),
+                  //       Outer
+                  //     ),
+                  //     (
+                  //       i+4,
+                  //       DecorationPair( Innermost, Outer ),
+                  //       Outer
+                  //     ),
+                  //     (
+                  //       j-1,
+                  //       DecorationPair( Outer, Innermost ),
+                  //       Innermost
+                  //     ),
+                  //     (
+                  //       j-1,
+                  //       DecorationPair( Innermost, Outer ),
+                  //       Innermost
+                  //     ),
+                  //     (
+                  //       j-1,
+                  //       DecorationPair( Outer, Outer ),
+                  //       Innermost
+                  //     )
+                  //   ) ++ ( (i+6) to (j-3) by 2 ).flatMap{ k =>
+                  //     Seq(
+                  //       (
+                  //         k,
+                  //         DecorationPair( Outer, Innermost ),
+                  //         Outer
+                  //       ),
+                  //       (
+                  //         k,
+                  //         DecorationPair( Innermost, Outer ),
+                  //         Outer
+                  //       ),
+                  //       (
+                  //         k,
+                  //         DecorationPair( Outer, Outer ),
+                  //         Outer
+                  //       )
+                  //     )
+                  //   }
+
+            ( (i+2) to (j-1) by 2 ).flatMap{ k =>
+              val childDec =
+                if( j-k == 1 ) Innermost else Outer
+              if( k-i >= 6 ) {
+                Seq(
+                  (
+                    k,
+                    DecorationPair( Innermost, Outer ),
+                    childDec
+                  ),
+                  (
+                    k,
+                    DecorationPair( Outer, Innermost ),
+                    childDec
+                  ),
+                  (
+                    k,
+                    DecorationPair( Outer, Outer ),
+                    childDec
+                  )
                 )
-              )
-            } else if( k-i == 4 ) {
-              Seq(
-                (
-                  k,
-                  DecorationPair( Innermost, Outer ),
-                  childDec
-                ),
-                (
-                  k,
-                  DecorationPair( Outer, Innermost ),
-                  childDec
+              } else if( k-i == 4 ) {
+                Seq(
+                  (
+                    k,
+                    DecorationPair( Innermost, Outer ),
+                    childDec
+                  ),
+                  (
+                    k,
+                    DecorationPair( Outer, Innermost ),
+                    childDec
+                  )
                 )
-              )
-            } else { // k-i == 2
-              assert( k-i == 2 )
-              Seq(
-                (
-                  k,
-                  DecorationPair( Innermost, Innermost ),
-                  childDec
+              } else { // k-i == 2
+                assert( k-i == 2 )
+                Seq(
+                  (
+                    k,
+                    DecorationPair( Innermost, Innermost ),
+                    childDec
+                  )
                 )
-              )
+              }
             }
-          }
+        )
       )
-    )
+
+    // println( rwSpecs.mkString("\n\t","\n\t","\n\n" ) )
+    // rwSpecs
   }
 
   def leftwardSplitSpecs( i:Int, j:Int ) = {

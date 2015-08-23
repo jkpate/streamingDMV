@@ -54,25 +54,31 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   // )
 
 
-  // p.zerosInit( idDMVCorpus )
-  p.randomInit( idDMVCorpus, 15, 100 )
+  p.zerosInit( idDMVCorpus )
+  // p.randomInit( idDMVCorpus, 15, 100 )
 
-  val iters = 1//0//00
+  val iters = 1000
 
   @Test def testInsideOutside {
 
-    val startTime = System.currentTimeMillis
+    var totalTime = 0D
     dmvCorpus.foreach{ s =>
       println( s.mkString(" " ) )
       var i = 0
       // var c = DMVCounts()
       // var c = MatrixDMVCounts( uposCount = uposCount )
       var c = p.emptyCounts
+      val startTime = System.currentTimeMillis
       while( i < iters ) {
         // p.populateChart( s )
         c = p.extractPartialCounts( s )
         i += 1
       }
+      p.theta.incrementCounts( c )
+      p.theta.decrementCounts( c )
+      val endTime = System.currentTimeMillis
+
+      totalTime += ( endTime - startTime )
       // p.seeInsideHeads()
       // val chart = p.populateChart( s )
       // val pObs = chart.pObs
@@ -106,14 +112,12 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
         )
       }
       // p.theta.p_stop.printOut()
-      p.theta.incrementCounts( c )
       // println( "\n\n===================\n\n" )
       // p.theta.p_stop.printOut()
       println( "\n" )
     }
-    val endTime = System.currentTimeMillis
 
-    println( (endTime-startTime) / (iters * 2D) + "ms per sentence" )
+    println( totalTime / ( iters.toDouble * dmvCorpus.size )  + "ms per sentence" )
 
   }
 

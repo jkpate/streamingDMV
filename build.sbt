@@ -11,6 +11,7 @@ name := "streamingDMV"
 version := "0.001-SNAPSHOT"
 
 scalaVersion := "2.11.7"
+// scalaVersion := "2.11.6"
 
 unmanagedClasspath in Compile += Attributed.blank(new java.io.File("doesnotexist"))
 
@@ -36,4 +37,20 @@ libraryDependencies  ++= Seq(
 testOptions in Test += Tests.Argument("-oDF")
 
 publishArtifact in packageDoc := false
+
+// scalaxy/streams optimization
+
+// scalaVersion := "2.11.6"
+
+scalacOptions ++= Seq( "-Xplugin-require:scalaxy-streams", "-J-Dscalaxy.streams.strategy=safer" )
+
+scalacOptions in Test ~= (_ filterNot (_ == "-Xplugin-require:scalaxy-streams"))
+
+scalacOptions in Test += "-Xplugin-disable:scalaxy-streams"
+
+autoCompilerPlugins := true
+
+addCompilerPlugin("com.nativelibs4java" %% "scalaxy-streams" % "0.3.4")
+
+scalacOptions ++= Seq( "-optimise", "-Yclosure-elim"  )//, "-Yinline", "-Yinline-warnings" )
 
