@@ -108,7 +108,7 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
     rightwardSplitSpecs( i, j ).map{ case ( pDec, splits ) =>
       (
         pDec,
-        splits.map{ case ( k, mDec, cDec ) =>
+        splits.view.map{ case ( k, mDec, cDec ) =>
           (
             (k,mDec, cDec),
             rightwardCellScore( i, k, j, pDec, mDec, cDec )
@@ -121,7 +121,7 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
     leftwardSplitSpecs( i, j ).map{ case ( pDec, splits ) =>
       (
         pDec,
-        splits.map{ case ( k, mDec, cDec ) =>
+        splits.view.map{ case ( k, mDec, cDec ) =>
           (
             (k,mDec, cDec),
             leftwardCellScore( i, k, j, pDec, mDec, cDec )
@@ -130,11 +130,11 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
       )
     }
   }
-  def mCellScores( i:Int, j:Int ) = {
+  def mCellScores( i:Int, j:Int ):Seq[Tuple2[MDecoration,Seq[Tuple2[Int,Double]]]] = {
     mSplitSpecs( i, j ).map{ case (mDecoration, splits) =>
       (
         mDecoration,
-        splits.map{ k => 
+        splits.view.map{ k => 
           (k, mCellScore( i, k, j, mDecoration ) )
         }
       )
@@ -144,7 +144,7 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
   def rootCellScores() = {
     rootSplitSpecs().map{ case ( k, decorationPair ) =>
       (
-        k,
+        ( k, decorationPair ),
         rootCellScore( k, decorationPair.evenLeft, decorationPair.evenRight )
       )
     }
@@ -346,6 +346,8 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
 
 
   var treeRoot:RootEntry = null
+  // no need for argMax or argSample for viterbiLexFill because the
+  // child is *given* by the string (for now... )
   def viterbiLexFill( index:Int ):Unit
 
   def argMax[K]( seq:Iterable[Tuple2[K,Double]] ):Tuple2[K,Double] = {
@@ -405,7 +407,7 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
       // Root
 
       if( i == 0 && j == intString.length ) {
-        val ( bestK, bestScore ) = argMax( rootCellScores() )
+        val ( (bestK,_), bestScore ) = argMax( rootCellScores() )
         stringProb = bestScore
         treeRoot = RootEntry( bestK )
       }
@@ -446,20 +448,18 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
     Parse( utt.id, "", treeRoot.toDepParse )
   }
 
-  def argSample[K]( seq:Iterable[Tuple2[K,Double]] ):Tuple2[K,Double] = {
+  def argSample[K]( seq:Seq[Tuple2[K,Double]] ):Tuple2[K,Double] = {
     val total = seq.map{_._2}.sum
     val r = rand.nextDouble()*total
     var runningTotal = 0D
 
     seq.takeWhile( pair => {
-        val result = ( runningTotal + pair._2 ) < r
+        val result = runningTotal < r
         runningTotal += pair._2
         result
       }
     ).last
   }
-
-
 
   def clearCharts {
     (0 until 2*maxLength ).foreach{ i =>
@@ -479,7 +479,93 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
     stringProb = 0D
   }
 
+  def sampleTreeCounts( i:Int, j:Int, pDec:Decoration ):Seq[Tuple2[Event,Double]] = {
+    if( i%2 == 1 && j%2 == 1 ) { // M
+
+      // val splitsAndScores =
+      mCellScores(i,j).filter(_._1 == pDec).flatMap{ case (parent, splitsAndScores ) =>
+        assert( parent == pDec )
+        val ( k, score ) = argSample( splitsAndScores )
+
+        if( k%2 == 0 )
+          mEventCounts( i, k, j, parent, 1D ) ++
+            sampleTreeCounts( i, k, parent.evenLeft ) ++
+              sampleTreeCounts( k, j, parent.evenRight )
+        else
+          mEventCounts( i, k, j, parent, 1D ) ++
+            sampleTreeCounts( i, k, parent.oddLeft ) ++
+              sampleTreeCounts( k, j, parent.oddRight )
+      }
+
+    } else if( i%2 == 1 ) { // Rightward
+
+      // val splitsAndScores =
+      if( j-i > 1 ) {
+        rightwardCellScores(i,j).filter(_._1 == pDec).flatMap{ case (parent, splitsAndScores ) =>
+          assert( parent == pDec )
+          val ( (k, mDec, cDec) , score ) = argSample( splitsAndScores )
+
+          rightwardEventCounts( i, k, j, pDec, mDec, cDec, 1D ) ++
+            sampleTreeCounts( i, k, mDec ) ++
+              sampleTreeCounts( k, j, cDec )
+        }
+      } else {
+        lexMarginals( j )
+      }
+
+    } else if( j%2 == 1 ) { // Leftward
+
+      // val splitsAndScores =
+      if( j-i > 1 ) {
+        leftwardCellScores(i,j).filter(_._1 == pDec).flatMap{ case ( parent, splitsAndScores ) =>
+          assert( parent == pDec )
+          val ( (k, mDec, cDec) , score ) = argSample( splitsAndScores )
+
+          leftwardEventCounts( i, k, j, pDec, mDec, cDec, 1D ) ++
+            sampleTreeCounts( i, k, cDec ) ++
+              sampleTreeCounts( k, j, mDec )
+        }
+      } else {
+        lexMarginals( i )
+      }
+
+    } else if( i == 0 && j == intString.length ) { // Root
+      assert( pDec == RootDecoration )
+
+      val ((k,cDecs), score) = argSample( rootCellScores() )
+
+      sampleScore *= score / stringProb
+
+      rootEventCounts( k, 1D ) ++
+        sampleTreeCounts( i , k, cDecs.evenLeft ) ++
+        sampleTreeCounts( k, intString.length, cDecs.evenRight )
+
+    } else {
+      Seq()
+    }
+  }
+
   def emptyCounts = DMVCounts( rootAlpha, stopAlpha, chooseAlpha )
+
+  var sampleScore = 1D
+  def sampleTreeCounts( utt:Utt ):Tuple2[DMVCounts,Double] = {
+    val s = doubleString( utt.string )
+    clearCharts
+    theta.fullyNormalized = true
+    insidePass( s )
+    val c = emptyCounts
+    sampleTreeCounts( 0, intString.length, RootDecoration ).foreach{ case (event, count) =>
+      event match {
+        case e:StopEvent => c.stopCounts.increment( e, count )
+        case e:ChooseEvent => c.chooseCounts.increment( e, count )
+        case e:RootEvent => c.rootCounts.increment( e, count )
+      }
+    }
+    theta.fullyNormalized = false
+    ( c, sampleScore )
+  }
+
+
   def initialCounts( utts:List[Utt] ) = emptyCounts
 
   def logProb( string:Array[Int] ) = {

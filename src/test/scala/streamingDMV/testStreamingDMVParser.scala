@@ -59,83 +59,105 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
 
   val iters = 1000
 
-  @Test def testInsideOutside {
+        // @Test def testInsideOutside {
 
-    var totalTime = 0D
-    dmvCorpus.foreach{ s =>
-      println( s.mkString(" " ) )
-      var i = 0
-      // var c = DMVCounts()
-      // var c = MatrixDMVCounts( uposCount = uposCount )
-      var c = p.emptyCounts
-      val startTime = System.currentTimeMillis
-      while( i < iters ) {
-        // p.populateChart( s )
-        c = p.extractPartialCounts( s )
-        i += 1
-      }
-      p.theta.incrementCounts( c )
-      p.theta.decrementCounts( c )
-      val endTime = System.currentTimeMillis
+        //   var totalTime = 0D
+        //   dmvCorpus.foreach{ s =>
+        //     println( s.mkString(" " ) )
+        //     var i = 0
+        //     // var c = DMVCounts()
+        //     // var c = MatrixDMVCounts( uposCount = uposCount )
+        //     var c = p.emptyCounts
+        //     val startTime = System.currentTimeMillis
+        //     while( i < iters ) {
+        //       // p.populateChart( s )
+        //       c = p.extractPartialCounts( s )
+        //       i += 1
+        //     }
+        //     p.theta.incrementCounts( c )
+        //     p.theta.decrementCounts( c )
+        //     val endTime = System.currentTimeMillis
 
-      totalTime += ( endTime - startTime )
-      // p.seeInsideHeads()
-      // val chart = p.populateChart( s )
-      // val pObs = chart.pObs
-      val pObs = p.stringProb
+        //     totalTime += ( endTime - startTime )
+        //     // p.seeInsideHeads()
+        //     // val chart = p.populateChart( s )
+        //     // val pObs = chart.pObs
+        //     val pObs = p.stringProb
 
-      c.printTotalCountsByType
-      println( c.totalCounts + " total events seen" )
+        //     c.printTotalCountsByType
+        //     println( c.totalCounts + " total events seen" )
 
 
-      println(
-        {
-          p.insideChart(0)(1).keys.map{ k => p.insideChart(0)(1)(k) * p.outsideChart(0)(1)(k) }.sum
-          // p.insideChart(0)(1).keys.map{ k => sum( p.insideChart(0)(1)(k) :* p.outsideChart(0)(1)(k)) }.sum
-        } + " <=> " + pObs
-      )
-      // println( "all terminals:" )
-      // (0 to ((2*s.length)-1)).foreach{ i =>
-      //   println(
-      //     {
-      //       p.insideChart(i)(i+1).keys.map{ k => p.insideChart(i)(i+1)(k) * p.outsideChart(i)(i+1)(k) }.sum
-      //       // p.insideChart(0)(1).keys.map{ k => sum( p.insideChart(0)(1)(k) :* p.outsideChart(0)(1)(k)) }.sum
-      //     } + " <=> " + pObs
-      //   )
-      // }
-      (0 to ((2*s.length)-1)).foreach{ i =>
-        assertTrue(
-          {
-            p.insideChart(i)(i+1).keys.map{ k => p.insideChart(i)(i+1)(k) * p.outsideChart(i)(i+1)(k) }.sum
-            // p.insideChart(i)(i+1).keys.map{ k => sum( p.insideChart(i)(i+1)(k) :* p.outsideChart(i)(i+1)(k)) }.sum
-          } - pObs < 0.0000001
-        )
-      }
-      // p.theta.p_stop.printOut()
-      // println( "\n\n===================\n\n" )
-      // p.theta.p_stop.printOut()
-      println( "\n" )
-    }
+        //     println(
+        //       {
+        //         p.insideChart(0)(1).keys.map{ k => p.insideChart(0)(1)(k) * p.outsideChart(0)(1)(k) }.sum
+        //         // p.insideChart(0)(1).keys.map{ k => sum( p.insideChart(0)(1)(k) :* p.outsideChart(0)(1)(k)) }.sum
+        //       } + " <=> " + pObs
+        //     )
+        //     // println( "all terminals:" )
+        //     // (0 to ((2*s.length)-1)).foreach{ i =>
+        //     //   println(
+        //     //     {
+        //     //       p.insideChart(i)(i+1).keys.map{ k => p.insideChart(i)(i+1)(k) * p.outsideChart(i)(i+1)(k) }.sum
+        //     //       // p.insideChart(0)(1).keys.map{ k => sum( p.insideChart(0)(1)(k) :* p.outsideChart(0)(1)(k)) }.sum
+        //     //     } + " <=> " + pObs
+        //     //   )
+        //     // }
+        //     (0 to ((2*s.length)-1)).foreach{ i =>
+        //       assertTrue(
+        //         {
+        //           p.insideChart(i)(i+1).keys.map{ k => p.insideChart(i)(i+1)(k) * p.outsideChart(i)(i+1)(k) }.sum
+        //           // p.insideChart(i)(i+1).keys.map{ k => sum( p.insideChart(i)(i+1)(k) :* p.outsideChart(i)(i+1)(k)) }.sum
+        //         } - pObs < 0.0000001
+        //       )
+        //     }
+        //     // p.theta.p_stop.printOut()
+        //     // println( "\n\n===================\n\n" )
+        //     // p.theta.p_stop.printOut()
+        //     println( "\n" )
+        //   }
 
-    println( totalTime / ( iters.toDouble * dmvCorpus.size )  + "ms per sentence" )
+        //   println( totalTime / ( iters.toDouble * dmvCorpus.size )  + "ms per sentence" )
 
-  }
+        // }
 
-  @Test def testViterbi {
+        // @Test def testViterbi {
+        //   val startTime = System.currentTimeMillis
+        //   idDMVCorpus.foreach{ s =>
+        //     println( s.string.mkString(" " ) )
+
+        //     println( 
+        //       p.viterbiParse( s )
+        //     )
+
+        //     val pObs = p.stringProb
+
+        //   }
+        //   val endTime = System.currentTimeMillis
+
+        //   println( (endTime-startTime) / (iters * 2D) + "ms per sentence" )
+        // }
+
+  @Test def testSampleCounts {
     val startTime = System.currentTimeMillis
     idDMVCorpus.foreach{ s =>
       println( s.string.mkString(" " ) )
 
-      println( 
-        p.viterbiParse( s )
-      )
+      // println(
+      //   p.viterbiParse( s )
+      // )
 
-      val pObs = p.stringProb
+      // val pObs = p.stringProb
+      val ( sampleCounts, treeProb ) = p.sampleTreeCounts( s )
+      sampleCounts.printTotalCountsByType
+      println( sampleCounts.totalCounts + " total events seen" )
+      println( s"tree prob is: ${treeProb}" )
+
 
     }
     val endTime = System.currentTimeMillis
 
-    println( (endTime-startTime) / (iters * 2D) + "ms per sentence" )
+    println( (endTime-startTime) / (idDMVCorpus.size) + "ms per sampled sentence" )
   }
 
 
