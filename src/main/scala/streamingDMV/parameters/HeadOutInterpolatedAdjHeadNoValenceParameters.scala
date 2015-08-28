@@ -129,6 +129,37 @@ class HeadOutInterpolatedAdjHeadNoValenceParameters(
       }
   }
 
+  override def setEvents( counts:DMVCounts ) {
+    p_root.setEvents( counts.rootCounts )
+    p_stop.setEvents( counts.stopCounts )
+    p_choose.setEvents( counts.chooseCounts )
+    if( notBackoffAlpha > 0 ) {
+      lambda_choose.clear
+      counts.chooseCounts.counts.keys.foreach{ event =>
+        lambda_choose.increment(
+          LambdaChooseEvent( event.head, event.context, event.dir, NotBackoff ),
+          0D
+        )
+      }
+    }
+  }
+
+  override def setEventsAndCounts( counts:DMVCounts ) {
+    p_root.setEvents( counts.rootCounts )
+    p_stop.setEvents( counts.stopCounts )
+    p_choose.setEvents( counts.chooseCounts )
+    if( notBackoffAlpha > 0 ) {
+      lambda_choose.clear
+      counts.chooseCounts.counts.foreach{ case (event, count) =>
+        lambda_choose.increment(
+          LambdaChooseEvent( event.head, event.context, event.dir, NotBackoff ),
+          count
+        )
+      }
+    }
+  }
+
+
   override def printOut( logSpace:Boolean = false ) {
     println( "p_root:" )
     p_root.printOut( logSpace )

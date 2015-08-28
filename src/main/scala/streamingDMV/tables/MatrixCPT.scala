@@ -9,9 +9,9 @@ import breeze.numerics._
 
 class MatrixCPT[E<:Event]( alpha:Double, rows:Int, cols:Int ) {
   var events = MSet[E]()
-  val counts = MMap[E,DenseMatrix[Double]]()
-  val denomCounts = MMap[NormKey,DenseVector[Double]]()
-  val denoms = MMap[NormKey,MSet[E]]()
+  var counts = MMap[E,DenseMatrix[Double]]()
+  var denomCounts = MMap[NormKey,DenseVector[Double]]()
+  var denoms = MMap[NormKey,MSet[E]]()
 
   def zeroMatrix = DenseMatrix.zeros[Double]( rows, cols )
   def zeroVector = DenseVector.zeros[Double]( cols )
@@ -85,6 +85,19 @@ class MatrixCPT[E<:Event]( alpha:Double, rows:Int, cols:Int ) {
     other.counts.foreach{ case( k, v) =>
       increment( k, v )
     }
+  }
+  def setEvents( other:MatrixCPT[E] ) {
+    clear
+    denoms = other.denoms
+    denomCounts = other.denomCounts
+    events = other.events
+  }
+  def setEventsAndCounts( other:MatrixCPT[E] ) {
+    clear
+    denoms = other.denoms
+    denomCounts = other.denomCounts
+    events = other.events
+    counts = other.counts
   }
 
   def decrement( other:MatrixCPT[E] ) {

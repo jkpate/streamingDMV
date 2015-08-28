@@ -8,7 +8,7 @@ import scala.collection.mutable.{Map=>MMap}
 import math.log
 
 
-abstract class FoldUnfoldParser[C<:DependencyCounts,+P<:ArcFactoredParameters[C]](
+abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]](
   maxLength:Int,
   rootAlpha:Double = 1D,
   stopAlpha:Double = 1D,
@@ -22,6 +22,10 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,+P<:ArcFactoredParameters[C]
   var stringProb = 0D
 
   var intString:Array[Int] = Array()
+
+  def particlePerplexity:Double
+  def ess:Double
+  def resampleParticles:Unit
 
   def viterbiParse( utt:Utt ):Parse
 
@@ -43,63 +47,117 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,+P<:ArcFactoredParameters[C]
   def initialCounts( utts:List[Utt] ):C
 
   def extractPartialCounts( string:Array[Int] ):C
-  // def sampleTreeCounts( miniBatch:List[Utt] ):C
+  def sampleTreeCounts( utt:Utt ):Tuple2[C,Double]
 
-  def miniBatchVB(
+
+  def streamingBayesUpdate(
     miniBatch:List[Utt],
+    miniBatchNum:Int,
     maxIter:Int = 10,
     convergence:Double = 0.001,
     printIterScores:Boolean = false,
     printItersReached:Boolean = false
-  ) = {
+  ):Unit
 
-    var lastFHat = initialCounts( miniBatch )
-      // emptyCounts
-        // DMVCounts(
-        //   new CPT[RootEvent]( rootAlpha ),
-        //   new CPT[StopEvent]( stopAlpha ),
-        //   new CPT[ChooseEvent]( chooseAlpha )
-        // )
+  def argSample[K]( seq:Seq[Tuple2[K,Double]] ):Tuple2[K,Double] = {
+    val total = seq.filter{_._2 >= Double.NegativeInfinity}.map{_._2}.sum
+    val r = rand.nextDouble()*total
+    var runningTotal = 0D
 
-    theta.incrementCounts( lastFHat )
+    seq.takeWhile( pair => {
+        val result = runningTotal < r
+        if( pair._2 > Double.NegativeInfinity ) runningTotal += pair._2
+        result
+      }
+    ).last
+  }
+  def argMax[K]( seq:Iterable[Tuple2[K,Double]] ):Tuple2[K,Double] = {
+    var bestIdx = List[K]()
+    var bestScore = Double.NegativeInfinity
 
-    var lastMiniBatchScores = 1D
-    var insideScores = 0D
-    var deltaScores = 1D
-    var iter = 0
-    while(
-      ( iter < maxIter || maxIter == 0 ) &&
-      ( math.abs( deltaScores ) > convergence || convergence == 0 )
-    ) {
-      var thisMiniBatchScores = 0D
-
-
-      val fHat = miniBatch.map{ s =>
-        val counts = extractPartialCounts(s.string)
-        thisMiniBatchScores += log( stringProb )
-        counts
-      }.reduce{ (a,b) => a.destructivePlus(b); a }
-
-      // if( iter > 0 )
-      // decrement every time now since lastFHat may not be zero
-      theta.decrementCounts( lastFHat )
-      // println( miniBatch.map{_.string.length}.sum )
-      theta.incrementCounts( fHat )
-
-      deltaScores = ( lastMiniBatchScores - thisMiniBatchScores ) / lastMiniBatchScores
-      if( printIterScores )
-        println( s"$iter\t$thisMiniBatchScores\t$deltaScores" )
-
-
-      lastFHat = fHat
-      lastMiniBatchScores = thisMiniBatchScores
-
-      iter += 1
+    seq.foreach{ case ( idx, score ) =>
+      if( !( score > 0 ) ) {
+        println( idx, score )
+      }
+      assert( score > 0 )
+      if( score > bestScore ) {
+        bestScore = score
+        bestIdx = idx :: Nil
+      } else if( score == bestScore ) {
+        bestIdx = idx :: bestIdx
+      }
     }
-    if( printItersReached )
-      println( s"iters\t$iter" )
+
+    if( bestIdx.length == 1 ) {
+      (bestIdx.head, bestScore)
+    } else {
+      if( bestIdx.length <= 0 ) {
+        println( seq.mkString("\n" ) )
+      }
+      val which = rand.nextInt( bestIdx.length )
+      ( bestIdx(which), bestScore )
+    }
   }
 
+
+
+
+      // def streamingBayesUpdate(
+      //   miniBatch:List[Utt],
+      //   maxIter:Int = 10,
+      //   convergence:Double = 0.001,
+      //   printIterScores:Boolean = false,
+      //   printItersReached:Boolean = false
+      // ) = {
+
+      //   var lastFHat = initialCounts( miniBatch )
+      //     // emptyCounts
+      //       // DMVCounts(
+      //       //   new CPT[RootEvent]( rootAlpha ),
+      //       //   new CPT[StopEvent]( stopAlpha ),
+      //       //   new CPT[ChooseEvent]( chooseAlpha )
+      //       // )
+
+      //   theta.incrementCounts( lastFHat )
+
+      //   var lastMiniBatchScores = 1D
+      //   var insideScores = 0D
+      //   var deltaScores = 1D
+      //   var iter = 0
+      //   while(
+      //     ( iter < maxIter || maxIter == 0 ) &&
+      //     ( math.abs( deltaScores ) > convergence || convergence == 0 )
+      //   ) {
+      //     var thisMiniBatchScores = 0D
+
+
+      //     val fHat = miniBatch.map{ s =>
+      //       val counts = extractPartialCounts(s.string)
+      //       thisMiniBatchScores += log( stringProb )
+      //       counts
+      //     }.reduce{ (a,b) => a.destructivePlus(b); a }
+
+      //     // if( iter > 0 )
+      //     // decrement every time now since lastFHat may not be zero
+      //     theta.decrementCounts( lastFHat )
+      //     // println( miniBatch.map{_.string.length}.sum )
+      //     theta.incrementCounts( fHat )
+
+      //     deltaScores = ( lastMiniBatchScores - thisMiniBatchScores ) / lastMiniBatchScores
+      //     if( printIterScores )
+      //       println( s"$iter\t$thisMiniBatchScores\t$deltaScores" )
+
+
+      //     lastFHat = fHat
+      //     lastMiniBatchScores = thisMiniBatchScores
+
+      //     iter += 1
+      //   }
+      //   if( printItersReached )
+      //     println( s"iters\t$iter" )
+      // }
+
+  // def sampleTreeCounts( utt:Utt ):Tuple2[DMVCounts,Double]
 
   // // debugging stuff
   // def chartToString(

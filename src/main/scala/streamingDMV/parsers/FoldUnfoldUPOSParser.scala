@@ -18,7 +18,7 @@ abstract class FoldUnfoldUPOSParser[P<:UPOSArcFactoredParameters](
   chooseAlpha:Double = 1D,
   uposCount:Int = 3,
   randomSeed:Int = 15
-) extends FoldUnfoldParser[MatrixDMVCounts,P]( maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed ) {
+) extends StreamingVBParser[MatrixDMVCounts,P]( maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed ) {
 
   // Inside-Outside definitions
   val insideHeads:Array[Array[MMap[Decoration,DenseVector[Double]]]]
@@ -231,28 +231,6 @@ abstract class FoldUnfoldUPOSParser[P<:UPOSArcFactoredParameters](
 
 
   // def argMax[K]( seq:Iterable[Tuple2[K,Double]] ):Tuple2[K,Double] = {
-  def argMax[K]( seq:Iterable[Tuple2[K,Double]] ):Tuple2[K,Double] = {
-    var bestIdx = List[K]()
-    var bestScore = 0D::Nil
-    seq.foreach{ case ( idx, score ) =>
-      if( score > bestScore.head ) {
-        bestScore = score :: Nil
-        bestIdx = idx :: Nil
-      } else if( score == bestScore.head ) {
-        bestScore = score :: bestScore
-        bestIdx = idx :: bestIdx
-      }
-    }
-    if( bestIdx.length == 1 ) {
-      (bestIdx.head, bestScore.head)
-    } else {
-      if( bestIdx.length <= 0 ) {
-        println( seq.mkString("\n" ) )
-      }
-      val which = rand.nextInt( bestIdx.length )
-      ( bestIdx(which), bestScore(which) )
-    }
-  }
   def argMax[K](
                           // dPos by hPos
     seq:Iterable[Tuple2[K,DenseMatrix[Double]]],
@@ -575,6 +553,10 @@ abstract class FoldUnfoldUPOSParser[P<:UPOSArcFactoredParameters](
     insidePass( s )
     outsidePassWithCounts( s )
   }
+
+  // TODO implement me!
+  def sampleTreeCounts( utt:Utt ) = (emptyCounts, Double.NaN)
+  def trueLogProb( counts:MatrixDMVCounts ) = Double.NaN
 
 
 

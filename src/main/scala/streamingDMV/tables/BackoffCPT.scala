@@ -1,7 +1,10 @@
 package streamingDMV.tables
 
 import streamingDMV.labels._
-import collection.mutable.{Map=>MMap,Set=>MSet}
+
+import org.apache.commons.math3.special.{Gamma=>G}
+
+import scala.collection.mutable.{Map=>MMap,Set=>MSet}
 
 // asymmetric Dirichlet Multinomial CPT for backing off
 // class CPT[E<:Event,N<:NormKey]( alpha:Double ) {
@@ -35,34 +38,6 @@ class BackoffCPT[E<:Event with BackingOffEvent]( alpha:Map[BackoffDecision,Doubl
   def expDigammaNormalized( event:E ) = {
     val n = event.normKey
 
-        // val numerator =
-        //   taylorExpDigamma( 
-        //     ( counts( event ) + alpha( event.backOff )  )
-        //   )
-
-        // if( numerator == 0 ) {
-        //   0D
-        // } else {
-        //   numerator / taylorExpDigamma(
-        //     denomCounts( n ) + (alpha( event.backOff ) * denoms(n).size )
-        //   )
-        // }
-
-        // println("/-------")
-        // println( event )
-        // println( event.backOff )
-        // println( alpha.keys.mkString("\t","\n\t","\n\n") )
-        // println( "\t\t" + alpha( Backoff ) )
-        // println( "\t\t" + alpha( NotBackoff ) )
-        // println( "numerator " +
-        //   ( counts( event ) + alpha( event.backOff )  ) 
-        // )
-
-        // println( "denominator " + 
-        //   ( denomCounts( n ) + (alpha( event.backOff ) * denoms(n).size ) )
-        // )
-        // println("\\-------")
-
     if( alpha( event.backOff ) == 0 )
       0
     else
@@ -71,6 +46,44 @@ class BackoffCPT[E<:Event with BackingOffEvent]( alpha:Map[BackoffDecision,Doubl
       ) / taylorExpDigamma(
         denomCounts( n ) + alpha.values.sum
       )
+  }
+
+  def trueLogProb( other:BackoffCPT[E] ) = {
+    other.denoms.map{ case (denom,otherEvents) =>
+      val totalEvents = denoms( denom )
+
+      assert( totalEvents.size == 2 )
+      val withOtherNumerator = 
+        totalEvents.map{ e =>
+          G.logGamma( counts( e ) + other( e ) + alpha( e.backOff ) )
+        }.reduce(_+_)
+
+      val withOtherDenom =
+        G.logGamma(
+          totalEvents.map{ e =>
+            counts( e ) + other( e ) + (alpha.values.sum )
+          }.sum
+        )
+
+      val myNumerator = 
+        totalEvents.map{ e =>
+          G.logGamma( counts( e ) + alpha( e.backOff ) )
+        }.reduce(_+_)
+
+      val myDenom =
+        G.logGamma(
+          totalEvents.map{ e =>
+            counts( e ) + (alpha.values.sum )
+          }.sum
+        )
+
+      (
+        withOtherNumerator - withOtherDenom
+      ) - (
+        myNumerator - myDenom
+      )
+
+    }.reduce(_+_)
   }
 
   def increment( event:E, inc:Double ) = {

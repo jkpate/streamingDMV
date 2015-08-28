@@ -1,6 +1,6 @@
 package streamingDMV.parsers
 
-import streamingDMV.tables.CPT
+import streamingDMV.tables.{CPT,BackoffCPT}
 import streamingDMV.labels._
 import streamingDMV.parameters.HeadOutInterpolatedAdjHeadNoValenceParameters
 
@@ -108,10 +108,15 @@ class HeadOutInterpolatedAdjHeadNoValenceParser(
     }
   }
 
-  def lexFill( index:Int ) {
-    val head = intString( index )
-    insideChart(index)(index+1)( NoValence ) = 1D
-  }
+      // def lexFill( index:Int ) {
+      //   val head = intString( index )
+      //   insideChart(index)(index+1)( NoValence ) = 1D
+      // }
+
+  // def lexCellScores( index:Int ) = Seq( (Innermost,1D) )
+  def lexSpecs( index:Int ) = Seq( NoValence )
+  def lexCellFactor( index:Int, pDec:Decoration ) = 1D
+
 
 
   def nearestArcFactor( head:Int, dir:AttDir, dep:Int ) = {
@@ -146,10 +151,6 @@ class HeadOutInterpolatedAdjHeadNoValenceParser(
 
   def lexMarginals( index:Int ) = Seq()
 
-  def viterbiLexFill( index:Int ) {
-    insideChart(index)(index+1)( NoValence ) = 1D
-    headTrace(index)(index+1) += NoValence -> LexEntry( index )
-  }
 
   // NEW DEFINITIONS
   def rightwardSplitSpecs( i:Int, j:Int ) = {
@@ -296,6 +297,37 @@ class HeadOutInterpolatedAdjHeadNoValenceParser(
         )
       }
     }
+  }
+
+  def trueLogProb( counts:DMVCounts ) = {
+    val lambdaCounts = new BackoffCPT[LambdaChooseEvent](
+      Map( Backoff -> backoffAlpha, NotBackoff -> notBackoffAlpha )
+    )
+    if( notBackoffAlpha > 0 )
+      counts.chooseCounts.counts.foreach{ case (event, count) =>
+        event match {
+          case ChooseEvent( head, context, dir, /*_,*/ dep ) =>
+            if( context >= 0 ) {
+              lambdaCounts.increment(
+                LambdaChooseEvent( head, context, dir, NotBackoff ),
+                count
+              )
+            //  notBackoffEvents += count
+            } else {
+              lambdaCounts.increment(
+                LambdaChooseEvent( head, context, dir, Backoff ),
+                count
+              )
+            //   backoffEvents += count
+            }
+          case _ =>
+        }
+      }
+
+    theta.p_root.trueLogProb( counts.rootCounts ) +
+    theta.p_stop.trueLogProb( counts.stopCounts ) +
+    theta.p_choose.trueLogProb( counts.chooseCounts ) +
+    theta.lambda_choose.trueLogProb( lambdaCounts )
   }
 
 }

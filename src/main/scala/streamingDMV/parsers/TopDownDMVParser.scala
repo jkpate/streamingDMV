@@ -60,49 +60,71 @@ class TopDownDMVParser(
   def findRightMChild( k:Int, j:Int, decoration:MDecoration ) =
     headTrace( k )( j )( decoration.evenRight )
 
-  def lexFill( index:Int ) {
+      // def lexFill( index:Int ) {
+      //   val head = intString( index )
+      //   if( index %2 == 0 ) {
+      //     insideChart(index)(index+1)( Outermost ) =
+      //       theta( StopEvent( head, LeftAtt, Outermost, Stop ) )
+
+      //     if( index > 0 )
+      //       insideChart(index)(index+1)( Inner ) =
+      //         theta( StopEvent( head, LeftAtt, Inner, Stop ) )
+      //   } else {
+
+      //     insideChart(index)(index+1)( Outermost ) =
+      //       theta( StopEvent( head, RightAtt, Outermost, Stop ) )
+
+      //     if( index < intString.length-1 )
+      //       insideChart(index)(index+1)( Inner ) =
+      //         theta( StopEvent( head, RightAtt, Inner, Stop ) )
+      //   }
+      // }
+
+
+        // def viterbiLexFill( index:Int ) {
+        //   val head = intString( index )
+        //   if( index %2 == 0 ) {
+        //     insideChart(index)(index+1)( Outermost ) =
+        //       theta( StopEvent( head, LeftAtt, Outermost, Stop ) )
+        //     headTrace(index)(index+1) += Outermost -> LexEntry( index )
+
+        //     if( index > 0 ) {
+        //       insideChart(index)(index+1)( Inner ) =
+        //         theta( StopEvent( head, LeftAtt, Inner, Stop ) )
+        //       headTrace(index)(index+1) += Inner -> LexEntry( index )
+        //     }
+        //   } else {
+        //     insideChart(index)(index+1)( Outermost ) =
+        //       theta( StopEvent( head, RightAtt, Outermost, Stop ) )
+        //     headTrace(index)(index+1) += Outermost -> LexEntry( index )
+
+        //     if( index < intString.length-1 ) {
+        //       insideChart(index)(index+1)( Inner ) =
+        //         theta( StopEvent( head, RightAtt, Inner, Stop ) )
+        //       headTrace(index)(index+1) += Inner -> LexEntry( index )
+        //     }
+        //   }
+        // }
+
+  def lexCellFactor( index:Int, pDec:Decoration ) = {
     val head = intString( index )
-    if( index %2 == 0 ) {
-      insideChart(index)(index+1)( Outermost ) =
-        theta( StopEvent( head, LeftAtt, Outermost, Stop ) )
-
-      if( index > 0 )
-        insideChart(index)(index+1)( Inner ) =
-          theta( StopEvent( head, LeftAtt, Inner, Stop ) )
-    } else {
-
-      insideChart(index)(index+1)( Outermost ) =
-        theta( StopEvent( head, RightAtt, Outermost, Stop ) )
-
-      if( index < intString.length-1 )
-        insideChart(index)(index+1)( Inner ) =
-          theta( StopEvent( head, RightAtt, Inner, Stop ) )
-    }
+    if( index%2 == 0 )
+      theta( StopEvent( head, LeftAtt, pDec, Stop ) )
+    else
+      theta( StopEvent( head, RightAtt, pDec, Stop ) )
   }
 
-
-  def viterbiLexFill( index:Int ) {
-    val head = intString( index )
-    if( index %2 == 0 ) {
-      insideChart(index)(index+1)( Outermost ) =
-        theta( StopEvent( head, LeftAtt, Outermost, Stop ) )
-      headTrace(index)(index+1) += Outermost -> LexEntry( index )
-
-      if( index > 0 ) {
-        insideChart(index)(index+1)( Inner ) =
-          theta( StopEvent( head, LeftAtt, Inner, Stop ) )
-        headTrace(index)(index+1) += Inner -> LexEntry( index )
-      }
+  def lexSpecs( index:Int ) = {
+    if( index%2 == 0 ) {
+      if( index > 0 )
+        Seq( Inner, Outermost )
+      else
+        Seq( Inner )
     } else {
-      insideChart(index)(index+1)( Outermost ) =
-        theta( StopEvent( head, RightAtt, Outermost, Stop ) )
-      headTrace(index)(index+1) += Outermost -> LexEntry( index )
-
-      if( index < intString.length-1 ) {
-        insideChart(index)(index+1)( Inner ) =
-          theta( StopEvent( head, RightAtt, Inner, Stop ) )
-        headTrace(index)(index+1) += Inner -> LexEntry( index )
-      }
+      if( index < intString.length-1 )
+        Seq( Inner, Outermost )
+      else
+        Seq( Inner )
     }
   }
 
@@ -250,6 +272,11 @@ class TopDownDMVParser(
     )
   }
 
+  def trueLogProb( counts:DMVCounts ) = {
+    theta.p_root.trueLogProb( counts.rootCounts ) +
+    theta.p_stop.trueLogProb( counts.stopCounts ) +
+    theta.p_choose.trueLogProb( counts.chooseCounts )
+  }
 
 }
 

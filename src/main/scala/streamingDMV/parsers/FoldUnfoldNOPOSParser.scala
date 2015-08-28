@@ -3,8 +3,9 @@ package streamingDMV.parsers
 import streamingDMV.labels._
 import streamingDMV.tables.CPT
 import streamingDMV.parameters.NOPOSArcFactoredParameters
-import scala.collection.mutable.{Map=>MMap}
 
+
+import scala.collection.mutable.{Map=>MMap}
 import math.log
 
 
@@ -14,13 +15,19 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
   stopAlpha:Double = 1D,
   chooseAlpha:Double = 1D,
   randomSeed:Int = 15
-) extends FoldUnfoldParser[DMVCounts,P]( maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed ) {
+) extends StreamingVBParser[DMVCounts,P]( maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed ) {
 
 
   val insideChart:Array[Array[MMap[Decoration,Double]]]
   val outsideChart:Array[Array[MMap[Decoration,Double]]]
 
-  def lexFill( index:Int ):Unit
+  def lexSpecs( index:Int ):Seq[Decoration]
+  def lexCellFactor( index:Int, pDec:Decoration ):Double
+  def lexFill( index:Int ) {
+    lexSpecs( index ).foreach{ pDec =>
+      insideChart( index )( index+1 )(pDec) += lexCellFactor( index, pDec )
+    }
+  }
   def insidePass( s:Array[Int] ) = {
     intString = s
     (1 to ( intString.length )).foreach{ j =>
@@ -63,6 +70,7 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
       insideChart( k )( intString.length )( rightDec ) *
         rootCellFactor( k )
   }
+
 
   def computeInsideMScore( i:Int, j:Int ) {
     mSplitSpecs(i,j).foreach{ case (mDecoration, splits) =>
@@ -299,6 +307,17 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
   def findRightMChild( k:Int, j:Int, decoration:MDecoration ):Entry
 
 
+  def insertRootEntry( k:Int ) = treeRoot = RootEntry( k )
+  def insertMEntry( i:Int, k:Int, j:Int, decoration:MDecoration ) =
+    mTrace( i )( j )( decoration ) = MEntry( i , k, j, decoration )
+  def insertLeftwardEntry( i:Int, k:Int, j:Int, pDec:Decoration, hV:Decoration, mDV:Decoration ) =
+    headTrace( i )( j )( pDec ) = LeftwardEntry( i, k, j, hV, mDV )
+  def insertRightwardEntry( i:Int, k:Int, j:Int, pDec:Decoration, hV:Decoration, mDV:Decoration ) =
+    headTrace( i )( j )( pDec ) = RightwardEntry( i, k, j, hV, mDV )
+
+  def insertLexEntry( index:Int, pDec:Decoration ) =
+    headTrace( index )( index+1 )( pDec ) = LexEntry( index )
+
   case class RootEntry( k:Int ) extends BinaryEntry( 0, k, intString.length ) {
     val leftChild = findLeftRootChild( k )
     val rightChild = findRightRootChild( k )
@@ -348,30 +367,17 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
   var treeRoot:RootEntry = null
   // no need for argMax or argSample for viterbiLexFill because the
   // child is *given* by the string (for now... )
-  def viterbiLexFill( index:Int ):Unit
-
-  def argMax[K]( seq:Iterable[Tuple2[K,Double]] ):Tuple2[K,Double] = {
-    var bestIdx = List[K]()
-    var bestScore = Double.NegativeInfinity
-
-    seq.foreach{ case ( idx, score ) =>
-      assert( score > 0 )
-      if( score > bestScore ) {
-        bestScore = score
-        bestIdx = idx :: Nil
-      } else if( score == bestScore ) {
-        bestIdx = idx :: bestIdx
-      }
-    }
-
-    if( bestIdx.length == 1 ) {
-      (bestIdx.head, bestScore)
-    } else {
-      if( bestIdx.length <= 0 ) {
-        println( seq.mkString("\n" ) )
-      }
-      val which = rand.nextInt( bestIdx.length )
-      ( bestIdx(which), bestScore )
+  // def viterbiLexFill( index:Int ):Unit
+  // def viterbiLexFill( index:Int ) {
+  //   lexCellScores( index ).foreach{ case ( pDec, score ) =>
+  //     insideChart( index )( index+1 )(pDec) = score
+  //     headTrace( index )( index+1 )( pDec ) = LexEntry( index )
+  //   }
+  // }
+  def viterbiLexFill( index:Int ) {
+    lexSpecs( index ).foreach{ pDec =>
+      insideChart( index )( index+1 )(pDec) = lexCellFactor( index, pDec )
+      headTrace( index )( index+1 )( pDec ) = LexEntry( index )
     }
   }
 
@@ -448,18 +454,6 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
     Parse( utt.id, "", treeRoot.toDepParse )
   }
 
-  def argSample[K]( seq:Seq[Tuple2[K,Double]] ):Tuple2[K,Double] = {
-    val total = seq.map{_._2}.sum
-    val r = rand.nextDouble()*total
-    var runningTotal = 0D
-
-    seq.takeWhile( pair => {
-        val result = runningTotal < r
-        runningTotal += pair._2
-        result
-      }
-    ).last
-  }
 
   def clearCharts {
     (0 until 2*maxLength ).foreach{ i =>
@@ -487,6 +481,8 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
         assert( parent == pDec )
         val ( k, score ) = argSample( splitsAndScores )
 
+        sampleScore += math.log( score )
+
         if( k%2 == 0 )
           mEventCounts( i, k, j, parent, 1D ) ++
             sampleTreeCounts( i, k, parent.evenLeft ) ++
@@ -505,6 +501,8 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
           assert( parent == pDec )
           val ( (k, mDec, cDec) , score ) = argSample( splitsAndScores )
 
+          sampleScore += math.log( score )
+
           rightwardEventCounts( i, k, j, pDec, mDec, cDec, 1D ) ++
             sampleTreeCounts( i, k, mDec ) ++
               sampleTreeCounts( k, j, cDec )
@@ -521,6 +519,8 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
           assert( parent == pDec )
           val ( (k, mDec, cDec) , score ) = argSample( splitsAndScores )
 
+          sampleScore += math.log( score )
+
           leftwardEventCounts( i, k, j, pDec, mDec, cDec, 1D ) ++
             sampleTreeCounts( i, k, cDec ) ++
               sampleTreeCounts( k, j, mDec )
@@ -534,7 +534,7 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
 
       val ((k,cDecs), score) = argSample( rootCellScores() )
 
-      sampleScore *= score / stringProb
+      sampleScore += math.log( score )
 
       rootEventCounts( k, 1D ) ++
         sampleTreeCounts( i , k, cDecs.evenLeft ) ++
@@ -547,13 +547,16 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
 
   def emptyCounts = DMVCounts( rootAlpha, stopAlpha, chooseAlpha )
 
-  var sampleScore = 1D
+
+  var sampleScore = 0D
   def sampleTreeCounts( utt:Utt ):Tuple2[DMVCounts,Double] = {
     val s = doubleString( utt.string )
     clearCharts
+    val normalized = theta.fullyNormalized
     theta.fullyNormalized = true
     insidePass( s )
     val c = emptyCounts
+    sampleScore = 0D
     sampleTreeCounts( 0, intString.length, RootDecoration ).foreach{ case (event, count) =>
       event match {
         case e:StopEvent => c.stopCounts.increment( e, count )
@@ -561,7 +564,7 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
         case e:RootEvent => c.rootCounts.increment( e, count )
       }
     }
-    theta.fullyNormalized = false
+    theta.fullyNormalized = normalized
     ( c, sampleScore )
   }
 

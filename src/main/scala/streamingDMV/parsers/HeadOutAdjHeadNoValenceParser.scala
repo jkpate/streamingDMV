@@ -91,10 +91,10 @@ class HeadOutAdjHeadNoValenceParser(
     }
   }
 
-  def lexFill( index:Int ) {
-    val head = intString( index )
-    insideChart(index)(index+1)( NoValence ) = 1D
-  }
+      // def lexFill( index:Int ) {
+      //   val head = intString( index )
+      //   insideChart(index)(index+1)( NoValence ) = 1D
+      // }
 
   def nearestArcFactor( head:Int, dir:AttDir, dep:Int ) = {
     theta( ChooseEvent( head, dir, dep ) ) *
@@ -113,12 +113,10 @@ class HeadOutAdjHeadNoValenceParser(
   def lexMarginals( index:Int ) = Seq()
 
 
-  def viterbiLexFill( index:Int ) {
-    insideChart(index)(index+1)( NoValence ) = 1D
-    headTrace(index)(index+1) += NoValence -> LexEntry( index )
-  }
 
-
+  def lexSpecs( index:Int ) = Seq( NoValence )
+  def lexCellFactor( index:Int, pDec:Decoration ) = 1D
+  // def lexCellScores( index:Int ) = Seq( (Innermost,1D) )
 
 
   // NEW DEFINITIONS
@@ -255,6 +253,12 @@ class HeadOutAdjHeadNoValenceParser(
         )
       }
     }
+  }
+
+  def trueLogProb( counts:DMVCounts ) = {
+    theta.p_root.trueLogProb( counts.rootCounts ) +
+    theta.p_stop.trueLogProb( counts.stopCounts ) +
+    theta.p_choose.trueLogProb( counts.chooseCounts )
   }
 
 }

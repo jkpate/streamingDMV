@@ -55,10 +55,12 @@ class NoValenceParser(
   def findLeftMChild( i:Int, k:Int, decoration:MDecoration ) = headTrace( i )( k )( NoValence )
   def findRightMChild( k:Int, j:Int, decoration:MDecoration ) = headTrace( k )( j )( NoValence )
 
-  def lexFill( index:Int ) {
-    val head = intString( index )
-    insideChart(index)(index+1)( NoValence ) = 1D
-  }
+  // def lexFill( index:Int ) {
+  //   val head = intString( index )
+  //   insideChart(index)(index+1)( NoValence ) = 1D
+  // }
+  def lexSpecs( index:Int ) = Seq( NoValence )
+  def lexCellFactor( index:Int, pDec:Decoration ) = 1D
 
   def lexMarginals( index:Int ) = Seq()
 
@@ -89,10 +91,6 @@ class NoValenceParser(
   }
 
 
-  def viterbiLexFill( index:Int ) {
-    insideChart(index)(index+1)( NoValence ) = 1D
-    headTrace(index)(index+1) += NoValence -> LexEntry( index )
-  }
 
 
   // NEW DEFINITIONS
@@ -195,6 +193,12 @@ class NoValenceParser(
       ( StopEvent( dep, RightAtt, NoValence, Stop ), marginal ),
       ( StopEvent( dep, LeftAtt, NoValence, Stop ), marginal )
     )
+  }
+
+  def trueLogProb( counts:DMVCounts ) = {
+    theta.p_root.trueLogProb( counts.rootCounts ) +
+    theta.p_stop.trueLogProb( counts.stopCounts ) +
+    theta.p_choose.trueLogProb( counts.chooseCounts )
   }
 
 }

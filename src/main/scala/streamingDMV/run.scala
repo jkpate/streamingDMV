@@ -6,11 +6,18 @@ import joptsimple.OptionSet
 
 import streamingDMV.io._
 import streamingDMV.parsers._
+import streamingDMV.labels._
 import streamingDMV.parameters._
 import streamingDMV.labels.{Parse,Utt,DependencyCounts}
 
 
 object run {
+  var miniBatchDur = 0D
+  var sentencesProcessed = 0
+  sys.addShutdownHook {
+    println( s"${sentencesProcessed} sentences processed" )
+    println( s"${miniBatchDur/sentencesProcessed}ms per training sentence")
+  }
   def main( args:Array[String] ) {
     val optsParser = new OptionParser()
 
@@ -32,6 +39,9 @@ object run {
     optsParser.accepts( "convergeInitialMiniBatch" )
     optsParser.accepts( "printItersReached" )
     optsParser.accepts( "batchVB" )
+    optsParser.accepts( "particleFilter" )
+    optsParser.accepts( "numParticles" ).withRequiredArg
+    optsParser.accepts( "printResamplingEvents" )
     optsParser.accepts( "constituencyEval" )
     optsParser.accepts( "printInitialGrammar" )
     optsParser.accepts( "printFinalGrammar" )
@@ -93,6 +103,13 @@ object run {
         miniBatchSize
     val convergeInitialMiniBatch = opts.has( "convergeInitialMiniBatch" )
     val batchVB = opts.has( "batchVB" )
+    val particleFilter = opts.has( "particleFilter" )
+    val numParticles =
+      if( opts.has( "numParticles" ) )
+        opts.valueOf( "numParticles" ).toString.toInt
+      else
+        16
+    val printResamplingEvents = opts.has( "printResamplingEvents" )
     val logEvalRate = opts.has( "logEvalRate" )
     var evalEvery =
       if(opts.has( "evalEvery" ))
@@ -119,6 +136,9 @@ object run {
     println( s"initialMiniBatchSize: ${initialMiniBatchSize}" )
     println( s"printItersReached: ${printItersReached}" )
     println( s"batchVB: ${batchVB}" )
+    println( s"particleFilter: ${particleFilter}" )
+    println( s"numParticles: ${numParticles}" )
+    println( s"printResamplingEvents: ${printResamplingEvents}" )
     println( s"convergeInitialMiniBatch: ${convergeInitialMiniBatch}" )
     println( s"logEvalRate: ${logEvalRate}" )
     println( s"evalEvery: ${evalEvery}" )
@@ -144,49 +164,156 @@ object run {
     println( s"${testSet.map{_.string.size}.sum} testing words" )
     println( s"${stringsToUtts.dictionary.size} unique words" )
 
+    val maxLength = { trainSet ++ testSet }.map{ _.string.length }.max
+
     // val p:FoldUnfoldParser[_<:ArcFactoredParameters] =
     val p:FoldUnfoldParser[_<:DependencyCounts,_<:ArcFactoredParameters[_]] =
-      if( parserType == "TopDownDMVParser" ) {
-        println( "Using TopDownDMVParser" )
-        new TopDownDMVParser(
-          { trainSet ++ testSet }.map{ _.string.length }.max,
-          randomSeed = randomSeed
-        )
-      } else if( parserType == "OriginalDMVParser" ) {
-        println( "Using OriginalDMVParser" )
-        new OriginalDMVParser(
-          { trainSet ++ testSet }.map{ _.string.length }.max,
-          randomSeed = randomSeed
-        )
-      } else if( parserType == "NoValenceUPOSParser" ) {
-        println( "Using NoValenceUPOSParser" )
-        new NoValenceUPOSParser(
-          { trainSet ++ testSet }.map{ _.string.length }.max,
-          uposCount = uposCount,
-          randomSeed = randomSeed
-        )
-      } else if( parserType == "NoValenceParser" ) {
-        println( "Using NoValenceParser" )
-        new NoValenceParser(
-          { trainSet ++ testSet }.map{ _.string.length }.max,
-          randomSeed = randomSeed
-        )
-      } else if( parserType == "HeadOutAdjHeadNoValence" ) {
-        println( "Using HeadOutAdjHeadNoValence" )
-        new HeadOutAdjHeadNoValenceParser(
-          { trainSet ++ testSet }.map{ _.string.length }.max,
-          randomSeed = randomSeed
-        )
-      } else if( parserType == "HeadOutInterpolatedAdjHeadNoValence" ) {
-        println( "Using HeadOutInterpolatedAdjHeadNoValence" )
-        new HeadOutInterpolatedAdjHeadNoValenceParser(
-          maxLength = { trainSet ++ testSet }.map{ _.string.length }.max,
-          backoffAlpha = backoffAlpha,
-          notBackoffAlpha = notBackoffAlpha
-        )
+      if( particleFilter ) {
+        if( parserType == "TopDownDMVParser" ) {
+          println( "Using TopDownDMVParser" )
+          new ParticleFilterNOPOSParser[TopDownDMVParameters,TopDownDMVParser](
+            maxLength = maxLength,
+            numParticles = numParticles,
+            createParticle = (counts:DMVCounts,l:Int) => {
+              val p_l = new TopDownDMVParser( maxLength = maxLength, randomSeed = randomSeed +31*l )
+              // p_l.zerosInit( trainSet ++ testSet )
+              p_l.theta.setEvents( counts )
+              p_l.theta.incrementCounts( counts )
+              p_l
+            }
+          )
+        } else if( parserType == "OriginalDMVParser" ) {
+          println( "Using OriginalDMVParser" )
+          new ParticleFilterNOPOSParser[OriginalDMVParameters,OriginalDMVParser](
+            maxLength = maxLength,
+            numParticles = numParticles,
+            createParticle = (counts:DMVCounts,l:Int) => {
+              val p_l = new OriginalDMVParser( maxLength = maxLength, randomSeed = randomSeed +31*l )
+              // p_l.zerosInit( trainSet ++ testSet )
+              p_l.theta.setEvents( counts )
+              p_l.theta.incrementCounts( counts )
+              p_l
+            }
+          )
+        } else if( parserType == "NoValenceParser" ) {
+          println( "Using NoValenceParser" )
+          new ParticleFilterNOPOSParser[NoValenceParameters,NoValenceParser](
+            maxLength = maxLength,
+            numParticles = numParticles,
+            createParticle = (counts:DMVCounts,l:Int) => {
+              val p_l = new NoValenceParser( maxLength = maxLength, randomSeed = randomSeed +31*l )
+              // p_l.zerosInit( trainSet ++ testSet )
+              p_l.theta.setEvents( counts )
+              p_l.theta.incrementCounts( counts )
+              p_l
+            }
+          )
+        } else if( parserType == "HeadOutAdjHeadNoValence" ) {
+          println( "Using HeadOutAdjHeadNoValence" )
+          // new HeadOutAdjHeadNoValenceParser(
+          //   maxLength = maxLength, randomSeed = randomSeed
+          // )
+          new
+          ParticleFilterNOPOSParser[HeadOutAdjHeadNoValenceParameters,HeadOutAdjHeadNoValenceParser](
+            maxLength = maxLength,
+            numParticles = numParticles,
+            createParticle = (counts:DMVCounts,l:Int) => {
+              val p_l =
+                new HeadOutAdjHeadNoValenceParser(
+                  maxLength = maxLength,
+                  randomSeed = randomSeed +31*l
+                )
+              // p_l.zerosInit( trainSet ++ testSet )
+              p_l.theta.setEvents( counts )
+              p_l.theta.incrementCounts( counts )
+              p_l
+            }
+          )
+        } else if( parserType == "HeadOutInterpolatedAdjHeadNoValence" ) {
+          println( "Using HeadOutInterpolatedAdjHeadNoValence" )
+          // new HeadOutInterpolatedAdjHeadNoValenceParser(
+          //   maxLength = maxLength,
+          //   backoffAlpha = backoffAlpha,
+          //   notBackoffAlpha = notBackoffAlpha
+          // )
+          new ParticleFilterNOPOSParser[HeadOutInterpolatedAdjHeadNoValenceParameters,HeadOutInterpolatedAdjHeadNoValenceParser](
+            maxLength = maxLength,
+            numParticles = numParticles,
+            createParticle = (counts:DMVCounts,l:Int) => {
+              val p_l =
+                new HeadOutInterpolatedAdjHeadNoValenceParser(
+                  maxLength = maxLength,
+                  backoffAlpha = backoffAlpha,
+                  notBackoffAlpha = notBackoffAlpha,
+                  randomSeed = randomSeed +31*l
+                )
+              // p_l.zerosInit( trainSet ++ testSet )
+              p_l.theta.setEvents( counts )
+              p_l.theta.incrementCounts( counts )
+              p_l
+            }
+          )
+        } else {
+          println( "parser type not recognized -- defaulting to OriginalDMVParser" )
+          new ParticleFilterNOPOSParser[OriginalDMVParameters,OriginalDMVParser](
+            maxLength = maxLength,
+            numParticles = numParticles,
+            createParticle = (counts:DMVCounts,l:Int) => {
+              val p_l = new OriginalDMVParser( maxLength = maxLength, randomSeed = randomSeed )
+              // p_l.zerosInit( trainSet ++ testSet )
+              p_l.theta.setEvents( counts )
+              p_l.theta.incrementCounts( counts )
+              p_l
+            }
+          )
+        }
       } else {
-        println( "parser type not recognized -- defaulting to OriginalDMVParser" )
-        new OriginalDMVParser( { trainSet ++ testSet }.map{ _.string.length }.max )
+        if( parserType == "TopDownDMVParser" ) {
+          println( "Using TopDownDMVParser" )
+          new TopDownDMVParser(
+            { trainSet ++ testSet }.map{ _.string.length }.max,
+            randomSeed = randomSeed
+          )
+        } else if( parserType == "OriginalDMVParser" ) {
+          println( "Using OriginalDMVParser" )
+          new OriginalDMVParser(
+            { trainSet ++ testSet }.map{ _.string.length }.max,
+            randomSeed = randomSeed
+          )
+        } else if( parserType == "NoValenceUPOSParser" ) {
+          println( "Using NoValenceUPOSParser" )
+          new NoValenceUPOSParser(
+            { trainSet ++ testSet }.map{ _.string.length }.max,
+            uposCount = uposCount,
+            randomSeed = randomSeed
+          )
+        } else if( parserType == "NoValenceParser" ) {
+          println( "Using NoValenceParser" )
+          new NoValenceParser(
+            { trainSet ++ testSet }.map{ _.string.length }.max,
+            randomSeed = randomSeed
+          )
+        } else if( parserType == "HeadOutAdjHeadNoValence" ) {
+          println( "Using HeadOutAdjHeadNoValence" )
+          new HeadOutAdjHeadNoValenceParser(
+            { trainSet ++ testSet }.map{ _.string.length }.max,
+            randomSeed = randomSeed
+          )
+        } else if( parserType == "HeadOutInterpolatedAdjHeadNoValence" ) {
+          println( "Using HeadOutInterpolatedAdjHeadNoValence" )
+          new HeadOutInterpolatedAdjHeadNoValenceParser(
+            maxLength = { trainSet ++ testSet }.map{ _.string.length }.max,
+            backoffAlpha = backoffAlpha,
+            notBackoffAlpha = notBackoffAlpha,
+            randomSeed = randomSeed
+          )
+        } else {
+          println( "parser type not recognized -- defaulting to OriginalDMVParser" )
+          new OriginalDMVParser(
+            maxLength = maxLength,
+            randomSeed = randomSeed
+          )
+        }
       }
 
     p.zerosInit( trainSet ++ testSet )
@@ -212,14 +339,16 @@ object run {
         shuffledTrainSet.toList.drop( initialMiniBatchSize ).grouped( miniBatchSize ).toList
 
     var i = 0
-    var miniBatchDur = 0D
     var totalDur = 0D
+    var resamplingEventCounts = 0
     ( firstMiniBatch :: subsequentMiniBatches ).foreach{ mb =>
 
       val startTime = System.currentTimeMillis
       val printIterScores =
         (initialMiniBatchSize != miniBatchSize) && ( i == 0 )
-      p.miniBatchVB(
+      // p.miniBatchVB(
+
+      p.streamingBayesUpdate(
         mb,
         { if( convergeInitialMiniBatch && i == 0 ) 0 else incIters },
         incConvergence,
@@ -242,7 +371,17 @@ object run {
         else
           miniBatchDur/((evalEvery*miniBatchSize).toDouble)
 
-      val sentencesProcessed = initialMiniBatchSize + miniBatchSize*i
+      sentencesProcessed = initialMiniBatchSize + miniBatchSize*i
+
+      if( particleFilter ) {
+        val ess = p.ess
+        if( ess < numParticles/2 ) {
+          if( printResamplingEvents) println( s"it${sentencesProcessed}:resamplingESS:${ess}")
+          p.resampleParticles
+          resamplingEventCounts += 1
+        }
+      }
+
       if( sentencesProcessed%evalEvery == 0 ) {
         miniBatchDur = 0
 
@@ -264,6 +403,8 @@ object run {
         println( s"it${sentencesProcessed}:logProb:${heldOutLogProb}" )
         println( s"it${sentencesProcessed}:trainTimePerSentence:${timePerSentence}ms/sentence" )
         println( s"it${sentencesProcessed}:testTimePerSentence:${ (parseEndTime - parseStartTime ) / testSet.size}ms/sentence" )
+        println( s"it${sentencesProcessed}:particlePerplexity:${p.particlePerplexity}" )
+        println( s"it${sentencesProcessed}:ess:${p.ess}" )
       }
       i += 1
 
@@ -296,7 +437,12 @@ object run {
     }
     val parseEndTime = System.currentTimeMillis
     println( s"it${trainingSentCount}:logProb:${heldOutLogProb}" )
-    println( s"test took ${ (parseEndTime - parseStartTime ) / testSet.size}ms/sentence" )
+    println( s"it${trainingSentCount}:testTimePerSentence:${ (parseEndTime - parseStartTime ) / testSet.size}ms/sentence" )
+    println( s"it${trainingSentCount}:particlePerplexity:${p.particlePerplexity}" )
+
+    if( particleFilter ) {
+      println( s"resampled ${resamplingEventCounts} times" )
+    }
 
     if( printFinalGrammar ) {
       println( "FINAL GRAMMAR" )

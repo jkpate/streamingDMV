@@ -231,15 +231,16 @@ case class StopEvent( head:Int, dir:AttDir, v:Decoration, dec:StopDecision ) ext
   override val hashCode =
     ( (head + 107 ) * 107 ) + dir.hashCode() + v.hashCode() + dec.hashCode()
 
-  override def equals( o:Any ) = {
-    o match {
-      case that:StopEvent => ( head == that.head ) &&
-          ( v == that.v ) &&
-          ( dir == that.dir ) &&
-          ( dec == that.dec )
-      case _ => false
-    }
-  }
+  // override def equals( o:Any ) = {
+  //   // println(".")
+  //   o match {
+  //     case that:StopEvent => ( head == that.head ) &&
+  //         ( v == that.v ) &&
+  //         ( dir == that.dir ) &&
+  //         ( dec == that.dec )
+  //     case _ => false
+  //   }
+  // }
 }
 case class StopNorm( head:Int, dir:AttDir, v:Decoration ) extends NormKey {
   // override lazy val hashCode: Int= scala.runtime.ScalaRunTime._hashCode(StopNorm.this)
@@ -283,6 +284,11 @@ abstract class DependencyCounts {
   def destructivePlus[C<:DependencyCounts]( other:C ):Unit
   def totalCounts:Double
   def printTotalCountsByType:Unit
+
+  def printRootEvents:Unit
+  def printStopEvents:Unit
+  def printChooseEvents:Unit
+
 }
 
 case class DMVCounts(
@@ -303,6 +309,17 @@ case class DMVCounts(
     }
   }
 
+  def printRootEvents =
+    println( rootCounts.counts.keys.mkString("\t","\n\t","\n\n" ) )
+  def printStopEvents =
+    stopCounts.counts.keys.foreach{ e =>
+      println( "\t" + e )
+    }
+  def printChooseEvents =
+    chooseCounts.counts.keys.foreach{ e =>
+      println( "\t" + e )
+    }
+
   def totalCounts = 
     rootCounts.counts.values.sum +
     stopCounts.counts.values.sum +
@@ -311,6 +328,7 @@ case class DMVCounts(
     println( s"> ${rootCounts.counts.values.sum} root events" )
     println( s"> ${stopCounts.counts.values.sum} stop events" )
     println( s"> ${chooseCounts.counts.values.sum} choose events" )
+    println( s"> ${chooseCounts.denoms.size} choose LHS" )
   }
 }
 object DMVCounts {
@@ -344,6 +362,18 @@ case class MatrixDMVCounts(
     sum( rootCounts.counts.values.reduce(_ :+ _) ) +
     sum( stopCounts.counts.values.reduce(_ :+ _) ) +
     sum( chooseCounts.counts.values.reduce(_ :+ _) )
+
+  def printRootEvents =
+  println( rootCounts.counts.keys.map{e=>e+": " + rootCounts(e)}.mkString("\t","\t","" ) )
+  def printStopEvents =
+    stopCounts.counts.keys.toList.sortWith(_.toString<_.toString).foreach{ e =>
+      println( "\t" + e + ": " + stopCounts( e ) )
+    }
+  def printChooseEvents =
+    chooseCounts.counts.keys.toList.sortWith(_.toString<_.toString).foreach{ e =>
+      println( "\t" + e + ": " + chooseCounts( e ) )
+    }
+
 
   def printTotalCountsByType {
     println(

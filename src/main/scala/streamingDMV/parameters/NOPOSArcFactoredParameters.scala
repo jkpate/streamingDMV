@@ -15,7 +15,21 @@ abstract class NOPOSArcFactoredParameters(
   val p_stop = new CPT[StopEvent]( stopAlpha )
   val p_choose = new CPT[ChooseEvent]( chooseAlpha )
 
-  var fullyNormalized:Boolean = false
+  def toCounts = {
+    // val c =
+    DMVCounts(
+        p_root,
+        p_stop,
+        p_choose
+      )
+
+    // // println( c.chooseCounts.denoms.size + " choose LHS in toCounts" )
+    // println( "in toCounts " )
+    // c.printTotalCountsByType
+
+    // c
+  }
+
 
   def apply( r:RootEvent ) = {
     if( fullyNormalized )
@@ -53,6 +67,19 @@ abstract class NOPOSArcFactoredParameters(
     p_stop.increment( counts.stopCounts )
     p_choose.increment( counts.chooseCounts )
   }
+
+  def setEvents( counts:DMVCounts ) {
+    p_root.setEvents( counts.rootCounts )
+    p_stop.setEvents( counts.stopCounts )
+    p_choose.setEvents( counts.chooseCounts )
+  }
+
+  def setEventsAndCounts( counts:DMVCounts ) {
+    p_root.setEventsAndCounts( counts.rootCounts )
+    p_stop.setEventsAndCounts( counts.stopCounts )
+    p_choose.setEventsAndCounts( counts.chooseCounts )
+  }
+
 
   def decrementCounts( counts:DMVCounts ) {
     p_root.decrement( counts.rootCounts )

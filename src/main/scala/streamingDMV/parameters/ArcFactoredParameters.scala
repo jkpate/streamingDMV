@@ -11,11 +11,16 @@ abstract class ArcFactoredParameters[C<:DependencyCounts](
   chooseAlpha:Double
 ) {
 
+  var fullyNormalized:Boolean = false
   def zerosInit( corpus:List[Utt] ):Unit
+
+  def toCounts:C
 
   def randomizeCounts( seed:Int, scale:Int ):Unit
 
   def incrementCounts( counts:C ):Unit
+  def setEvents( counts:C ):Unit
+  def setEventsAndCounts( counts:C ):Unit
 
   def decrementCounts( counts:C ):Unit
 

@@ -16,7 +16,13 @@ abstract class UPOSArcFactoredParameters(
   val p_stop = new MatrixCPT[StopEvent]( stopAlpha, 1, uposCount )
   val p_choose = new MatrixCPT[ChooseEvent]( chooseAlpha, uposCount, uposCount )
 
-  var fullyNormalized:Boolean = false
+  def toCounts =
+    MatrixDMVCounts(
+      p_root,
+      p_stop,
+      p_choose
+    )
+
 
   def apply( r:RootEvent ) = {
     if( fullyNormalized )
@@ -54,6 +60,19 @@ abstract class UPOSArcFactoredParameters(
     p_stop.increment( counts.stopCounts )
     p_choose.increment( counts.chooseCounts )
   }
+
+  def setEvents( counts:MatrixDMVCounts ) {
+    p_root.setEvents( counts.rootCounts )
+    p_stop.setEvents( counts.stopCounts )
+    p_choose.setEvents( counts.chooseCounts )
+  }
+
+  def setEventsAndCounts( counts:MatrixDMVCounts ) {
+    p_root.setEventsAndCounts( counts.rootCounts )
+    p_stop.setEventsAndCounts( counts.stopCounts )
+    p_choose.setEventsAndCounts( counts.chooseCounts )
+  }
+
 
   def decrementCounts( counts:MatrixDMVCounts ) {
     p_root.decrement( counts.rootCounts )

@@ -13,6 +13,7 @@ abstract class FirstOrderArcFactoredParameters(
     // val rootEvents = MSet[RootEvent]()
     // val stopEvents = MSet[StopEvent]()
     // val chooseEvents = MSet[ChooseEvent]()
+    println( "FirstOrderArcFactoredParameters zeros init" )
 
     p_root.clear
     p_stop.clear
@@ -30,6 +31,7 @@ abstract class FirstOrderArcFactoredParameters(
         ( 0 until t ).foreach{ i =>
           // chooseEvents += ChooseEvent( h, LeftAtt, s(i) )
           p_choose.increment( ChooseEvent( h, LeftAtt, s(i) ), 0D )
+
         }
         ( t+1 until s.length ).foreach{ j =>
           // chooseEvents += ChooseEvent( h, RightAtt, s(j) )
@@ -37,6 +39,9 @@ abstract class FirstOrderArcFactoredParameters(
         }
       }
     }
+
+    // println( s"  > ${p_choose.denoms.size} choose left-hand sides" )
+
 
     // p_root.setEvents( rootEvents.toSet )
     // p_stop.setEvents( stopEvents.toSet )

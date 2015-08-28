@@ -95,19 +95,17 @@ class OriginalDMVParser(
   def findRightMChild( k:Int, j:Int, decoration:MDecoration ) =
     headTrace( k )( j )( decoration.evenRight )
 
-  def lexFill( index:Int ) {
-    val head = intString( index )
-    insideChart(index)(index+1)( Innermost ) = 1D
-  }
+  // def lexFill( index:Int ) {
+  //   val head = intString( index )
+  //   insideChart(index)(index+1)( Innermost ) = 1D
+  // }
+  def lexSpecs( index:Int ) = Seq( Innermost )
+  def lexCellFactor( index:Int, pDec:Decoration ) = 1D
 
 
   def lexMarginals( index:Int ) = Seq[Tuple2[Event,Double]]()
 
 
-  def viterbiLexFill( index:Int ) {
-    insideChart(index)(index+1)( Innermost ) = 1D
-    headTrace(index)(index+1) += Innermost -> LexEntry( index )
-  }
 
 
 
@@ -451,6 +449,13 @@ class OriginalDMVParser(
       ( StopEvent( dep, LeftAtt, cDec, Stop ), marginal )
     )
   }
+
+  def trueLogProb( counts:DMVCounts ) = {
+    theta.p_root.trueLogProb( counts.rootCounts ) +
+    theta.p_stop.trueLogProb( counts.stopCounts ) +
+    theta.p_choose.trueLogProb( counts.chooseCounts )
+  }
+
 
 }
 

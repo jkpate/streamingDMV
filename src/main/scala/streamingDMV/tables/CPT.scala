@@ -3,23 +3,27 @@ package streamingDMV.tables
 import streamingDMV.labels._
 import collection.mutable.{Map=>MMap,Set=>MSet}
 
+import org.apache.commons.math3.special.{Gamma=>G}
+
+
 // symmetric Dirichlet Multinomial CPT
 // class CPT[E<:Event,N<:NormKey]( alpha:Double ) {
 class CPT[E<:Event]( alpha:Double ) {
   var events = MSet[E]()
-  val counts = MMap[E,Double]()
-  val denomCounts = MMap[NormKey,Double]()
-  val denoms = MMap[NormKey,MSet[E]]()
+  var counts = MMap[E,Double]().withDefaultValue(0D)
+  var denomCounts = MMap[NormKey,Double]()
+  var denoms = MMap[NormKey,MSet[E]]()
 
   def apply( event:E ) =
     counts( event )
 
   def normalized( event:E ) = {
     val n = event.normKey
-    ( counts( event ) + alpha  ) / (
+    ( counts( event ) + alpha ) / (
       denomCounts( n ) + (alpha * denoms(n).size )
     )
   }
+
 
   def taylorExpDigamma( v:Double ) = {
     // Mark's fast digamma approximation
@@ -39,12 +43,58 @@ class CPT[E<:Event]( alpha:Double ) {
     )
   }
 
+  def trueLogProb( other:CPT[E] ) = {
+    other.denoms.map{ case (denom,otherEvents) =>
+      val totalEvents = denoms( denom )
+      // otherEvents.foreach{ e => assert( totalEvents.contains( e ) ) }
+
+      // val eventsUnion = ( otherEvents ++ myEvents )
+      val withOtherNumerator = 
+        totalEvents.map{ e =>
+          G.logGamma( counts( e ) + other( e ) + alpha )
+        }.reduce(_+_)
+
+      val withOtherDenom =
+        G.logGamma(
+          totalEvents.map{ e =>
+            val n = e.normKey
+            denomCounts( n ) + other.denomCounts( n ) + (alpha * totalEvents.size )
+          }.sum
+        )
+
+      val myNumerator = 
+        totalEvents.map{ e =>
+          G.logGamma( counts( e ) + alpha )
+        }.reduce(_+_)
+
+      val myDenom =
+        G.logGamma(
+          totalEvents.map{ e =>
+            val n = e.normKey
+            denomCounts( n ) + (alpha * totalEvents.size )
+          }.sum
+        )
+
+      // println(
+      //   s"($withOtherNumerator}/$withOtherDenom) / ($myNumerator/$myDenom)"
+      // )
+
+      // math.exp(
+        (
+          withOtherNumerator - withOtherDenom
+        ) - (
+          myNumerator - myDenom
+        )
+      // )
+
+    }.reduce(_+_)
+  }
+
   def increment( event:E, inc:Double ) = {
-    // counts.getOrElseUpdate( event, 0D ) += inc
-    counts += event -> { counts.getOrElse( event, 0D ) + inc }
+    // to have a faster zerosInit
+    if( inc > 0 ) counts += event -> { counts.getOrElse( event, 0D ) + inc }
 
     val n = event.normKey
-    // denomCounts( n ) += inc
     denomCounts +=
       n -> { denomCounts.getOrElse( n, 0D ) + inc }
 
@@ -92,6 +142,21 @@ class CPT[E<:Event]( alpha:Double ) {
       denomCounts += n -> 0D
       denoms += n -> MSet( events.toSeq:_* )
     }
+  }
+
+  def setEvents( other:CPT[E] ) {
+    clear
+    denoms = other.denoms
+    denomCounts = other.denomCounts
+    events = other.events
+  }
+
+  def setEventsAndCounts( other:CPT[E] ) {
+    clear
+    denoms = other.denoms
+    denomCounts = other.denomCounts
+    events = other.events
+    counts = other.counts
   }
 
   def randomizeCounts( r:util.Random, scale:Int ) {
