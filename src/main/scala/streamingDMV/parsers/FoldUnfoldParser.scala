@@ -52,7 +52,6 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
 
   def streamingBayesUpdate(
     miniBatch:List[Utt],
-    miniBatchNum:Int,
     maxIter:Int = 10,
     convergence:Double = 0.001,
     printIterScores:Boolean = false,
