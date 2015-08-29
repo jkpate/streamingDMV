@@ -88,16 +88,16 @@ class MatrixCPT[E<:Event]( alpha:Double, rows:Int, cols:Int ) {
   }
   def setEvents( other:MatrixCPT[E] ) {
     clear
-    denoms = other.denoms
-    denomCounts = other.denomCounts
-    events = other.events
+    denoms = other.denoms.clone
+    denomCounts = other.denomCounts.clone
+    events = other.events.clone
   }
   def setEventsAndCounts( other:MatrixCPT[E] ) {
     clear
-    denoms = other.denoms
-    denomCounts = other.denomCounts
-    events = other.events
-    counts = other.counts
+    denoms = other.denoms.clone
+    denomCounts = other.denomCounts.clone
+    events = other.events.clone
+    counts = other.counts.clone
   }
 
   def decrement( other:MatrixCPT[E] ) {

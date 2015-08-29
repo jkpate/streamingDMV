@@ -180,7 +180,7 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
         maxLength = maxLength,
         numParticles = 2,//6,
         createParticle = (counts:DMVCounts,l:Int) => {
-          val p_l = new OriginalDMVParser( maxLength, randomSeed = 15 + l )
+          val p_l = new OriginalDMVParser( maxLength, randomSeed = 15 + 32*l )
           p_l.zerosInit( idDMVCorpus )
           p_l.theta.incrementCounts( counts )
           p_l
@@ -189,6 +189,11 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
 
 
     pf.resampleParticles
+    println( "---" )
+    pf.resampleParticles
+    println( "---" )
+    pf.resampleParticles
+    println( "---" )
     (0 until 4 ).foreach{ i =>
       pf.streamingBayesUpdate( idDMVCorpus )
       idDMVCorpus.foreach{ s =>

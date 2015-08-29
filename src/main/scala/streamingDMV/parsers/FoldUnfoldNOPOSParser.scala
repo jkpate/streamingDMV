@@ -45,6 +45,9 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
   def rightwardSplitSpecs(i:Int,j:Int):Seq[Tuple2[Decoration,Seq[Tuple3[Int,MDecoration,Decoration]]]]
   def leftwardSplitSpecs(i:Int,j:Int):Seq[Tuple2[Decoration,Seq[Tuple3[Int,MDecoration,Decoration]]]]
 
+  // def lexCellScores( index:Int ) = {
+  //       rightwardCellFactor( i, k, j, pDec, mDec, cDec )
+  // }
   def rightwardCellScore( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = {
     insideChart( i )( k )( mDec ) *
       insideChart( k )( j )( cDec ) *
@@ -112,6 +115,13 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
   def leftwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ):Double
   def mCellFactor( i:Int, k:Int, j:Int, mDecoration:MDecoration ):Double
 
+  def lexCellScores( index:Int ) = {
+    lexSpecs( index ).map{ pDec =>
+      (
+        pDec, Seq( lexCellFactor( index, pDec ) )
+      )
+    }
+  }
   def rightwardCellScores( i:Int, j:Int ) = {
     rightwardSplitSpecs( i, j ).map{ case ( pDec, splits ) =>
       (
@@ -508,7 +518,14 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
               sampleTreeCounts( k, j, cDec )
         }
       } else {
-        lexMarginals( j )
+        // lexMarginals( j )
+        lexCellScores( j ).filter( _._1 == pDec ).flatMap{ case ( parent, scores ) =>
+          assert( parent == pDec )
+          assert( scores.length == 1 )
+
+          sampleScore += math.log( scores.head )
+          Seq()
+        }
       }
 
     } else if( j%2 == 1 ) { // Leftward
@@ -526,7 +543,14 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
               sampleTreeCounts( k, j, mDec )
         }
       } else {
-        lexMarginals( i )
+        // lexMarginals( i )
+        lexCellScores( i ).filter( _._1 == pDec ).flatMap{ case ( parent, scores ) =>
+          assert( parent == pDec )
+          assert( scores.length == 1 )
+
+          sampleScore += math.log( scores.head )
+          Seq()
+        }
       }
 
     } else if( i == 0 && j == intString.length ) { // Root

@@ -3,6 +3,7 @@ package streamingDMV.tables
 import streamingDMV.labels._
 import collection.mutable.{Map=>MMap,Set=>MSet}
 
+import math.{log,log1p}
 import org.apache.commons.math3.special.{Gamma=>G}
 
 
@@ -43,6 +44,20 @@ class CPT[E<:Event]( alpha:Double ) {
     )
   }
 
+  // from https://code.google.com/p/fastapprox/source/browse/trunk/fastapprox/src/fastgamma.h
+  def fastLogGamma( v:Double ) = {
+    if( v < 3 ) {
+      0D
+    } else {
+      val logTerm = log( v * ( 1 + v ) * ( 2 + v ) )
+      val vp3 = 3 + v
+
+      - 2.081061466 - v +
+      0.0833333 / vp3 - logTerm +
+      (2.5 + v) * log(vp3)
+    }
+  }
+
   def trueLogProb( other:CPT[E] ) = {
     other.denoms.map{ case (denom,otherEvents) =>
       val totalEvents = denoms( denom )
@@ -51,11 +66,13 @@ class CPT[E<:Event]( alpha:Double ) {
       // val eventsUnion = ( otherEvents ++ myEvents )
       val withOtherNumerator = 
         totalEvents.map{ e =>
-          G.logGamma( counts( e ) + other( e ) + alpha )
+          // G.logGamma( counts( e ) + other( e ) + alpha )
+          fastLogGamma( counts( e ) + other( e ) + alpha )
         }.reduce(_+_)
 
       val withOtherDenom =
-        G.logGamma(
+        // G.logGamma(
+        fastLogGamma(
           totalEvents.map{ e =>
             val n = e.normKey
             denomCounts( n ) + other.denomCounts( n ) + (alpha * totalEvents.size )
@@ -64,11 +81,13 @@ class CPT[E<:Event]( alpha:Double ) {
 
       val myNumerator = 
         totalEvents.map{ e =>
-          G.logGamma( counts( e ) + alpha )
+          // G.logGamma( counts( e ) + alpha )
+          fastLogGamma( counts( e ) + alpha )
         }.reduce(_+_)
 
       val myDenom =
-        G.logGamma(
+        // G.logGamma(
+        fastLogGamma(
           totalEvents.map{ e =>
             val n = e.normKey
             denomCounts( n ) + (alpha * totalEvents.size )
@@ -146,17 +165,17 @@ class CPT[E<:Event]( alpha:Double ) {
 
   def setEvents( other:CPT[E] ) {
     clear
-    denoms = other.denoms
-    denomCounts = other.denomCounts
-    events = other.events
+    denoms = other.denoms.clone
+    denomCounts = other.denomCounts.clone
+    events = other.events.clone
   }
 
   def setEventsAndCounts( other:CPT[E] ) {
     clear
-    denoms = other.denoms
-    denomCounts = other.denomCounts
-    events = other.events
-    counts = other.counts
+    denoms = other.denoms.clone
+    denomCounts = other.denomCounts.clone
+    events = other.events.clone
+    counts = other.counts.clone
   }
 
   def randomizeCounts( r:util.Random, scale:Int ) {

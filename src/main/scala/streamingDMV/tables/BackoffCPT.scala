@@ -10,9 +10,9 @@ import scala.collection.mutable.{Map=>MMap,Set=>MSet}
 // class CPT[E<:Event,N<:NormKey]( alpha:Double ) {
 class BackoffCPT[E<:Event with BackingOffEvent]( alpha:Map[BackoffDecision,Double] ) {
   var events = MSet[E]()
-  val counts = MMap[E,Double]()
-  val denomCounts = MMap[NormKey,Double]()
-  val denoms = MMap[NormKey,MSet[E]]()
+  var counts = MMap[E,Double]()
+  var denomCounts = MMap[NormKey,Double]()
+  var denoms = MMap[NormKey,MSet[E]]()
 
   var fullyNormalized:Boolean = false
 
@@ -129,6 +129,22 @@ class BackoffCPT[E<:Event with BackingOffEvent]( alpha:Map[BackoffDecision,Doubl
     denomCounts.clear
     denoms.clear
   }
+
+  def setEvents( other:BackoffCPT[E] ) {
+    clear
+    denoms = other.denoms.clone
+    denomCounts = other.denomCounts.clone
+    events = other.events.clone
+  }
+
+  def setEventsAndCounts( other:BackoffCPT[E] ) {
+    clear
+    denoms = other.denoms.clone
+    denomCounts = other.denomCounts.clone
+    events = other.events.clone
+    counts = other.counts.clone
+  }
+
 
   def setEvents( events:Set[E] ) {
     clear

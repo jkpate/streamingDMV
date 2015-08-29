@@ -24,9 +24,12 @@ abstract class ParticleFilterParser[
   val particles = Array.tabulate( numParticles )( l => createParticle(emptyCounts,l) )
   val particleWeights = Array.fill( numParticles )( 1D/numParticles )
 
-  def ess = 1 / (
-    particleWeights.map{ w => math.pow( w, 2 ) }.sum
-  )
+  def ess = {
+    // println( particleWeights.mkString( " " ) )
+    1D / (
+      particleWeights.map{ w => math.pow( w, 2D ) }.sum
+    )
+  }
 
   def particlePerplexity = {
     math.pow(
@@ -64,7 +67,8 @@ abstract class ParticleFilterParser[
 
         newParticleWeights(l) = w
 
-        createParticle( particles(idx).theta.toCounts, l )
+        // println( s"particle $l" )
+        createParticle( particles(idx).theta.toCounts, rand.nextInt )
       }
     )
 
@@ -92,50 +96,66 @@ abstract class ParticleFilterParser[
     ( 0 until numParticles )/*.par*/.map{ l =>
       particles(l).theta.fullyNormalized = true
       val (counts, proposalScore) = miniBatch.map{ s =>
-        particles( l ).sampleTreeCounts( s )
+        val (sentCounts, sentProposalScore) = particles( l ).sampleTreeCounts( s )
 
+        // println( particles( l ).stringProb )
+        // println( ( particles(l).trueLogProb( sentCounts ) ) + " <=> " +
+        //      ( sentProposalScore + math.log( particles( l ).stringProb ) )
+        // )
+
+        particleWeights(l) =
+          math.log( particleWeights(l) ) +
+            ( particles(l).trueLogProb( sentCounts ) - (
+                sentProposalScore //+ math.log( particles( l ).stringProb  )
+              )
+            )
+
+        val totalLogWeight = particleWeights.reduce( logSum( _,_) )
+        (0 until numParticles).foreach{ l =>
+          particleWeights(l) = math.exp( particleWeights(l) - totalLogWeight )
+        }
+
+        (sentCounts, sentProposalScore)
       }.reduce{ (a,b) => a._1.destructivePlus( b._1 ); ( a._1, a._2 + b._2 ) }
 
-      particleWeights(l) =
-        math.log( particleWeights(l) ) +
-          particles(l).trueLogProb( counts ) - proposalScore
 
       particles( l ).theta.incrementCounts( counts )
     }
+
 
     // handle overflow -- set non-overflowing weights to zero.
     // TODO see if this is still necessary -- I think the overflow came from a bug in the
     // trueLogProb code (I was still multiplying even though in log space).
 
-    if( particleWeights.exists( _ == Double.PositiveInfinity ) ) {
-      var totalLogWeight = Double.NegativeInfinity
+      // if( particleWeights.exists( _ == Double.PositiveInfinity ) ) {
+      //   var totalLogWeight = Double.NegativeInfinity
 
-      ( 0 until numParticles ).foreach{ l =>
-        if( math.exp( particleWeights(l) ) == Double.PositiveInfinity ) {
-          totalLogWeight = logSum( totalLogWeight, particleWeights(l) )
-        } else {
-          particleWeights(l) = Double.NegativeInfinity
-        }
-      }
+      //   ( 0 until numParticles ).foreach{ l =>
+      //     if( math.exp( particleWeights(l) ) == Double.PositiveInfinity ) {
+      //       totalLogWeight = logSum( totalLogWeight, particleWeights(l) )
+      //     } else {
+      //       particleWeights(l) = Double.NegativeInfinity
+      //     }
+      //   }
 
-      ( 0 until numParticles ).foreach{ l =>
-        if( particleWeights(l) == Double.PositiveInfinity ) {
-          particleWeights(l) = 1D
-        } else if( particleWeights(l) == Double.NegativeInfinity ) {
-          particleWeights(l) = 0D
-        } else {
-          particleWeights(l) = math.exp( particleWeights( l ) - totalLogWeight )
-        }
-      }
-    } else {
-      val totalLogWeight = particleWeights.reduce( logSum(_,_) )
-      (0 until numParticles).foreach{ l =>
-        particleWeights(l) = 
-          math.exp(
-            particleWeights(l) - totalLogWeight
-          )
-      }
-    }
+      //   ( 0 until numParticles ).foreach{ l =>
+      //     if( particleWeights(l) == Double.PositiveInfinity ) {
+      //       particleWeights(l) = 1D
+      //     } else if( particleWeights(l) == Double.NegativeInfinity ) {
+      //       particleWeights(l) = 0D
+      //     } else {
+      //       particleWeights(l) = math.exp( particleWeights( l ) - totalLogWeight )
+      //     }
+      //   }
+      // } else {
+      //   val totalLogWeight = particleWeights.reduce( logSum(_,_) )
+      //   (0 until numParticles).foreach{ l =>
+      //     particleWeights(l) = 
+      //       math.exp(
+      //         particleWeights(l) - totalLogWeight
+      //       )
+      //   }
+      // }
 
   }
 

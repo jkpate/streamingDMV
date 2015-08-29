@@ -17,6 +17,7 @@ class OriginalDMVParser(
   maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed
 ) {
 
+  // println( s"my random seed is $randomSeed" )
   val theta = new OriginalDMVParameters( rootAlpha, stopAlpha, chooseAlpha )
 
   // One of the m-node children is a head-child, so they can't both be outermost

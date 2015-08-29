@@ -13,10 +13,11 @@ import streamingDMV.labels.{Parse,Utt,DependencyCounts}
 
 object run {
   var miniBatchDur = 0D
+  var totalDur = 0D
   var sentencesProcessed = 0
   sys.addShutdownHook {
     println( s"${sentencesProcessed} sentences processed" )
-    println( s"${miniBatchDur/sentencesProcessed}ms per training sentence")
+    println( s"${totalDur/sentencesProcessed}ms per training sentence")
   }
   def main( args:Array[String] ) {
     val optsParser = new OptionParser()
@@ -166,6 +167,8 @@ object run {
 
     val maxLength = { trainSet ++ testSet }.map{ _.string.length }.max
 
+    val r = new util.Random( randomSeed )
+
     // val p:FoldUnfoldParser[_<:ArcFactoredParameters] =
     val p:FoldUnfoldParser[_<:DependencyCounts,_<:ArcFactoredParameters[_]] =
       if( particleFilter ) {
@@ -175,10 +178,10 @@ object run {
             maxLength = maxLength,
             numParticles = numParticles,
             createParticle = (counts:DMVCounts,l:Int) => {
-              val p_l = new TopDownDMVParser( maxLength = maxLength, randomSeed = randomSeed +31*l )
+              val p_l = new TopDownDMVParser( maxLength = maxLength, randomSeed = l)
               // p_l.zerosInit( trainSet ++ testSet )
-              p_l.theta.setEvents( counts )
-              p_l.theta.incrementCounts( counts )
+              p_l.theta.setEventsAndCounts( counts )
+              // p_l.theta.incrementCounts( counts )
               p_l
             }
           )
@@ -188,10 +191,10 @@ object run {
             maxLength = maxLength,
             numParticles = numParticles,
             createParticle = (counts:DMVCounts,l:Int) => {
-              val p_l = new OriginalDMVParser( maxLength = maxLength, randomSeed = randomSeed +31*l )
+              val p_l = new OriginalDMVParser( maxLength = maxLength, randomSeed = l)
               // p_l.zerosInit( trainSet ++ testSet )
-              p_l.theta.setEvents( counts )
-              p_l.theta.incrementCounts( counts )
+              p_l.theta.setEventsAndCounts( counts )
+              // p_l.theta.incrementCounts( counts )
               p_l
             }
           )
@@ -201,10 +204,10 @@ object run {
             maxLength = maxLength,
             numParticles = numParticles,
             createParticle = (counts:DMVCounts,l:Int) => {
-              val p_l = new NoValenceParser( maxLength = maxLength, randomSeed = randomSeed +31*l )
+              val p_l = new NoValenceParser( maxLength = maxLength, randomSeed = l)
               // p_l.zerosInit( trainSet ++ testSet )
-              p_l.theta.setEvents( counts )
-              p_l.theta.incrementCounts( counts )
+              p_l.theta.setEventsAndCounts( counts )
+              // p_l.theta.incrementCounts( counts )
               p_l
             }
           )
@@ -221,11 +224,11 @@ object run {
               val p_l =
                 new HeadOutAdjHeadNoValenceParser(
                   maxLength = maxLength,
-                  randomSeed = randomSeed +31*l
+                  randomSeed = r.nextInt
                 )
               // p_l.zerosInit( trainSet ++ testSet )
-              p_l.theta.setEvents( counts )
-              p_l.theta.incrementCounts( counts )
+              p_l.theta.setEventsAndCounts( counts )
+              // p_l.theta.incrementCounts( counts )
               p_l
             }
           )
@@ -245,11 +248,11 @@ object run {
                   maxLength = maxLength,
                   backoffAlpha = backoffAlpha,
                   notBackoffAlpha = notBackoffAlpha,
-                  randomSeed = randomSeed +31*l
+                  randomSeed = r.nextInt
                 )
               // p_l.zerosInit( trainSet ++ testSet )
-              p_l.theta.setEvents( counts )
-              p_l.theta.incrementCounts( counts )
+              p_l.theta.setEventsAndCounts( counts )
+              // p_l.theta.incrementCounts( counts )
               p_l
             }
           )
@@ -259,10 +262,10 @@ object run {
             maxLength = maxLength,
             numParticles = numParticles,
             createParticle = (counts:DMVCounts,l:Int) => {
-              val p_l = new OriginalDMVParser( maxLength = maxLength, randomSeed = randomSeed )
+              val p_l = new OriginalDMVParser( maxLength = maxLength, randomSeed = l)
               // p_l.zerosInit( trainSet ++ testSet )
-              p_l.theta.setEvents( counts )
-              p_l.theta.incrementCounts( counts )
+              p_l.theta.setEventsAndCounts( counts )
+              // p_l.theta.incrementCounts( counts )
               p_l
             }
           )
@@ -323,7 +326,6 @@ object run {
       // p.theta.printOut()
     }
 
-    val r = new util.Random( randomSeed )
     val shuffledTrainSet = r.shuffle( trainSet.toList )
 
     // Batch VB is just a special case of minibatch VB where the first minibatch is set to the
@@ -339,7 +341,6 @@ object run {
         shuffledTrainSet.toList.drop( initialMiniBatchSize ).grouped( miniBatchSize ).toList
 
     var i = 0
-    var totalDur = 0D
     var resamplingEventCounts = 0
     ( firstMiniBatch :: subsequentMiniBatches ).foreach{ mb =>
 
@@ -379,6 +380,8 @@ object run {
           if( printResamplingEvents) println( s"it${sentencesProcessed}:resamplingESS:${ess}")
           p.resampleParticles
           resamplingEventCounts += 1
+        } else {
+          if( printResamplingEvents) println( s"it${sentencesProcessed}:notResamplingESS:${ess}")
         }
       }
 

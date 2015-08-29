@@ -145,9 +145,9 @@ class HeadOutInterpolatedAdjHeadNoValenceParameters(
   }
 
   override def setEventsAndCounts( counts:DMVCounts ) {
-    p_root.setEvents( counts.rootCounts )
-    p_stop.setEvents( counts.stopCounts )
-    p_choose.setEvents( counts.chooseCounts )
+    p_root.setEventsAndCounts( counts.rootCounts )
+    p_stop.setEventsAndCounts( counts.stopCounts )
+    p_choose.setEventsAndCounts( counts.chooseCounts )
     if( notBackoffAlpha > 0 ) {
       lambda_choose.clear
       counts.chooseCounts.counts.foreach{ case (event, count) =>
