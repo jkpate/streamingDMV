@@ -96,8 +96,10 @@ abstract class ParticleFilterParser[
     // Can't parallelize across particles, at least not naively, because weight updates become tied
     // when normalizing.
     // TODO push weight normalization after minibatch. Will need to pre-logify the particle weights
+
     (0 until numParticles ).foreach{ l => particleWeights(l) = math.log( particleWeights(l) ) }
-    ( 0 until numParticles ).map{ l =>
+
+    ( 0 until numParticles ).par.map{ l =>
       particles(l).theta.fullyNormalized = true
       val (counts, proposalScore) = miniBatch.map{ s =>
         val (sentCounts, sentProposalScore) = particles( l ).sampleTreeCounts( s )
@@ -113,13 +115,12 @@ abstract class ParticleFilterParser[
         (sentCounts, sentProposalScore)
       }.reduce{ (a,b) => a._1.destructivePlus( b._1 ); ( a._1, a._2 + b._2 ) }
 
-      val totalLogWeight = particleWeights.reduce( logSum( _,_) )
-      (0 until numParticles).foreach{ l =>
-        particleWeights(l) = math.exp( particleWeights(l) - totalLogWeight )
-      }
-
-
       particles( l ).theta.incrementCounts( counts )
+    }
+
+    val totalLogWeight = particleWeights.reduce( logSum( _,_) )
+    (0 until numParticles).foreach{ l =>
+      particleWeights(l) = math.exp( particleWeights(l) - totalLogWeight )
     }
 
 
