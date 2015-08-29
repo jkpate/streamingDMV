@@ -239,6 +239,20 @@ class ParticleFilterNOPOSParser[
   }
 
   def rootCellScore( k:Int, leftDec:Decoration, rightDec:Decoration ) = {
+        // println( (k, leftDec, rightDec) )
+        // println(
+        //   "  " + (0 until numParticles).map{ l =>
+        //     particleWeights(l) *
+        //       particles(l).rootCellFactor( k )
+        //   }.sum
+        // )
+        // println( 
+        //   "  " + particles.head.insideChart( 0 )( k )( leftDec )
+        // )
+        // println( 
+        //   "  " + particles.head.insideChart( k )( intString.length )( rightDec ) + "\n\n"
+        // )
+
     particles.head.insideChart( 0 )( k )( leftDec ) *
       particles.head.insideChart( k )( intString.length )( rightDec ) *
         (0 until numParticles).map{ l =>
@@ -349,7 +363,7 @@ class ParticleFilterNOPOSParser[
   }
   def viterbiLexFill( index:Int ) {
     particles.head.lexSpecs( index ).foreach{ pDec =>
-      particles.head.insideChart( index )( index+1 )(pDec) = lexCellFactor( index, pDec )
+      particles.head.insideChart( index )( index+1 )(pDec) += lexCellFactor( index, pDec )
       particles.head.insertLexEntry( index, pDec )
     }
   }
@@ -357,7 +371,6 @@ class ParticleFilterNOPOSParser[
   def viterbiParse( utt:Utt ) = {
     clearCharts
     intString = doubleString( utt.string )
-    particles.head.intString = intString
     (0 until numParticles).foreach{ l => particles(l).intString = intString }
 
     (1 to ( intString.length )).foreach{ j =>
@@ -379,7 +392,9 @@ class ParticleFilterNOPOSParser[
     clearCharts
     // intString = utt.string.flatMap{ w => Seq(w,w) }
     intString = doubleString( utt.string )
-    particles.head.intString = intString
+
+    (0 until numParticles).foreach{ l => particles(l).intString = intString }
+
     (1 to ( intString.length )).foreach{ j =>
       viterbiLexFill( j-1 )
 

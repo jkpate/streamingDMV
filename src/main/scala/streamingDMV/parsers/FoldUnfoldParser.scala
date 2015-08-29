@@ -63,6 +63,8 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
     val r = rand.nextDouble()*total
     var runningTotal = 0D
 
+    // println( seq.mkString( " " ) )
+
     seq.takeWhile( pair => {
         val result = runningTotal < r
         if( pair._2 > Double.NegativeInfinity ) runningTotal += pair._2

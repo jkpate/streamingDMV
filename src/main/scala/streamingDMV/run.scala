@@ -396,7 +396,7 @@ object run {
             println( s"it${sentencesProcessed}:constituency:${id} ${conParse}" )
             println( s"it${sentencesProcessed}:dependency:${id} ${printDependencyParse(depParse)}" )
           } else {
-            val Parse( id, _, depParse ) = p.viterbiParse( s )
+            val Parse( id, _, depParse ) = p.viterbiDepParse( s )
             println( s"it${sentencesProcessed}:dependency:${id} ${printDependencyParse(depParse)}" )
           }
           heldOutLogProb += p.logProb( s.string )
@@ -433,7 +433,7 @@ object run {
         println( s"it${trainingSentCount}:constituency:${id} ${conParse}" )
         println( s"it${trainingSentCount}:dependency:${id} ${printDependencyParse(depParse)}" )
       } else {
-        val Parse( id, _, depParse ) = p.viterbiParse( s )
+        val Parse( id, _, depParse ) = p.viterbiDepParse( s )
         println( s"it${trainingSentCount}:dependency:${id} ${printDependencyParse(depParse)}" )
       }
       heldOutLogProb += p.logProb( s.string )

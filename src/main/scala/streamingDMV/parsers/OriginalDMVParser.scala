@@ -104,7 +104,8 @@ class OriginalDMVParser(
   def lexCellFactor( index:Int, pDec:Decoration ) = 1D
 
 
-  def lexMarginals( index:Int ) = Seq[Tuple2[Event,Double]]()
+  // def lexMarginals( index:Int ) = Seq[Tuple2[Event,Double]]()
+  def lexEventCounts( index:Int, pDec:Decoration, marginal:Double ) = Seq()
 
 
 

@@ -107,6 +107,7 @@ class TopDownDMVParser(
         // }
 
   def lexCellFactor( index:Int, pDec:Decoration ) = {
+    // println( intString.mkString("{"," ","}") )
     val head = intString( index )
     if( index%2 == 0 )
       theta( StopEvent( head, LeftAtt, pDec, Stop ) )
@@ -119,37 +120,46 @@ class TopDownDMVParser(
       if( index > 0 )
         Seq( Inner, Outermost )
       else
-        Seq( Inner )
+        Seq( Outermost )
     } else {
       if( index < intString.length-1 )
         Seq( Inner, Outermost )
       else
-        Seq( Inner )
+        Seq( Outermost )
     }
   }
 
 
 
-  def lexMarginals( index:Int ) = {
-    val head = intString( index )
-    // Don't include stop factor -- it's actually already included in insideChart (the *real* inside
-    // score for each terminal is 1)
+  def lexEventCounts( index:Int, pDec:Decoration, marginal:Double ) = {
+    val w = intString( index )
     if( index%2 == 0 ) {
-      val lexVs = if( index > 1 ) Seq( Outermost, Inner ) else Seq(Outermost)
-      lexVs.map{ hV =>
-        StopEvent( head, LeftAtt, hV, Stop ) -> {
-          insideChart( index )( index +1 )( hV ) * outsideChart( index )( index +1 )( hV )
-        }
-      }
+      Seq( ( StopEvent( w, LeftAtt, pDec, Stop ) , marginal ) )
     } else {
-      val lexVs = if( index < intString.length-1 ) Seq( Outermost, Inner ) else Seq(Outermost)
-      lexVs.map{ hV =>
-        StopEvent( head, RightAtt, hV, Stop ) -> {
-          insideChart( index )( index +1 )( hV ) * outsideChart( index )( index +1 )( hV )
-        }
-      }
+      Seq( ( StopEvent( w, RightAtt, pDec, Stop ) , marginal ) )
     }
   }
+
+    // def lexMarginals( index:Int ) = {
+    //   val head = intString( index )
+    //   // Don't include stop factor -- it's actually already included in insideChart (the *real* inside
+    //   // score for each terminal is 1)
+    //   if( index%2 == 0 ) {
+    //     val lexVs = if( index > 1 ) Seq( Outermost, Inner ) else Seq(Outermost)
+    //     lexVs.map{ hV =>
+    //       StopEvent( head, LeftAtt, hV, Stop ) -> {
+    //         insideChart( index )( index +1 )( hV ) * outsideChart( index )( index +1 )( hV )
+    //       }
+    //     }
+    //   } else {
+    //     val lexVs = if( index < intString.length-1 ) Seq( Outermost, Inner ) else Seq(Outermost)
+    //     lexVs.map{ hV =>
+    //       StopEvent( head, RightAtt, hV, Stop ) -> {
+    //         insideChart( index )( index +1 )( hV ) * outsideChart( index )( index +1 )( hV )
+    //       }
+    //     }
+    //   }
+    // }
 
   // NEW DEFINITIONS
 
@@ -222,7 +232,20 @@ class TopDownDMVParser(
   }
 
   def rootSplitSpecs() = {
-    ( 1 to (intString.length-1) by 2 ).map{ k => ( k, DecorationPair(Outermost, Outermost) ) }
+    ( 1 to (intString.length-1) by 2 ).map{ k =>
+      (
+        k,
+        DecorationPair(
+          {
+            Outermost
+            // if(k == 1 ) Outermost else Inner
+          }, {
+            Outermost
+            // if( k == (intString.length-1) ) Outermost else Inner
+          }
+        )
+      )
+    }
   }
 
 
@@ -271,6 +294,17 @@ class TopDownDMVParser(
       ( StopEvent( head, LeftAtt, pDec, NotStop ), marginal )
     )
   }
+
+  //def lexEventCounts( index:Int, pDec:Decoration ) = {
+  //  if( index%2 == 0 )
+  //    Seq(
+  //      StopEvent( intString(index), LeftAtt, pDec, Stop )
+  //    )
+  //  else
+  //    Seq(
+  //      StopEvent( intString(index), RightAtt, pDec, Stop )
+  //    )
+  //}
 
   def trueLogProb( counts:DMVCounts ) = {
     theta.p_root.trueLogProb( counts.rootCounts ) +

@@ -35,8 +35,8 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   val maxLength = dmvCorpus.map{_.length}.max
   println( s"maxLength: $maxLength" )
 
-  // val p = new TopDownDMVParser( maxLength, randomSeed = 15 )
-  val p = new OriginalDMVParser( maxLength, randomSeed = 15 )
+  val p = new TopDownDMVParser( maxLength, randomSeed = 15 )
+  // val p = new OriginalDMVParser( maxLength, randomSeed = 15 )
   // val p = new NoValenceParser( maxLength, randomSeed = 15 )
   // val p = new HeadOutAdjHeadNoValenceParser(
   //   maxLength,
@@ -152,7 +152,8 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
 
   @Test def testSampleCounts {
     val startTime = System.currentTimeMillis
-    Array( idDMVCorpus.head).foreach{ s =>
+    idDMVCorpus.foreach{ s =>
+    // Array( idDMVCorpus.head ).foreach{ s =>
       println( s.string.mkString(" " ) )
 
       // println(

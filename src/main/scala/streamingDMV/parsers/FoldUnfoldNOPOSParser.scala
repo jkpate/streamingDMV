@@ -25,6 +25,7 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
   def lexCellFactor( index:Int, pDec:Decoration ):Double
   def lexFill( index:Int ) {
     lexSpecs( index ).foreach{ pDec =>
+        // println( s"incrementing ${(index,pDec)} by ${lexCellFactor( index, pDec )}" )
       insideChart( index )( index+1 )(pDec) += lexCellFactor( index, pDec )
     }
   }
@@ -54,21 +55,53 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
         rightwardCellFactor( i, k, j, pDec, mDec, cDec )
   }
   def leftwardCellScore( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = {
+        // println( s"L: ${(i,k,j,pDec,mDec,cDec)}" )
+        // println(
+        //   "  " +
+        //   insideChart( i )( k )( cDec )
+        // )
+        // println(
+        //   "  " +
+        //   insideChart( k )( j )( mDec )
+        // )
+        // println(
+        //   "  " +
+        //   leftwardCellFactor( i, k, j, pDec, mDec, cDec )
+        // )
     insideChart( i )( k )( cDec ) *
       insideChart( k )( j )( mDec ) *
         leftwardCellFactor( i, k, j, pDec, mDec, cDec )
   }
   def mCellScore( i:Int, k:Int, j:Int, mDecoration:MDecoration ) = {
-    if( k%2 == 0 ) 
+    if( k%2 == 0 ) {
+          // println( s"M ${(i,k,j,mDecoration)}" )
+          // println( "  " +
+          //   insideChart( i )( k )( mDecoration.evenLeft )
+          // )
+          // println( "  " +
+          //   insideChart( k )( j )( mDecoration.evenRight )
+          // )
+          // println( "  " +
+          //   mCellFactor( i, k, j, mDecoration )
+          // )
+
       insideChart( i )( k )( mDecoration.evenLeft ) *
         insideChart( k )( j )( mDecoration.evenRight ) *
           mCellFactor( i, k, j, mDecoration )
-    else
+    } else {
       insideChart( i )( k )( mDecoration.oddLeft ) *
         insideChart( k )( j )( mDecoration.oddRight ) *
           mCellFactor( i, k, j, mDecoration )
+    }
   }
   def rootCellScore( k:Int, leftDec:Decoration, rightDec:Decoration ) = {
+      // println( (k, leftDec, rightDec) )
+      // println( 
+      //   "  " + insideChart( 0 )( k )( leftDec )
+      // )
+      // println( 
+      //   "  " + insideChart( k )( intString.length )( rightDec ) + "\n\n"
+      // )
     insideChart( 0 )( k )( leftDec ) *
       insideChart( k )( intString.length )( rightDec ) *
         rootCellFactor( k )
@@ -117,6 +150,7 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
 
   def lexCellScores( index:Int ) = {
     lexSpecs( index ).map{ pDec =>
+        // println( "lexCellScores " + index + " " + pDec )
       (
         pDec, Seq( lexCellFactor( index, pDec ) )
       )
@@ -161,6 +195,7 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
 
   def rootCellScores() = {
     rootSplitSpecs().map{ case ( k, decorationPair ) =>
+      // println( (0,k,intString.length), decorationPair, )
       (
         ( k, decorationPair ),
         rootCellScore( k, decorationPair.evenLeft, decorationPair.evenRight )
@@ -519,12 +554,13 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
         }
       } else {
         // lexMarginals( j )
-        lexCellScores( j ).filter( _._1 == pDec ).flatMap{ case ( parent, scores ) =>
+        lexCellScores( i ).filter( _._1 == pDec ).flatMap{ case ( parent, scores ) =>
           assert( parent == pDec )
           assert( scores.length == 1 )
 
           sampleScore += math.log( scores.head )
-          Seq()
+          // Seq()
+          lexEventCounts( i, pDec, 1D )
         }
       }
 
@@ -549,7 +585,7 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
           assert( scores.length == 1 )
 
           sampleScore += math.log( scores.head )
-          Seq()
+          lexEventCounts( i, pDec, 1D )
         }
       }
 
@@ -582,6 +618,7 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
     val c = emptyCounts
     sampleScore = 0D
     sampleTreeCounts( 0, intString.length, RootDecoration ).foreach{ case (event, count) =>
+      // println( event, count )
       event match {
         case e:StopEvent => c.stopCounts.increment( e, count )
         case e:ChooseEvent => c.chooseCounts.increment( e, count )
@@ -607,7 +644,7 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
 
   // training stuff
 
-  def lexMarginals( index:Int ):Seq[Tuple2[Event,Double]]
+  // def lexMarginals( index:Int ):Seq[Tuple2[Event,Double]]
 
 
   def rootEventCounts( k:Int, marginal:Double ):Seq[Tuple2[Event,Double]]
@@ -616,6 +653,8 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
   def rightwardEventCounts( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration,
     cDec:Decoration, marginal:Double ):Seq[Tuple2[Event,Double]]
   def mEventCounts( i:Int, k:Int, j:Int, mDecoration:MDecoration, marginal:Double ):Seq[Tuple2[Event,Double]]
+  def lexEventCounts( index:Int, pDec:Decoration, marginal:Double ):Seq[Tuple2[Event,Double]]
+
   def outsidePassWithCounts( s:Array[Int] ):DMVCounts = {
     val c = DMVCounts(
       new CPT[RootEvent]( rootAlpha ),
@@ -684,12 +723,24 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
               }
             }
           } else {
-            lexMarginals( i ).foreach{ case (event, count) =>
-              event match {
-                case e:StopEvent => c.stopCounts.increment( e, count )
-                case e:ChooseEvent => c.chooseCounts.increment( e, count )
+            lexSpecs( i ).foreach{ pDec =>
+              // Don't include stop factor -- it's actually already included in insideChart (the
+              // *real* inside score for each terminal is 1)
+              val marginal =
+                insideChart(i)(i+1)(pDec) * outsideChart(i)(i+1)(pDec)
+              lexEventCounts( i, pDec, marginal ).foreach{ case (event, count) =>
+                event match {
+                  case e:StopEvent => c.stopCounts.increment( e, count )
+                  case e:ChooseEvent => c.chooseCounts.increment( e, count )
+                }
               }
             }
+                // lexMarginals( i ).foreach{ case (event, count) =>
+                //   event match {
+                //     case e:StopEvent => c.stopCounts.increment( e, count )
+                //     case e:ChooseEvent => c.chooseCounts.increment( e, count )
+                //   }
+                // }
           }
         } else if( i%2 == 1 && j%2 == 0 ) { // Rightward label
           if( length > 1 ) {
@@ -723,10 +774,22 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
               }
             }
           } else {
-            lexMarginals( j ).foreach{ case (event, count) =>
-              event match {
-                case e:StopEvent => c.stopCounts.increment( e, count )
-                case e:ChooseEvent => c.chooseCounts.increment( e, count )
+              // lexMarginals( j ).foreach{ case (event, count) =>
+              //   event match {
+              //     case e:StopEvent => c.stopCounts.increment( e, count )
+              //     case e:ChooseEvent => c.chooseCounts.increment( e, count )
+              //   }
+              // }
+            lexSpecs( i ).foreach{ pDec =>
+              // Don't include stop factor -- it's actually already included in insideChart (the
+              // *real* inside score for each terminal is 1)
+              val marginal = 
+                insideChart(i)(i+1)(pDec) * outsideChart(i)(i+1)(pDec)
+              lexEventCounts( i, pDec, marginal ).foreach{ case (event, count) =>
+                event match {
+                  case e:StopEvent => c.stopCounts.increment( e, count )
+                  case e:ChooseEvent => c.chooseCounts.increment( e, count )
+                }
               }
             }
           }

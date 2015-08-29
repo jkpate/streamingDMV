@@ -62,7 +62,8 @@ class NoValenceParser(
   def lexSpecs( index:Int ) = Seq( NoValence )
   def lexCellFactor( index:Int, pDec:Decoration ) = 1D
 
-  def lexMarginals( index:Int ) = Seq()
+  // def lexMarginals( index:Int ) = Seq()
+  def lexEventCounts( index:Int, pDec:Decoration, marginal:Double ) = Seq()
 
   def outsideRootWithMarginals( k:Int ) = {
     val obs = intString( k )

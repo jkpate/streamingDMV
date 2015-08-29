@@ -149,7 +149,8 @@ class HeadOutInterpolatedAdjHeadNoValenceParser(
   }
 
 
-  def lexMarginals( index:Int ) = Seq()
+  // def lexMarginals( index:Int ) = Seq()
+  def lexEventCounts( index:Int, pDec:Decoration, marginal:Double ) = Seq()
 
 
   // NEW DEFINITIONS
