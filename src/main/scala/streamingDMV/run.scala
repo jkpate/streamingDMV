@@ -109,7 +109,10 @@ object run {
       if( opts.has( "numParticles" ) )
         opts.valueOf( "numParticles" ).toString.toInt
       else
-        16
+        if( opts.has( "particleFilter" ) )
+          16
+        else
+          1
     val printResamplingEvents = opts.has( "printResamplingEvents" )
     val logEvalRate = opts.has( "logEvalRate" )
     var evalEvery =
@@ -406,8 +409,10 @@ object run {
         println( s"it${sentencesProcessed}:logProb:${heldOutLogProb}" )
         println( s"it${sentencesProcessed}:trainTimePerSentence:${timePerSentence}ms/sentence" )
         println( s"it${sentencesProcessed}:testTimePerSentence:${ (parseEndTime - parseStartTime ) / testSet.size}ms/sentence" )
-        println( s"it${sentencesProcessed}:particlePerplexity:${p.particlePerplexity}" )
-        println( s"it${sentencesProcessed}:ess:${p.ess}" )
+        if( particleFilter ) {
+          println( s"it${sentencesProcessed}:particlePerplexity:${p.particlePerplexity}" )
+          println( s"it${sentencesProcessed}:ess:${p.ess}" )
+        }
       }
       i += 1
 

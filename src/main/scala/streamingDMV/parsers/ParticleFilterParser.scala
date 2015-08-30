@@ -51,7 +51,7 @@ abstract class ParticleFilterParser[
 
 
     ( 1 until numParticles ).foreach{ l =>
-      particles(l).theta.setEventsAndCounts( zeroCounts )
+      particles(l).theta.setEvents( zeroCounts )
     }
   }
 
@@ -61,23 +61,28 @@ abstract class ParticleFilterParser[
   // val reservoir = Array.ofDim[Tuple2[List[Utt],C]](reservoirSize,numParticles)
 
   def resampleParticles /*( uttNum:Int )*/ {
-    val newParticleWeights = Array.fill( numParticles )( 0D )
-    val newParticles = Array.tabulate( numParticles )( l => {
-        val ( idx, w ) = argSample( particleWeights.zipWithIndex.map{ p => (p._2,p._1) }.toSeq )
+    if( numParticles > 1 ) {
+      val newParticleWeights = Array.fill( numParticles )( 0D )
+      val newParticles = Array.tabulate( numParticles )( l => {
+          val ( idx, w ) = argSample( particleWeights.zipWithIndex.map{ p => (p._2,p._1) }.toSeq )
 
-        newParticleWeights(l) = w
+          newParticleWeights(l) = w
 
-        // println( s"particle $l" )
-        createParticle( particles(idx).theta.toCounts, rand.nextInt )
+          if( l == idx ) {
+            particles(l)
+          } else {
+            createParticle( particles(idx).theta.toCounts, rand.nextInt )
+          }
+        }
+      )
+
+      val totalWeight = newParticleWeights.filter{ _ > Double.NegativeInfinity }.sum
+      (0 until numParticles).foreach{ l =>
+        particles(l) = newParticles(l)
+        particleWeights(l) = newParticleWeights(l) / totalWeight
       }
-    )
 
-    val totalWeight = newParticleWeights.filter{ _ > Double.NegativeInfinity }.sum
-    (0 until numParticles).foreach{ l =>
-      particles(l) = newParticles(l)
-      particleWeights(l) = newParticleWeights(l) / totalWeight
     }
-
   }
 
   def streamingBayesUpdate(
@@ -99,7 +104,7 @@ abstract class ParticleFilterParser[
 
     (0 until numParticles ).foreach{ l => particleWeights(l) = math.log( particleWeights(l) ) }
 
-    ( 0 until numParticles ).par.map{ l =>
+    ( 0 until numParticles )/*.par*/.map{ l =>
       particles(l).theta.fullyNormalized = true
       val (counts, proposalScore) = miniBatch.map{ s =>
         val (sentCounts, sentProposalScore) = particles( l ).sampleTreeCounts( s )
