@@ -6,18 +6,39 @@ import collection.mutable.{Set=>MSet}
 abstract class FirstOrderArcFactoredParameters(
   rootAlpha:Double,
   stopAlpha:Double,
-  chooseAlpha:Double
-) extends NOPOSArcFactoredParameters( rootAlpha, stopAlpha, chooseAlpha ) {
+  chooseAlpha:Double,
+  squarelyNormalized:Int = 0,
+  approximate:Boolean = false,
+  randomSeed:Int
+) extends NOPOSArcFactoredParameters(
+  rootAlpha,
+  stopAlpha,
+  chooseAlpha,
+  squarelyNormalized,
+  approximate,
+  randomSeed
+) {
 
   def zerosInit( corpus:List[Utt] ) {
     // val rootEvents = MSet[RootEvent]()
     // val stopEvents = MSet[StopEvent]()
     // val chooseEvents = MSet[ChooseEvent]()
-    println( "FirstOrderArcFactoredParameters zeros init" )
+    // println( "FirstOrderArcFactoredParameters zeros init" )
 
     p_root.clear
     p_stop.clear
     p_choose.clear
+
+    if( approximate ) {
+      p_root.counts.approximateCounts.initializeCountsTable
+      p_root.denomCounts.approximateCounts.initializeCountsTable
+
+      p_stop.counts.approximateCounts.initializeCountsTable
+      p_stop.denomCounts.approximateCounts.initializeCountsTable
+
+      p_choose.counts.approximateCounts.initializeCountsTable
+      p_choose.denomCounts.approximateCounts.initializeCountsTable
+    }
 
     corpus.map{_.string}.foreach{ s =>
       (0 until s.length).foreach{ t =>

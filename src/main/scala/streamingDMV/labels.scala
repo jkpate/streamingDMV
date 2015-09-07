@@ -11,24 +11,63 @@ case class DirectedArc( hIdx:Int, dIdx:Int )
 case class Parse( id:String, conParse:String, depParse:Set[DirectedArc] )
 case class Utt( id:String, string:Array[Int] )
 
+object FastHash {
+  val prime_modulus = (1 << 31) - 1
+  def apply( item:Int, seed:Int ) = {
+    var myHash = seed * item
+    myHash += myHash >> 32
+    myHash & prime_modulus
+  }
+}
+
+trait FastHashable extends Product {
+  def fastHash( seed:Int ) = {
+    val elements = productIterator
+    if( elements.size > 0 ) {
+      val ints = productIterator.map{ element =>
+        element match {
+          case e:Int => e
+          case _ => { 
+            element.hashCode
+          }
+        }
+      }
+
+      var hash = ints.next*141650963
+
+      while( ints.hasNext ) {
+        val nextInt = ints.next
+        if( nextInt >= 0 )
+          hash += hash*141650963 + FastHash( nextInt, seed )
+      }
+      hash
+    } else {
+      FastHash( hashCode, seed )
+    }
+  }
+}
+
 abstract class AttDir {
   val flip:AttDir
 }
 case object LeftAtt extends AttDir {
   val flip = RightAtt
-  override val hashCode = 41
+  override val hashCode = 32452867
+  // override val hashCode = 41
 }
 case object RightAtt extends AttDir {
   val flip = LeftAtt
-  override val hashCode = 47
+  override val hashCode = 15485863
+  // override val hashCode = 47
 }
 
 abstract class StopDecision
 case object Stop extends StopDecision {
-  override val hashCode = 1
+  override val hashCode = 49979693
 }
 case object NotStop extends StopDecision {
-  override val hashCode = 107
+  override val hashCode = 86028121
+  // override val hashCode = 107
 }
 
 abstract class BackoffDecision
@@ -39,19 +78,24 @@ abstract class Decoration
 
 abstract class Valence extends Decoration
 case object NoValence extends Valence {
-  override val hashCode = 31
+  override val hashCode = 104395303
+  // override val hashCode = 31
 }
 case object Outermost extends Valence {
-  override val hashCode = 37
+  override val hashCode = 122949829
+  // override val hashCode = 37
 }
 case object Inner extends Valence {
-  override val hashCode = 53
+  override val hashCode = 141650963
+  // override val hashCode = 53
 }
 case object Outer extends Valence {
-  override val hashCode = 79
+  override val hashCode = 160481219
+  // override val hashCode = 79
 }
 case object Innermost extends Valence {
-  override val hashCode = 57
+  override val hashCode = 179424691
+  // override val hashCode = 57
 }
 
 case object RootDecoration extends Decoration
@@ -64,35 +108,40 @@ abstract class MDecoration extends Decoration {
 case class DecorationPair( evenLeft:Decoration, evenRight:Decoration ) extends MDecoration {
   lazy val oddLeft = null
   lazy val oddRight = null
-  override val hashCode = ( 73 + evenLeft.hashCode ) * 73 + evenRight.hashCode
+  // //override val hashCode = ( 73 + evenLeft.hashCode ) * 73 + evenRight.hashCode
 }
 case object PlainM extends MDecoration {
   val evenLeft = NoValence
   val evenRight = NoValence
   lazy val oddLeft = null
   lazy val oddRight = null
-  override val hashCode = 17
+  override val hashCode = 198491329
+  // override val hashCode = 17
 }
 case object LeftwardM extends MDecoration {
   val evenLeft = NoValence
   val evenRight = NoValence
   val oddLeft = PlainM
   val oddRight = LeftwardM
-  override val hashCode = 89
+  override val hashCode = 217645199
+  // override val hashCode = 89
 }
 case object RightwardM extends MDecoration {
   val evenLeft = NoValence
   val evenRight = NoValence
   val oddLeft = RightwardM
   val oddRight = PlainM
-  override val hashCode = 97
+  override val hashCode = 236887699
+  // override val hashCode = 97
 }
 
 
-abstract class NormKey 
-abstract class Event {
+abstract class NormKey extends FastHashable
+abstract class Event /*[C]*/ extends FastHashable {
   // def normKey[N<:NormKey]:N
-  def normKey:NormKey//[N<:NormKey]:N
+  def normKey:NormKey //[N<:NormKey]:N
+  /*def closedSpec:C
+  def openSpec:Tuple3[Int,Int,Int]*/
 }
 
 // object SecondOrderChooseEvent {
@@ -107,34 +156,52 @@ abstract class Event {
 //   def apply( head:Int, dir:AttDir ) = new ChooseNorm( head, -1, dir )
 // }
 case class ChooseNorm( head:Int, context:Int, dir:AttDir ) extends NormKey {
+  override def fastHash( seed:Int ) = {
+    // var hash = FastHash( head, seed )
+    var hash = head*141650963 + FastHash( dir.hashCode, seed )
+    if( context >= 0 )
+      hash += hash*141650963 + FastHash( context, seed )
+    hash
+  }
   // override lazy val hashCode: Int= scala.runtime.ScalaRunTime._hashCode(ChooseNorm.this)
-  override val hashCode =
-    ( (head + 1 ) * 83 ) + ( (context + 107) * 107) + dir.hashCode()
+  // override val hashCode =
+  //   ( (head + 1 ) * 83 ) + ( (context + 107) * 107) + dir.hashCode()
 
-  override def equals( o:Any ) = {
-    o match {
-      case that:ChooseNorm =>
-          ( head == that.head ) &&
-          ( context == that.context ) &&
-          ( dir == that.dir )
-      case _ => false
-    }
-  }
+      // override def equals( o:Any ) = {
+      //   o match {
+      //     case that:ChooseNorm =>
+      //         ( head == that.head ) &&
+      //         ( context == that.context ) &&
+      //         ( dir == that.dir )
+      //     case _ => false
+      //   }
+      // }
 }
-case class ChooseEvent( head:Int, context:Int, dir:AttDir, /*v:Decoration,*/ dep:Int ) extends Event {
+case class ChooseEvent( head:Int, context:Int, dir:AttDir, /*v:Decoration,*/ dep:Int ) extends
+Event /*[AttDir]*/ {
   def normKey = ChooseNorm( head, context, dir )
-  override val hashCode =
-    ( (head + 107 ) * 83 ) + ( ( context + 37 ) * 37 ) + ( dep + 107 ) * 107 + dir.hashCode()
-
-  override def equals( o:Any ) = {
-    o match {
-      case that:ChooseEvent => ( head == that.head ) &&
-          ( context == that.context ) &&
-          ( dep == that.dep ) &&
-          ( dir == that.dir )
-      case _ => false
-    }
+  override def fastHash( seed:Int ) = {
+    // var hash = FastHash( head, seed )
+    var hash = head*141650963 + FastHash( dir.hashCode, seed )
+    if( context >= 0 )
+      hash += hash*141650963 + FastHash( context, seed )
+    hash += hash*141650963 + FastHash( dep, seed )
+    hash
   }
+  /*def closedSpec = dir
+  def openSpec = (head, context, dep)*/
+  // override val hashCode =
+  //   ( (head + 107 ) * 83 ) + ( ( context + 37 ) * 37 ) + ( dep + 107 ) * 107 + dir.hashCode()
+
+  // override def equals( o:Any ) = {
+  //   o match {
+  //     case that:ChooseEvent => ( head == that.head ) &&
+  //         ( context == that.context ) &&
+  //         ( dep == that.dep ) &&
+  //         ( dir == that.dir )
+  //     case _ => false
+  //   }
+  // }
 }
 object ChooseEvent {
   // some parameterizations don't use valence or context for choose
@@ -169,8 +236,10 @@ case class LambdaChooseEvent(
   dir:AttDir,
   // v:Decoration,
   bo:BackoffDecision
-) extends Event with BackingOffEvent {
+) extends Event /*[Tuple2[AttDir,BackoffDecision]]*/ with BackingOffEvent {
   def normKey = LambdaChooseNorm( head, context, dir/*, v*/ )
+  /*def closedSpec = (dir,bo)
+  def openSpec = (head, context, 0)*/
   def backOff = bo
 }
 
@@ -192,9 +261,11 @@ case class LambdaStopEvent(
   dir:AttDir,
   v:Decoration,
   bo:BackoffDecision
-) extends Event with BackingOffEvent {
+) extends Event /*[Tuple3[AttDir,Decoration,BackoffDecision]]*/ with BackingOffEvent {
   def normKey = LambdaStopNorm( head, context, dir, v )
   def backOff = bo
+  /*def closedSpec = (dir,v,bo)
+  def openSpec = (head, context, 0)*/
 }
 
 
@@ -225,11 +296,23 @@ object StopEvent {
   def apply( dir:AttDir, dec:StopDecision ):StopEvent =
     StopEvent( -1, dir, NoValence, dec )
 }
-case class StopEvent( head:Int, dir:AttDir, v:Decoration, dec:StopDecision ) extends Event {
+case class StopEvent( head:Int, dir:AttDir, v:Decoration, dec:StopDecision ) extends
+Event /*[Tuple3[AttDir,Decoration,StopDecision]]*/ {
   def normKey = StopNorm( head, dir, v )
+
+  override def fastHash( seed:Int ) = {
+    // var hash = FastHash( head, seed )
+    var hash = head*141650963 + FastHash( dir.hashCode, seed )
+    hash += hash*141650963 + FastHash( v.hashCode, seed )
+    hash += hash*141650963 + FastHash( dec.hashCode, seed )
+    hash
+  }
+
+  /*def closedSpec = (dir,v,dec)
+  def openSpec = (head, 0, 0)*/
   // override lazy val hashCode: Int= scala.runtime.ScalaRunTime._hashCode(StopEvent.this)
-  override val hashCode =
-    ( (head + 107 ) * 107 ) + dir.hashCode() + v.hashCode() + dec.hashCode()
+  // override val hashCode =
+  //   ( (head + 107 ) * 107 ) + dir.hashCode() + v.hashCode() + dec.hashCode()
 
   // override def equals( o:Any ) = {
   //   // println(".")
@@ -243,40 +326,48 @@ case class StopEvent( head:Int, dir:AttDir, v:Decoration, dec:StopDecision ) ext
   // }
 }
 case class StopNorm( head:Int, dir:AttDir, v:Decoration ) extends NormKey {
-  // override lazy val hashCode: Int= scala.runtime.ScalaRunTime._hashCode(StopNorm.this)
-  override val hashCode =
-    ( (head + 107 ) * 107 ) + dir.hashCode() + v.hashCode()
-  override def equals( o:Any ) = {
-    o match {
-      case that:StopNorm => ( head == that.head ) &&
-          ( v == that.v ) &&
-          ( dir == that.dir )
-      case _ => false
-    }
+  override def fastHash( seed:Int ) = {
+    // var hash = FastHash( head, seed )
+    var hash = head*141650963 + FastHash( dir.hashCode, seed )
+    hash += hash*141650963 + FastHash( v.hashCode, seed )
+    hash
   }
+  // override lazy val hashCode: Int= scala.runtime.ScalaRunTime._hashCode(StopNorm.this)
+  // override val hashCode =
+  //   ( (head + 107 ) * 107 ) + dir.hashCode() + v.hashCode()
+  // override def equals( o:Any ) = {
+  //   o match {
+  //     case that:StopNorm => ( head == that.head ) &&
+  //         ( v == that.v ) &&
+  //         ( dir == that.dir )
+  //     case _ => false
+  //   }
+  // }
 }
 
 object RootEvent {
   def apply():RootEvent = RootEvent( -1 )
 }
-case class RootEvent( root:Int ) extends Event {
+case class RootEvent( root:Int ) extends Event /*[RootNorm.type]*/ {
   def normKey = RootNorm
-  override val hashCode = root
-  override def equals( o:Any ) = {
-    o match {
-      case that:RootEvent => root == that.root
-      case _ => false
-    }
-  }
+  /*def closedSpec = RootNorm
+  def openSpec = (root, 0, 0)*/
+  // override val hashCode = root
+    // override def equals( o:Any ) = {
+    //   o match {
+    //     case that:RootEvent => root == that.root
+    //     case _ => false
+    //   }
+    // }
 }
 case object RootNorm extends NormKey {
   override val hashCode = 1
-  override def equals( o:Any ) = {
-    o match {
-      case that:RootNorm.type => true
-      case _ => false
-    }
-  }
+  // override def equals( o:Any ) = {
+  //   o match {
+  //     case that:RootNorm.type => true
+  //     case _ => false
+  //   }
+  // }
 }
 
 

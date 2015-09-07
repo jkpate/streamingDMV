@@ -12,43 +12,80 @@ class OriginalDMVParser(
   rootAlpha:Double = 1D,
   stopAlpha:Double = 1D,
   chooseAlpha:Double = 1D,
-  randomSeed:Int = 15
+  randomSeed:Int = 15,
+  squarelyNormalized:Int = 0,
+  val approximate:Boolean = false
 ) extends FirstOrderFoldUnfoldNOPOSParser[OriginalDMVParameters](
   maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed
 ) {
 
   // println( s"my random seed is $randomSeed" )
-  val theta = new OriginalDMVParameters( rootAlpha, stopAlpha, chooseAlpha )
+  val theta = new OriginalDMVParameters(
+    rootAlpha,
+    stopAlpha,
+    chooseAlpha,
+    squarelyNormalized,
+    approximate,
+    randomSeed
+  )
 
   // One of the m-node children is a head-child, so they can't both be outermost
-  val insideChart = Array.tabulate[MMap[Decoration,Double]]( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
-    if( i%2 == 1 && j%2 == 1 ) {
-      if( j-i >= 6 )
-        MMap(
-          DecorationPair(Outer,Outer) -> 0D,
-          DecorationPair(Outer,Innermost) -> 0D,
-          DecorationPair(Innermost,Outer) -> 0D
-        )
-      else if( j-i == 4 )
-        MMap(
-          DecorationPair(Outer,Innermost) -> 0D,
-          DecorationPair(Innermost,Outer) -> 0D
-        )
-      else// if( j-i == 2 )
-        MMap(
-          DecorationPair(Innermost,Innermost) -> 0D
-        )
-    } else if( i%2 != j%2 ) {
-      if( j-i > 1 )
-        MMap( Outer -> 0D )
-      else
-        MMap( Innermost -> 0D )
-    } else {
-      MMap()
-    }
-  )
+      // val insideChart = Array.tabulate[MMap[Decoration,Double]]( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
+      //   if( i%2 == 1 && j%2 == 1 ) {
+      //     if( j-i >= 6 )
+      //       MMap(
+      //         DecorationPair(Outer,Outer) -> 0D,
+      //         DecorationPair(Outer,Innermost) -> 0D,
+      //         DecorationPair(Innermost,Outer) -> 0D
+      //       )
+      //     else if( j-i == 4 )
+      //       MMap(
+      //         DecorationPair(Outer,Innermost) -> 0D,
+      //         DecorationPair(Innermost,Outer) -> 0D
+      //       )
+      //     else// if( j-i == 2 )
+      //       MMap(
+      //         DecorationPair(Innermost,Innermost) -> 0D
+      //       )
+      //   } else if( i%2 != j%2 ) {
+      //     if( j-i > 1 )
+      //       MMap( Outer -> 0D )
+      //     else
+      //       MMap( Innermost -> 0D )
+      //   } else {
+      //     MMap()
+      //   }
+      // )
 
-  val outsideChart = Array.tabulate[MMap[Decoration,Double]]( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
+
+      // val outsideChart = Array.tabulate[MMap[Decoration,Double]]( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
+      //   if( i%2 == 1 && j%2 == 1 ) {
+      //     if( j-i >= 6 )
+      //       MMap(
+      //         DecorationPair(Outer,Outer) -> 0D,
+      //         DecorationPair(Outer,Innermost) -> 0D,
+      //         DecorationPair(Innermost,Outer) -> 0D
+      //       )
+      //     else if( j-i == 4 )
+      //       MMap(
+      //         DecorationPair(Outer,Innermost) -> 0D,
+      //         DecorationPair(Innermost,Outer) -> 0D
+      //       )
+      //     else// if( j-i == 2 )
+      //       MMap(
+      //         DecorationPair(Innermost,Innermost) -> 0D
+      //       )
+      //   } else if( i%2 != j%2 ) {
+      //     if( j-i > 1 )
+      //       MMap( Outer -> 0D )
+      //     else
+      //       MMap( Innermost -> 0D )
+      //   } else {
+      //     MMap()
+      //   }
+      // )
+
+  def cellMap( i:Int, j:Int ) = {
     if( i%2 == 1 && j%2 == 1 ) {
       if( j-i >= 6 )
         MMap(
@@ -73,7 +110,7 @@ class OriginalDMVParser(
     } else {
       MMap()
     }
-  )
+  }
 
 
 

@@ -12,14 +12,47 @@ class TopDownDMVParser(
   rootAlpha:Double = 1D,
   stopAlpha:Double = 1D,
   chooseAlpha:Double = 1D,
-  randomSeed:Int = 15
+  randomSeed:Int = 15,
+  squarelyNormalized:Int = 0,
+  val approximate:Boolean = false
 ) extends FirstOrderFoldUnfoldNOPOSParser[TopDownDMVParameters](
   maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed
 ) {
 
-  val theta = new TopDownDMVParameters( rootAlpha, stopAlpha, chooseAlpha )
+  val theta = new TopDownDMVParameters(
+    rootAlpha,
+    stopAlpha,
+    chooseAlpha,
+    squarelyNormalized,
+    approximate,
+    randomSeed
+  )
 
-  val insideChart = Array.tabulate[MMap[Decoration,Double]]( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
+      // val insideChart = Array.tabulate[MMap[Decoration,Double]]( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
+      //   if( ( i%2 == 1 || j%2 == 1 ) && i%2 != j%2 )
+      //     MMap( Outermost -> 0D, Inner -> 0D )
+      //   else if( i%2 == 1 && j%2 == 1 )
+      //     MMap(
+      //       DecorationPair(Outermost,Inner) -> 0D,
+      //       DecorationPair(Inner,Outermost) -> 0D
+      //     )
+      //   else
+      //     MMap()
+      // )
+
+      // val outsideChart = Array.tabulate[MMap[Decoration,Double]]( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
+      //   if( ( i%2 == 1 || j%2 == 1 ) && i%2 != j%2 )
+      //     MMap( Outermost -> 0D, Inner -> 0D )
+      //   else if( i%2 == 1 && j%2 == 1 )
+      //     MMap(
+      //       DecorationPair(Outermost,Inner) -> 0D,
+      //       DecorationPair(Inner,Outermost) -> 0D
+      //     )
+      //   else
+      //     MMap()
+      // )
+
+  def cellMap( i:Int, j:Int ) = {
     if( ( i%2 == 1 || j%2 == 1 ) && i%2 != j%2 )
       MMap( Outermost -> 0D, Inner -> 0D )
     else if( i%2 == 1 && j%2 == 1 )
@@ -29,20 +62,7 @@ class TopDownDMVParser(
       )
     else
       MMap()
-  )
-
-  val outsideChart = Array.tabulate[MMap[Decoration,Double]]( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
-    if( ( i%2 == 1 || j%2 == 1 ) && i%2 != j%2 )
-      MMap( Outermost -> 0D, Inner -> 0D )
-    else if( i%2 == 1 && j%2 == 1 )
-      MMap(
-        DecorationPair(Outermost,Inner) -> 0D,
-        DecorationPair(Inner,Outermost) -> 0D
-      )
-    else
-      MMap()
-  )
-
+  }
 
 
 

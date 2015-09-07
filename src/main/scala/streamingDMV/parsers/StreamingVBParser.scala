@@ -52,6 +52,7 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
       // decrement every time now since lastFHat may not be zero
       theta.decrementCounts( lastFHat )
       // println( miniBatch.map{_.string.length}.sum )
+      // println( "about to increment by fHat:\n" )
       theta.incrementCounts( fHat )
 
       deltaScores = ( lastMiniBatchScores - thisMiniBatchScores ) / lastMiniBatchScores
@@ -70,7 +71,7 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
 
   def particlePerplexity = 1D
   def ess = 1D
-  def resampleParticles = ()
+  def resampleParticles = 0
   def trueLogProb( counts:C ):Double
 
 }

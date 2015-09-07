@@ -3,25 +3,40 @@ package streamingDMV.tables
 import streamingDMV.labels._
 import collection.mutable.{Map=>MMap,Set=>MSet}
 
+// import com.twitter.algebird.CMSMonoid
+
+// import org.apache.commons.math3.special.{Gamma=>G}
+
 import math.{log,log1p}
-import org.apache.commons.math3.special.{Gamma=>G}
 
 
 // symmetric Dirichlet Multinomial CPT
 // class CPT[E<:Event,N<:NormKey]( alpha:Double ) {
-class CPT[E<:Event]( alpha:Double ) {
-  var events = MSet[E]()
-  var counts = MMap[E,Double]().withDefaultValue(0D)
-  var denomCounts = MMap[NormKey,Double]()
+class CPT[E<:Event with Product](
+  alpha:Double,
+  squarelyNormalized:Int = 0,
+  eps:Double = 0.1,
+  delta:Double = 1E-3,
+  val approximate:Boolean = false,
+  randomSeed:Int = 15
+) {
+  // var counts = MMap[E,Double]().withDefaultValue(0D)
+  var counts = new TableWrapper[E]( approximate, eps, delta, randomSeed )
+  // var denomCounts = MMap[NormKey,Double]()
+  var denomCounts = new TableWrapper[NormKey with Product]( approximate, 2*eps,
+    2*delta, 37*randomSeed )
   var denoms = MMap[NormKey,MSet[E]]()
+  // var denoms = MMap[NormKey,TableWrapper[Event]]()
 
   def apply( event:E ) =
     counts( event )
 
   def normalized( event:E ) = {
+    // println( s"  I am approximate: $approximate" )
+    // println( s"  my counts are approximate: ${counts.approximate}" )
     val n = event.normKey
     ( counts( event ) + alpha ) / (
-      denomCounts( n ) + (alpha * denoms(n).size )
+      denomCounts( n ) + (alpha * { if( squarelyNormalized > 0 ) squarelyNormalized else denoms(n).size } )
     )
   }
 
@@ -40,7 +55,8 @@ class CPT[E<:Event]( alpha:Double ) {
     taylorExpDigamma( 
       ( counts( event ) + alpha  ) 
     ) / taylorExpDigamma(
-      denomCounts( n ) + (alpha * denoms(n).size )
+      denomCounts( n ) + (alpha * { if( squarelyNormalized > 0 ) squarelyNormalized else
+        denoms(n).size } )
     )
   }
 
@@ -58,64 +74,74 @@ class CPT[E<:Event]( alpha:Double ) {
     }
   }
 
+  // FIX ME BEFORE USING SQUARELYSAMPLING WITH PARTICLE FILTER
   def trueLogProb( other:CPT[E] ) = {
-    other.denoms.map{ case (denom,otherEvents) =>
-      val totalEvents = denoms( denom )
-      // otherEvents.foreach{ e => assert( totalEvents.contains( e ) ) }
+    // counts should always come from sampleTreeCounts or extractPartialCounts
+    // and be exact
+    assert( ! other.approximate )
 
-      // val eventsUnion = ( otherEvents ++ myEvents )
-      val withOtherNumerator = 
-        totalEvents.map{ e =>
-          // G.logGamma( counts( e ) + other( e ) + alpha )
-          fastLogGamma( counts( e ) + other( e ) + alpha )
-        }.reduce(_+_)
 
-      val withOtherDenom =
-        // G.logGamma(
-        fastLogGamma(
+    // other.denoms *should* be empty for CPT[ChooseEvent] if there is only one word
+    if( other.denoms.isEmpty ) {
+      other.denoms.map{ case (denom,otherEvents) =>
+        val totalEvents = denoms( denom )
+        // otherEvents.foreach{ e => assert( totalEvents.contains( e ) ) }
+
+        // val eventsUnion = ( otherEvents ++ myEvents )
+        val withOtherNumerator = 
           totalEvents.map{ e =>
-            val n = e.normKey
-            denomCounts( n ) + other.denomCounts( n ) + (alpha * totalEvents.size )
-          }.sum
-        )
+            // G.logGamma( counts( e ) + other( e ) + alpha )
+            fastLogGamma( counts( e ) + other( e ) + alpha )
+          }.reduce(_+_)
 
-      val myNumerator = 
-        totalEvents.map{ e =>
-          // G.logGamma( counts( e ) + alpha )
-          fastLogGamma( counts( e ) + alpha )
-        }.reduce(_+_)
+        val withOtherDenom =
+          // G.logGamma(
+          fastLogGamma(
+            totalEvents.map{ e =>
+              val n = e.normKey
+              denomCounts( n ) + other.denomCounts( n ) + (alpha * totalEvents.size )
+            }.sum
+          )
 
-      val myDenom =
-        // G.logGamma(
-        fastLogGamma(
+        val myNumerator = 
           totalEvents.map{ e =>
-            val n = e.normKey
-            denomCounts( n ) + (alpha * totalEvents.size )
-          }.sum
-        )
+            // G.logGamma( counts( e ) + alpha )
+            fastLogGamma( counts( e ) + alpha )
+          }.reduce(_+_)
 
-      // println(
-      //   s"($withOtherNumerator}/$withOtherDenom) / ($myNumerator/$myDenom)"
-      // )
+        val myDenom =
+          // G.logGamma(
+          fastLogGamma(
+            totalEvents.map{ e =>
+              val n = e.normKey
+              denomCounts( n ) + (alpha * totalEvents.size )
+            }.sum
+          )
 
-      // math.exp(
-        (
-          withOtherNumerator - withOtherDenom
-        ) - (
-          myNumerator - myDenom
-        )
-      // )
+        // println(
+        //   s"($withOtherNumerator}/$withOtherDenom) / ($myNumerator/$myDenom)"
+        // )
 
-    }.reduce(_+_)
+        // math.exp(
+          (
+            withOtherNumerator - withOtherDenom
+          ) - (
+            myNumerator - myDenom
+          )
+        // )
+
+      }.reduce(_+_)
+    } else { 0D }
   }
 
   def increment( event:E, inc:Double ) = {
     // to have a faster zerosInit
-    if( inc > 0 ) counts += event -> { counts.getOrElse( event, 0D ) + inc }
+    // if( inc > 0 ) counts += event -> { counts.getOrElse( event, 0D ) + inc }
+    if( inc > 0 ) counts.increment( event, inc )
 
     val n = event.normKey
-    denomCounts +=
-      n -> { denomCounts.getOrElse( n, 0D ) + inc }
+    // denomCounts += n -> { denomCounts.getOrElse( n, 0D ) + inc }
+    denomCounts.increment( n, inc )
 
     denoms.getOrElseUpdate( n, MSet() ) += event
   }
@@ -125,25 +151,34 @@ class CPT[E<:Event]( alpha:Double ) {
   }
 
   def increment( other:CPT[E] ) {
-    other.counts.foreach{ case( k, v) =>
-      increment( k, v )
-    }
+    // println( other.counts.approximate )
+    // other.counts.foreach{ case( k, v) =>
+    //   increment( k, v )
+    // }
+    counts.increment( other.counts )
+    denomCounts.increment( other.denomCounts )
   }
 
   def decrement( other:CPT[E] ) {
-    other.counts.foreach{ case( k, v) =>
-      decrement( k, v )
-    }
+    // other.counts.foreach{ case( k, v) =>
+    //   decrement( k, v )
+    // }
+    counts.decrement( other.counts )
+    denomCounts.decrement( other.denomCounts )
   }
 
   def divideBy( x:Double ) {
-    counts.keys.foreach{ counts(_) /= x }
+    // counts.keys.foreach{ counts(_) /= x }
+    counts.divideBy( x )
   }
 
   def decrement( event:E, dec:Double ) = {
-    counts( event ) -= dec
+    // counts( event ) -= dec
+    counts.decrement( event , dec )
+
     val n = event.normKey
-    denomCounts( n ) -= dec
+    // denomCounts( n ) -= dec
+    denomCounts.decrement( n , dec )
   }
 
   def clear {
@@ -155,31 +190,42 @@ class CPT[E<:Event]( alpha:Double ) {
   def setEvents( events:Set[E] ) {
     clear
     events.groupBy( _.normKey ).foreach{ case (n, events) =>
-      counts ++= events.toSeq.map{ e =>
-        e -> 0D
-      }
-      denomCounts += n -> 0D
+      // counts ++= events.toSeq.map{ e =>
+      //   e -> 0D
+      // }
+      // denomCounts += n -> 0D
+      denomCounts.increment( n, 0D )
       denoms += n -> MSet( events.toSeq:_* )
     }
   }
 
   def setEvents( other:CPT[E] ) {
     clear
-    denoms = other.denoms.clone
+    denoms = other.denoms//.clone
     denomCounts = other.denomCounts.clone
-    events = other.events.clone
+    // events = other.events.clone
   }
 
   def setEventsAndCounts( other:CPT[E] ) {
     clear
-    denoms = other.denoms.clone
-    denomCounts = other.denomCounts.clone
-    events = other.events.clone
-    counts = other.counts.clone
+    // TODO make it so we don't need denoms *at all*
+    //      will involve hard-coding backoff chain with e.g. .noContext() method
+    //      Except then how do we compute trueLogProb?
+    //      Aha! denomCounts never changes -- take it as a parameter from
+    //      ParticleFilterNOPOSParser.
+    denoms = other.denoms//.clone
+    // events = other.events.clone
+
+    // denomCounts.increment( other.denomCounts.clone )
+    // counts.increment( other.counts.clone )
+
+    denomCounts.setCounts( other.denomCounts )
+    counts.setCounts( other.counts )
   }
 
   def randomizeCounts( r:util.Random, scale:Int ) {
-    counts.keys.foreach( increment( _, r.nextDouble() * scale ) )
+    // counts.keys.foreach( increment( _, r.nextDouble() * scale ) )
+    counts.randomize( r, scale )
   }
 
   def size = counts.size

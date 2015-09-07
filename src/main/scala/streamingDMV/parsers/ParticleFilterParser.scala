@@ -3,6 +3,7 @@ package streamingDMV.parsers
 import streamingDMV.labels._
 import streamingDMV.parameters.ArcFactoredParameters
 
+import scala.collection.mutable.{Set => MSet}
 import scala.math.{log,log1p,exp}
 import scala.reflect.ClassTag
 
@@ -36,7 +37,7 @@ abstract class ParticleFilterParser[
       math.E,
       -1 *
       (0 until numParticles).map{ l =>
-        if( particleWeights(l) >= Double.NegativeInfinity )
+        if( particleWeights(l) >= 0D )
           particleWeights(l) * math.log( particleWeights(l) )
         else 0D
       }.sum
@@ -51,7 +52,7 @@ abstract class ParticleFilterParser[
 
 
     ( 1 until numParticles ).foreach{ l =>
-      particles(l).theta.setEvents( zeroCounts )
+      particles(l).theta.setEventsAndCounts( zeroCounts )
     }
   }
 
@@ -60,17 +61,24 @@ abstract class ParticleFilterParser[
 
   // val reservoir = Array.ofDim[Tuple2[List[Utt],C]](reservoirSize,numParticles)
 
-  def resampleParticles /*( uttNum:Int )*/ {
+  def resampleParticles /*( uttNum:Int )*/ = {
+    val uniqueAncestors = MSet[Int]()
+    val startTime = System.currentTimeMillis
     if( numParticles > 1 ) {
+      // println( s"particle weights ${particleWeights.mkString("{ ",", ", " }")}" )
       val newParticleWeights = Array.fill( numParticles )( 0D )
       val newParticles = Array.tabulate( numParticles )( l => {
-          val ( idx, w ) = argSample( particleWeights.zipWithIndex.map{ p => (p._2,p._1) }.toSeq )
+          val ( idx, _ ) = argSample( particleWeights.zipWithIndex.map{ p => (p._2,p._1) }.toSeq )
+          // println( s" sampled particle $idx" )
 
-          newParticleWeights(l) = w
+          uniqueAncestors += idx
 
-          if( l == idx ) {
+          // newParticleWeights(l) = w
+
+          if( l == idx ) {  // Probably doesn't buy us much...
             particles(l)
           } else {
+            // println( s"creating particle $l" )
             createParticle( particles(idx).theta.toCounts, rand.nextInt )
           }
         }
@@ -79,10 +87,13 @@ abstract class ParticleFilterParser[
       val totalWeight = newParticleWeights.filter{ _ > Double.NegativeInfinity }.sum
       (0 until numParticles).foreach{ l =>
         particles(l) = newParticles(l)
-        particleWeights(l) = newParticleWeights(l) / totalWeight
+        particleWeights(l) = 1D/numParticles.toDouble
       }
-
     }
+    // println( s"resampling took ${System.currentTimeMillis - startTime}ms" )
+    // println( s"resampled ${uniqueAncestors.size} ancestors" )
+
+    uniqueAncestors.size
   }
 
   def streamingBayesUpdate(
@@ -93,14 +104,6 @@ abstract class ParticleFilterParser[
     printItersReached:Boolean = false
   ) {
 
-    // if( !( particleWeights.sum - 1D < 0.00000000001 ) ) {
-    //   println( particleWeights.mkString("\t","\n\t","\n\n") )
-    // }
-    // assert( particleWeights.sum - 1D < 0.00000000001 )
-
-    // Can't parallelize across particles, at least not naively, because weight updates become tied
-    // when normalizing.
-    // TODO push weight normalization after minibatch. Will need to pre-logify the particle weights
 
     (0 until numParticles ).foreach{ l => particleWeights(l) = math.log( particleWeights(l) ) }
 
@@ -109,10 +112,12 @@ abstract class ParticleFilterParser[
       val (counts, proposalScore) = miniBatch.map{ s =>
         val (sentCounts, sentProposalScore) = particles( l ).sampleTreeCounts( s )
 
+        assert( particles(l).stringProb > 0D )
+
         particleWeights(l) =
           particleWeights(l) +
             ( particles(l).trueLogProb( sentCounts ) - (
-                sentProposalScore
+                sentProposalScore - math.log( particles(l).stringProb )
               )
             )
 
@@ -123,45 +128,36 @@ abstract class ParticleFilterParser[
       particles( l ).theta.incrementCounts( counts )
     }
 
+
     val totalLogWeight = particleWeights.reduce( logSum( _,_) )
     (0 until numParticles).foreach{ l =>
       particleWeights(l) = math.exp( particleWeights(l) - totalLogWeight )
     }
 
+    // println( s"ess: ${ess}" )
 
-    // handle overflow -- set non-overflowing weights to zero.
-    // TODO see if this is still necessary -- I think the overflow came from a bug in the
-    // trueLogProb code (I was still multiplying even though in log space).
 
-      // if( particleWeights.exists( _ == Double.PositiveInfinity ) ) {
-      //   var totalLogWeight = Double.NegativeInfinity
+        // ( 0 until numParticles )/*.par*/.foreach{ l =>
+        //   particles(l).theta.fullyNormalized = true
+        //   miniBatch.foreach{ s =>
 
-      //   ( 0 until numParticles ).foreach{ l =>
-      //     if( math.exp( particleWeights(l) ) == Double.PositiveInfinity ) {
-      //       totalLogWeight = logSum( totalLogWeight, particleWeights(l) )
-      //     } else {
-      //       particleWeights(l) = Double.NegativeInfinity
-      //     }
-      //   }
+        //     val (counts, proposalScore) = particles( l ).sampleTreeCounts( s )
 
-      //   ( 0 until numParticles ).foreach{ l =>
-      //     if( particleWeights(l) == Double.PositiveInfinity ) {
-      //       particleWeights(l) = 1D
-      //     } else if( particleWeights(l) == Double.NegativeInfinity ) {
-      //       particleWeights(l) = 0D
-      //     } else {
-      //       particleWeights(l) = math.exp( particleWeights( l ) - totalLogWeight )
-      //     }
-      //   }
-      // } else {
-      //   val totalLogWeight = particleWeights.reduce( logSum(_,_) )
-      //   (0 until numParticles).foreach{ l =>
-      //     particleWeights(l) = 
-      //       math.exp(
-      //         particleWeights(l) - totalLogWeight
-      //       )
-      //   }
-      // }
+        //     assert( particles(l).stringProb > 0D )
+        //     particleWeights(l) =
+        //       particleWeights(l) *
+        //         math.exp( particles(l).trueLogProb( counts ) - (
+        //             proposalScore - math.log( particles(l).stringProb )
+        //           )
+        //         )
+
+
+        //     particles( l ).theta.incrementCounts( counts )
+        //   }
+        //   particleWeights(l) /= particleWeights.sum
+        //   println( s"ess: ${ess}" )
+        // }
+
 
   }
 

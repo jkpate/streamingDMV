@@ -125,17 +125,47 @@ class ParticleFilterNOPOSParser[
     // val s = string.flatMap{ w => Seq(w,w) }
     val s = doubleString( string )
     clearCharts
+    (0 until numParticles).foreach{ l =>
+      particles(l).theta.fullyNormalized = true
+      // println( particles(l).theta.p_choose.denoms.map{ v=> (v._1, v._2.size ) } )
+    }
+    assert( math.abs( particleWeights.sum -1 ) < 0.000001 )
     insidePass( s )
+    (0 until numParticles).foreach{ l =>
+      particles(l).theta.fullyNormalized = false
+    }
     math.log(particles.head.stringProb)
   }
 
 
-  def clearCharts {
-    (0 until 2*maxLength ).foreach{ i =>
-      (0 until (2*maxLength)+1 ).foreach{ j =>
+      // def clearCharts {
+      //   (0 until 2*maxLength ).foreach{ i =>
+      //     (0 until (2*maxLength)+1 ).foreach{ j =>
+      //       particles.head.insideChart(i)(j).keys.foreach{ vs =>
+      //         insideChart(i)(j)(vs) = 0D
+      //         outsideChart(i)(j)(vs) = 0D
+      //         particles.head.insideChart(i)(j)(vs) = 0D
+      //         particles.head.outsideChart(i)(j)(vs) = 0D
+      //       }
+      //       if( i%2 != j%2 ) {
+      //         particles.head.headTrace(i)(j).clear
+      //       } else if( i%2 == 1 && j%2 == 1 ) {
+      //         particles.head.mTrace(i)(j).clear
+      //       }
+      //     }
+      //   }
+      //   particles.head.treeRoot = null
+      //   particles.head.stringProb = 0D
+      // }
+
+  def doubleString( string:Array[Int] ) = {
+    string.toSeq.flatMap{ w => List(w,w) }.toArray
+  }
+
+  def clearVitCharts {
+    (0 until particles.head.headTrace.length ).foreach{ i =>
+      (0 until particles.head.headTrace.length+1 ).foreach{ j =>
         particles.head.insideChart(i)(j).keys.foreach{ vs =>
-          insideChart(i)(j)(vs) = 0D
-          outsideChart(i)(j)(vs) = 0D
           particles.head.insideChart(i)(j)(vs) = 0D
           particles.head.outsideChart(i)(j)(vs) = 0D
         }
@@ -149,10 +179,19 @@ class ParticleFilterNOPOSParser[
     particles.head.treeRoot = null
     particles.head.stringProb = 0D
   }
-
-  def doubleString( string:Array[Int] ) = {
-    string.toSeq.flatMap{ w => List(w,w) }.toArray
+  def clearCharts {
+    (0 until particles.head.insideChart.length ).foreach{ i =>
+      (0 until particles.head.insideChart.length+1 ).foreach{ j =>
+        particles.head.insideChart(i)(j).keys.foreach{ vs =>
+          particles.head.insideChart(i)(j)(vs) = 0D
+          particles.head.outsideChart(i)(j)(vs) = 0D
+        }
+      }
+    }
+    particles.head.treeRoot = null
+    particles.head.stringProb = 0D
   }
+
 
   // Viterbi definitions -- largely copied from FoldUnfoldNOPOSParser
 
@@ -369,9 +408,15 @@ class ParticleFilterNOPOSParser[
   }
 
   def viterbiParse( utt:Utt ) = {
-    clearCharts
+    clearVitCharts
     intString = doubleString( utt.string )
-    (0 until numParticles).foreach{ l => particles(l).intString = intString }
+    (0 until numParticles).foreach{ l =>
+      particles(l).intString = intString
+      particles(l).theta.fullyNormalized = true
+    }
+    if( intString.length > particles.head.headTrace.length ) {
+      particles.head.buildVitCharts( intString.length )
+    }
 
     (1 to ( intString.length )).foreach{ j =>
       viterbiLexFill( j-1 )
@@ -381,6 +426,9 @@ class ParticleFilterNOPOSParser[
           viterbiSynFill( i , j )
         }
     }
+    (0 until numParticles).foreach{ l =>
+      particles(l).theta.fullyNormalized = false
+    }
     Parse(
       utt.id,
       particles.head.treeRoot.toConParse,
@@ -389,11 +437,21 @@ class ParticleFilterNOPOSParser[
   }
 
   def viterbiDepParse( utt:Utt ) = {
-    clearCharts
+    clearVitCharts
     // intString = utt.string.flatMap{ w => Seq(w,w) }
     intString = doubleString( utt.string )
+    (0 until numParticles).foreach{ l =>
+      particles(l).intString = intString
+      particles(l).theta.fullyNormalized = true
+      assert( particles(l).approximate )
+    }
 
-    (0 until numParticles).foreach{ l => particles(l).intString = intString }
+    assert( math.abs( particleWeights.sum -1 ) < 0.000001 )
+
+    if( intString.length > particles.head.headTrace.length ) {
+      particles.head.buildVitCharts( intString.length )
+    }
+
 
     (1 to ( intString.length )).foreach{ j =>
       viterbiLexFill( j-1 )
@@ -402,6 +460,9 @@ class ParticleFilterNOPOSParser[
         (0 to (j-2)).reverse.foreach{ i =>
           viterbiSynFill( i , j )
         }
+    }
+    (0 until numParticles).foreach{ l =>
+      particles(l).theta.fullyNormalized = false
     }
     Parse( utt.id, "", particles.head.treeRoot.toDepParse )
   }

@@ -10,8 +10,18 @@ class HeadOutInterpolatedAdjHeadNoValenceParameters(
   stopAlpha:Double,
   chooseAlpha:Double,
   backoffAlpha:Double,
-  notBackoffAlpha:Double
-) extends NOPOSArcFactoredParameters( rootAlpha, stopAlpha, chooseAlpha ) {
+  notBackoffAlpha:Double,
+  squarelyNormalized:Int = 0,
+  approximate:Boolean = false,
+  randomSeed:Int
+) extends NOPOSArcFactoredParameters(
+  rootAlpha,
+  stopAlpha,
+  chooseAlpha,
+  squarelyNormalized,
+  approximate,
+  randomSeed
+) {
 
   val lambda_choose = new BackoffCPT[LambdaChooseEvent](
     Map( Backoff -> backoffAlpha, NotBackoff -> notBackoffAlpha )
@@ -80,7 +90,8 @@ class HeadOutInterpolatedAdjHeadNoValenceParameters(
     // var notBackoffEvents = 0D
 
     if( notBackoffAlpha > 0 )
-      counts.chooseCounts.counts.foreach{ case (event, count) =>
+      counts.chooseCounts.denoms.values.flatten.foreach{ event =>
+        val count = counts.chooseCounts( event )
         event match {
           case ChooseEvent( head, context, dir, /*_,*/ dep ) =>
             if( context >= 0 ) {
@@ -99,6 +110,25 @@ class HeadOutInterpolatedAdjHeadNoValenceParameters(
           case _ =>
         }
       }
+        // counts.chooseCounts.counts.foreach{ case (event, count) =>
+        //   event match {
+        //     case ChooseEvent( head, context, dir, /*_,*/ dep ) =>
+        //       if( context >= 0 ) {
+        //         lambda_choose.increment(
+        //           LambdaChooseEvent( head, context, dir, NotBackoff ),
+        //           count
+        //         )
+        //       //  notBackoffEvents += count
+        //       } else {
+        //         lambda_choose.increment(
+        //           LambdaChooseEvent( head, context, dir, Backoff ),
+        //           count
+        //         )
+        //       //   backoffEvents += count
+        //       }
+        //     case _ =>
+        //   }
+        // }
 
     // println( s"$notBackoffEvents not backoff events" )
     // println( s"$backoffEvents backoff events" )
@@ -110,7 +140,9 @@ class HeadOutInterpolatedAdjHeadNoValenceParameters(
     p_stop.decrement( counts.stopCounts )
     p_choose.decrement( counts.chooseCounts )
     if( notBackoffAlpha > 0 )
-      counts.chooseCounts.counts.foreach{ case (event, count) =>
+      // counts.chooseCounts.counts.foreach{ case (event, count) =>
+      counts.chooseCounts.denoms.values.flatten.foreach{ event =>
+        val count = counts.chooseCounts( event )
         event match {
           case ChooseEvent( head, context, dir, /*_,*/ dep ) =>
             if( context >= 0 ) {
@@ -150,7 +182,9 @@ class HeadOutInterpolatedAdjHeadNoValenceParameters(
     p_choose.setEventsAndCounts( counts.chooseCounts )
     if( notBackoffAlpha > 0 ) {
       lambda_choose.clear
-      counts.chooseCounts.counts.foreach{ case (event, count) =>
+      // counts.chooseCounts.counts.foreach{ case (event, count) =>
+      counts.chooseCounts.denoms.values.flatten.foreach{ event =>
+        val count = counts.chooseCounts( event )
         lambda_choose.increment(
           LambdaChooseEvent( event.head, event.context, event.dir, NotBackoff ),
           count

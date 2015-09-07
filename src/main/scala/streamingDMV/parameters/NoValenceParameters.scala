@@ -5,8 +5,18 @@ import streamingDMV.labels._
 class NoValenceParameters(
   rootAlpha:Double,
   stopAlpha:Double,
-  chooseAlpha:Double
-) extends FirstOrderArcFactoredParameters( rootAlpha, stopAlpha, chooseAlpha ) {
+  chooseAlpha:Double,
+  squarelyNormalized:Int = 0,
+  approximate:Boolean = false,
+  randomSeed:Int
+) extends FirstOrderArcFactoredParameters(
+  rootAlpha,
+  stopAlpha,
+  chooseAlpha,
+  squarelyNormalized,
+  approximate,
+  randomSeed
+) {
 
   def possibleStopEvents( h:Int ) = {
     Seq(

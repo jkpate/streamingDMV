@@ -25,7 +25,7 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
 
   def particlePerplexity:Double
   def ess:Double
-  def resampleParticles:Unit
+  def resampleParticles:Int
 
   def viterbiParse( utt:Utt ):Parse
 

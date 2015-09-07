@@ -8,8 +8,18 @@ import collection.mutable.{Set=>MSet}
 class HeadOutAdjHeadNoValenceParameters(
   rootAlpha:Double,
   stopAlpha:Double,
-  chooseAlpha:Double
-) extends NOPOSArcFactoredParameters( rootAlpha, stopAlpha, chooseAlpha ) {
+  chooseAlpha:Double,
+  squarelyNormalized:Int = 0,
+  approximate:Boolean = false,
+  randomSeed:Int
+) extends NOPOSArcFactoredParameters(
+  rootAlpha,
+  stopAlpha,
+  chooseAlpha,
+  squarelyNormalized,
+  approximate,
+  randomSeed
+) {
 
   def possibleStopEvents( h:Int ) = {
     Seq(

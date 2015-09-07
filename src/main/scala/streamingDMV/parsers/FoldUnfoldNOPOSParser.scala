@@ -17,9 +17,17 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
   randomSeed:Int = 15
 ) extends StreamingVBParser[DMVCounts,P]( maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed ) {
 
+  val approximate:Boolean
 
-  val insideChart:Array[Array[MMap[Decoration,Double]]]
-  val outsideChart:Array[Array[MMap[Decoration,Double]]]
+  var insideChart:Array[Array[MMap[Decoration,Double]]] = Array()
+  var outsideChart:Array[Array[MMap[Decoration,Double]]] = Array()
+
+  def cellMap( i:Int, j:Int ):MMap[Decoration,Double]
+
+  def buildCharts( length:Int ) {
+    insideChart = Array.tabulate( length, length+1 )( (i,j) => cellMap( i, j ) )
+    outsideChart = Array.tabulate( length, length+1 )( (i,j) => cellMap( i, j ) )
+  }
 
   def lexSpecs( index:Int ):Seq[Decoration]
   def lexCellFactor( index:Int, pDec:Decoration ):Double
@@ -31,6 +39,9 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
   }
   def insidePass( s:Array[Int] ) = {
     intString = s
+    if( intString.length > insideChart.length )
+      buildCharts( intString.length )
+
     (1 to ( intString.length )).foreach{ j =>
       lexFill( j-1 )
 
@@ -312,12 +323,23 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
 
   // Viterbi definitions
 
-  val headTrace = Array.tabulate( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
-    MMap[Decoration,Entry]()
-  )
-  val mTrace = Array.tabulate( 2*maxLength, 2*maxLength )( (i,j) =>
-    MMap[MDecoration,MEntry]()
-  )
+  var headTrace = Array[Array[MMap[Decoration,Entry]]]()
+    // = Array.tabulate( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
+    //   MMap[Decoration,Entry]()
+    // )
+  var mTrace = Array[Array[MMap[MDecoration,MEntry]]]()
+    // = Array.tabulate( 2*maxLength, 2*maxLength )( (i,j) =>
+    //   MMap[MDecoration,MEntry]()
+    // )
+
+  // def vitCellMap( i:Int, j:Int ):MMap[Decoration,Double]
+
+  def buildVitCharts( length:Int ) {
+    insideChart = Array.tabulate( length, length+1 )( (i,j) => cellMap( i, j ) )
+    outsideChart = Array.tabulate( length, length+1 )( (i,j) => cellMap( i, j ) )
+    headTrace = Array.tabulate( length, length+1 )( (i,j) => MMap[Decoration,Entry]() )
+    mTrace = Array.tabulate( length, length+1 )( (i,j) => MMap[MDecoration,MEntry]() )
+  }
 
   abstract class Entry( i:Int, j:Int ) {
     def toDepParse:Set[DirectedArc]
@@ -466,9 +488,12 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
   }
 
   def viterbiParse( utt:Utt ) = {
-    clearCharts
+    clearVitCharts
     // intString = utt.string.flatMap{ w => Seq(w,w) }
     intString = doubleString( utt.string )
+    if( intString.length > headTrace.length ) {
+      buildVitCharts( intString.length )
+    }
     (1 to ( intString.length )).foreach{ j =>
       viterbiLexFill( j-1 )
 
@@ -485,9 +510,12 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
   }
 
   def viterbiDepParse( utt:Utt ) = {
-    clearCharts
+    clearVitCharts
     // intString = utt.string.flatMap{ w => Seq(w,w) }
     intString = doubleString( utt.string )
+    if( intString.length > headTrace.length ) {
+      buildVitCharts( intString.length )
+    }
     (1 to ( intString.length )).foreach{ j =>
       viterbiLexFill( j-1 )
 
@@ -500,17 +528,25 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
   }
 
 
-  def clearCharts {
-    (0 until 2*maxLength ).foreach{ i =>
-      (0 until (2*maxLength)+1 ).foreach{ j =>
-        insideChart(i)(j).keys.foreach{ vs =>
-          insideChart(i)(j)(vs) = 0D
-          outsideChart(i)(j)(vs) = 0D
-        }
+  def clearVitCharts {
+    (0 until headTrace.length ).foreach{ i =>
+      (0 until headTrace.length+1 ).foreach{ j =>
         if( i%2 != j%2 ) {
           headTrace(i)(j).clear
         } else if( i%2 == 1 && j%2 == 1 ) {
           mTrace(i)(j).clear
+        }
+      }
+    }
+    treeRoot = null
+    stringProb = 0D
+  }
+  def clearCharts {
+    (0 until insideChart.length ).foreach{ i =>
+      (0 until insideChart.length+1 ).foreach{ j =>
+        insideChart(i)(j).keys.foreach{ vs =>
+          insideChart(i)(j)(vs) = 0D
+          outsideChart(i)(j)(vs) = 0D
         }
       }
     }
@@ -617,6 +653,7 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
     insidePass( s )
     val c = emptyCounts
     sampleScore = 0D
+    // println( "incrementing counts for sample" )
     sampleTreeCounts( 0, intString.length, RootDecoration ).foreach{ case (event, count) =>
       // println( event, count )
       event match {
@@ -626,6 +663,7 @@ abstract class FoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
       }
     }
     theta.fullyNormalized = normalized
+    // println( "done incrementing counts for sample" )
     ( c, sampleScore )
   }
 

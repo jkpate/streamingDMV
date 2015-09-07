@@ -8,10 +8,18 @@ import scala.collection.mutable.{Map=>MMap,Set=>MSet}
 
 // asymmetric Dirichlet Multinomial CPT for backing off
 // class CPT[E<:Event,N<:NormKey]( alpha:Double ) {
-class BackoffCPT[E<:Event with BackingOffEvent]( alpha:Map[BackoffDecision,Double] ) {
-  var events = MSet[E]()
-  var counts = MMap[E,Double]()
-  var denomCounts = MMap[NormKey,Double]()
+class BackoffCPT[E<:Event with BackingOffEvent with Product](
+  alpha:Map[BackoffDecision,Double],
+  eps:Double = 0.1,
+  delta:Double = 0.01,
+  approximate:Boolean = false,
+  randomSeed:Int = 15
+) {
+  // var events = MSet[E]()
+  // var counts = MMap[E,Double]()
+  var counts = new TableWrapper[E]( approximate, eps, delta, randomSeed )
+  // var denomCounts = MMap[NormKey,Double]()
+  var denomCounts = new TableWrapper[NormKey with Product]( approximate, eps, delta, 37*randomSeed )
   var denoms = MMap[NormKey,MSet[E]]()
 
   var fullyNormalized:Boolean = false
@@ -88,12 +96,13 @@ class BackoffCPT[E<:Event with BackingOffEvent]( alpha:Map[BackoffDecision,Doubl
 
   def increment( event:E, inc:Double ) = {
     // counts.getOrElseUpdate( event, 0D ) += inc
-    counts += event -> { counts.getOrElse( event, 0D ) + inc }
+    // counts += event -> { counts.getOrElse( event, 0D ) + inc }
+    counts.increment( event, inc )
 
     val n = event.normKey
     // denomCounts( n ) += inc
-    denomCounts +=
-      n -> { denomCounts.getOrElse( n, 0D ) + inc }
+    // denomCounts += n -> { denomCounts.getOrElse( n, 0D ) + inc }
+    denomCounts.increment( n, inc )
 
     denoms.getOrElseUpdate( n, MSet() ) += event
   }
@@ -103,25 +112,33 @@ class BackoffCPT[E<:Event with BackingOffEvent]( alpha:Map[BackoffDecision,Doubl
   }
 
   def increment( other:CPT[E] ) {
-    other.counts.foreach{ case( k, v) =>
-      increment( k, v )
-    }
+    // other.counts.foreach{ case( k, v) =>
+    //   increment( k, v )
+    // }
+    counts.increment( other.counts )
+    denomCounts.increment( other.denomCounts )
   }
 
   def decrement( other:CPT[E] ) {
-    other.counts.foreach{ case( k, v) =>
-      decrement( k, v )
-    }
+    // other.counts.foreach{ case( k, v) =>
+    //   decrement( k, v )
+    // }
+    counts.decrement( other.counts )
+    denomCounts.decrement( other.denomCounts )
   }
 
   def divideBy( x:Double ) {
-    counts.keys.foreach{ counts(_) /= x }
+    // counts.keys.foreach{ counts(_) /= x }
+    counts.divideBy( x )
   }
 
   def decrement( event:E, dec:Double ) = {
-    counts( event ) -= dec
+    // counts( event ) -= dec
+    counts.decrement( event , dec )
+
     val n = event.normKey
-    denomCounts( n ) -= dec
+    // denomCounts( n ) -= dec
+    denomCounts.decrement( n , dec )
   }
 
   def clear {
@@ -134,14 +151,14 @@ class BackoffCPT[E<:Event with BackingOffEvent]( alpha:Map[BackoffDecision,Doubl
     clear
     denoms = other.denoms.clone
     denomCounts = other.denomCounts.clone
-    events = other.events.clone
+    // events = other.events.clone
   }
 
   def setEventsAndCounts( other:BackoffCPT[E] ) {
     clear
     denoms = other.denoms.clone
     denomCounts = other.denomCounts.clone
-    events = other.events.clone
+    // events = other.events.clone
     counts = other.counts.clone
   }
 
@@ -149,10 +166,11 @@ class BackoffCPT[E<:Event with BackingOffEvent]( alpha:Map[BackoffDecision,Doubl
   def setEvents( events:Set[E] ) {
     clear
     events.groupBy( _.normKey ).foreach{ case (n, events) =>
-      counts ++= events.toSeq.map{ e =>
-        e -> 0D
-      }
-      denomCounts += n -> 0D
+      // counts ++= events.toSeq.map{ e =>
+      //   e -> 0D
+      // }
+      // denomCounts += n -> 0D
+      denomCounts.increment( n, 0D )
       denoms += n -> MSet( events.toSeq:_* )
     }
   }

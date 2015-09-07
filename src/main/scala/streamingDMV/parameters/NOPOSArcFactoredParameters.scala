@@ -8,12 +8,44 @@ import collection.mutable.{Set=>MSet}
 abstract class NOPOSArcFactoredParameters(
   rootAlpha:Double,
   stopAlpha:Double,
-  chooseAlpha:Double
+  chooseAlpha:Double,
+  squarelyNormalized:Int = 0,
+  approximate:Boolean = false,
+  randomSeed:Int
 ) extends ArcFactoredParameters[DMVCounts]( rootAlpha, stopAlpha, chooseAlpha ) {
 
-  val p_root = new CPT[RootEvent]( rootAlpha )
-  val p_stop = new CPT[StopEvent]( stopAlpha )
-  val p_choose = new CPT[ChooseEvent]( chooseAlpha )
+  val rand = new util.Random( randomSeed )
+
+  // if( approximate )
+  //   println( "creating approximate parameters" )
+  // else
+  //   println( "creating exact parameters" )
+
+  val p_root = new CPT[RootEvent](
+    rootAlpha,
+    squarelyNormalized,
+    approximate = approximate,
+    eps = 1E-6,
+    delta = 1E-2,
+    randomSeed = rand.nextInt
+  )
+  val p_stop =
+    new CPT[StopEvent](
+      stopAlpha,
+      approximate = approximate,
+      eps = 1E-6,
+      delta = 3E-2,
+      randomSeed = rand.nextInt
+    )
+  val p_choose =
+    new CPT[ChooseEvent](
+      chooseAlpha,
+      squarelyNormalized,
+      approximate = approximate,
+      eps = 1E-6,
+      delta = 1E-3,
+      randomSeed = rand.nextInt
+    )
 
   def toCounts = {
     // val c =
@@ -63,7 +95,14 @@ abstract class NOPOSArcFactoredParameters(
   }
 
   def incrementCounts( counts:DMVCounts ) {
+    // println( "increment by\n" )
+    // counts.rootCounts.printOut()
+
     p_root.increment( counts.rootCounts )
+
+    // println( "\n\n-------\n\nRESULT\n" )
+    // p_root.printOut()
+
     p_stop.increment( counts.stopCounts )
     p_choose.increment( counts.chooseCounts )
   }

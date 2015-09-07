@@ -14,7 +14,9 @@ class HeadOutInterpolatedAdjHeadNoValenceParser(
   chooseAlpha:Double = 1D,
   backoffAlpha:Double = 1D,
   notBackoffAlpha:Double = 10D,
-  randomSeed:Int = 15
+  randomSeed:Int = 15,
+  squarelyNormalized:Int = 0,
+  val approximate:Boolean = false
 ) extends SecondOrderFoldUnfoldParser[HeadOutInterpolatedAdjHeadNoValenceParameters](
   maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed
 ) {
@@ -25,38 +27,55 @@ class HeadOutInterpolatedAdjHeadNoValenceParser(
       stopAlpha,
       chooseAlpha,
       backoffAlpha,
-      notBackoffAlpha
+      notBackoffAlpha,
+      squarelyNormalized,
+      approximate,
+      randomSeed
     )
 
-  val insideChart =
-    Array.tabulate[MMap[Decoration,Double]]( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
-      if( ( i%2 != j%2 ) ) {
-        MMap( NoValence -> 0D )
-      } else if( i%2 == 1 && j%2 == 1 ) {
-        MMap(
-          PlainM -> 0D,
-          LeftwardM -> 0D,
-          RightwardM -> 0D
-        )
-      } else {
-        MMap()
-      }
-    )
+      // val insideChart =
+      //   Array.tabulate[MMap[Decoration,Double]]( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
+      //     if( ( i%2 != j%2 ) ) {
+      //       MMap( NoValence -> 0D )
+      //     } else if( i%2 == 1 && j%2 == 1 ) {
+      //       MMap(
+      //         PlainM -> 0D,
+      //         LeftwardM -> 0D,
+      //         RightwardM -> 0D
+      //       )
+      //     } else {
+      //       MMap()
+      //     }
+      //   )
 
-  val outsideChart =
-    Array.tabulate[MMap[Decoration,Double]]( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
-      if( ( i%2 != j%2 ) ) {
-        MMap( NoValence -> 0D )
-      } else if( i%2 == 1 && j%2 == 1 ) {
-        MMap(
-          PlainM -> 0D,
-          LeftwardM -> 0D,
-          RightwardM -> 0D
-        )
-      } else {
-        MMap()
-      }
-    )
+      // val outsideChart =
+      //   Array.tabulate[MMap[Decoration,Double]]( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
+      //     if( ( i%2 != j%2 ) ) {
+      //       MMap( NoValence -> 0D )
+      //     } else if( i%2 == 1 && j%2 == 1 ) {
+      //       MMap(
+      //         PlainM -> 0D,
+      //         LeftwardM -> 0D,
+      //         RightwardM -> 0D
+      //       )
+      //     } else {
+      //       MMap()
+      //     }
+      //   )
+
+  def cellMap( i:Int, j:Int ) = {
+    if( ( i%2 != j%2 ) ) {
+      MMap( NoValence -> 0D )
+    } else if( i%2 == 1 && j%2 == 1 ) {
+      MMap(
+        PlainM -> 0D,
+        LeftwardM -> 0D,
+        RightwardM -> 0D
+      )
+    } else {
+      MMap()
+    }
+  }
 
   def findLeftRootChild( k:Int ) =
     headTrace( 0 )( k )( NoValence )
@@ -305,7 +324,9 @@ class HeadOutInterpolatedAdjHeadNoValenceParser(
       Map( Backoff -> backoffAlpha, NotBackoff -> notBackoffAlpha )
     )
     if( notBackoffAlpha > 0 )
-      counts.chooseCounts.counts.foreach{ case (event, count) =>
+      // counts.chooseCounts.counts.foreach{ case (event, count) =>
+      counts.chooseCounts.denoms.values.flatten.foreach{ event =>
+        val count = counts.chooseCounts( event )
         event match {
           case ChooseEvent( head, context, dir, /*_,*/ dep ) =>
             if( context >= 0 ) {

@@ -12,15 +12,45 @@ class NoValenceParser(
   rootAlpha:Double = 1D,
   stopAlpha:Double = 1D,
   chooseAlpha:Double = 1D,
-  randomSeed:Int = 15
+  randomSeed:Int = 15,
+  squarelyNormalized:Int = 0,
+  val approximate:Boolean = false
 ) extends FirstOrderFoldUnfoldNOPOSParser[NoValenceParameters](
   maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed
 ) {
 
-  val theta = new NoValenceParameters( rootAlpha, stopAlpha, chooseAlpha )
+  val theta = new NoValenceParameters(
+    rootAlpha,
+    stopAlpha,
+    chooseAlpha,
+    squarelyNormalized,
+    approximate,
+    randomSeed
+  )
 
 
-  val insideChart = Array.tabulate[MMap[Decoration,Double]]( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
+
+      // val insideChart = Array.tabulate[MMap[Decoration,Double]]( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
+      //   if( ( i%2 != j%2 ) ) {
+      //     MMap( NoValence -> 0D )
+      //   } else if( i%2 == 1 && j%2 == 1 ) {
+      //     MMap( PlainM -> 0D )
+      //   } else {
+      //     MMap[Decoration,Double]()
+      //   }
+      // )
+
+      // val outsideChart = Array.tabulate[MMap[Decoration,Double]]( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
+      //   if( ( i%2 != j%2 ) ) {
+      //     MMap( NoValence -> 0D )
+      //   } else if( i%2 == 1 && j%2 == 1 ) {
+      //     MMap( PlainM -> 0D )
+      //   } else {
+      //     MMap[Decoration,Double]()
+      //   }
+      // )
+
+  def cellMap( i:Int, j:Int ) = {
     if( ( i%2 != j%2 ) ) {
       MMap( NoValence -> 0D )
     } else if( i%2 == 1 && j%2 == 1 ) {
@@ -28,18 +58,7 @@ class NoValenceParser(
     } else {
       MMap[Decoration,Double]()
     }
-  )
-
-  val outsideChart = Array.tabulate[MMap[Decoration,Double]]( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
-    if( ( i%2 != j%2 ) ) {
-      MMap( NoValence -> 0D )
-    } else if( i%2 == 1 && j%2 == 1 ) {
-      MMap( PlainM -> 0D )
-    } else {
-      MMap[Decoration,Double]()
-    }
-  )
-
+  }
 
 
   def findLeftRootChild( k:Int ) = headTrace( 0 )( k )( NoValence )

@@ -30,7 +30,8 @@ libraryDependencies  ++= Seq(
   // "org.scalanlp" %% "breeze" % "0.11.2",
   // "org.scalanlp" %% "breeze-natives" % "0.11.2"
   "org.scalanlp" %% "breeze" % "0.12-SNAPSHOT",
-  "org.scalanlp" %% "breeze-natives" % "0.12-SNAPSHOT"
+  "org.scalanlp" %% "breeze-natives" % "0.12-SNAPSHOT"// ,
+  // "com.twitter" %% "algebird-core" % "0.11.0"
 )
 
 
