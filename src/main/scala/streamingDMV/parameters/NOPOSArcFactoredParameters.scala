@@ -25,15 +25,15 @@ abstract class NOPOSArcFactoredParameters(
     rootAlpha,
     squarelyNormalized,
     approximate = approximate,
-    eps = 1E-6,
-    delta = 1E-2,
+    eps = 1E-5,
+    delta = 3E-2,
     randomSeed = rand.nextInt
   )
   val p_stop =
     new CPT[StopEvent](
       stopAlpha,
       approximate = approximate,
-      eps = 1E-6,
+      eps = 1E-5,
       delta = 3E-2,
       randomSeed = rand.nextInt
     )
@@ -42,8 +42,8 @@ abstract class NOPOSArcFactoredParameters(
       chooseAlpha,
       squarelyNormalized,
       approximate = approximate,
-      eps = 1E-6,
-      delta = 1E-3,
+      eps = 1E-5,
+      delta = 1E-4,
       randomSeed = rand.nextInt
     )
 

@@ -23,7 +23,7 @@ class CPT[E<:Event with Product](
   // var counts = MMap[E,Double]().withDefaultValue(0D)
   var counts = new TableWrapper[E]( approximate, eps, delta, randomSeed )
   // var denomCounts = MMap[NormKey,Double]()
-  var denomCounts = new TableWrapper[NormKey with Product]( approximate, 2*eps,
+  var denomCounts = new TableWrapper[NormKey with Product]( approximate, eps,
     2*delta, 37*randomSeed )
   var denoms = MMap[NormKey,MSet[E]]()
   // var denoms = MMap[NormKey,TableWrapper[Event]]()

@@ -56,6 +56,7 @@ object run {
     optsParser.accepts( "batchVB" )
     optsParser.accepts( "particleFilter" )
     optsParser.accepts( "numParticles" ).withRequiredArg
+    optsParser.accepts( "noResampling" )
     optsParser.accepts( "printResamplingEvents" )
     optsParser.accepts( "constituencyEval" )
     optsParser.accepts( "printInitialGrammar" )
@@ -128,6 +129,7 @@ object run {
           16
         else
           1
+    val noResampling = opts.has( "noResampling" )
     val printResamplingEvents = opts.has( "printResamplingEvents" )
     val logEvalRate = opts.has( "logEvalRate" )
     var evalEvery =
@@ -157,6 +159,7 @@ object run {
     println( s"batchVB: ${batchVB}" )
     println( s"particleFilter: ${particleFilter}" )
     println( s"numParticles: ${numParticles}" )
+    println( s"noResampling: ${noResampling}" )
     println( s"printResamplingEvents: ${printResamplingEvents}" )
     println( s"convergeInitialMiniBatch: ${convergeInitialMiniBatch}" )
     println( s"logEvalRate: ${logEvalRate}" )
@@ -427,7 +430,7 @@ object run {
       sentencesSinceLastEval += mb.size
       sentencesProcessed += mb.size
 
-      if( particleFilter ) {
+      if( particleFilter && (!noResampling) ) {
         val resamplingStartTime = System.currentTimeMillis
         val ess = p.ess
         if( ess < numParticles/2 ) {
@@ -523,6 +526,7 @@ object run {
     println( s"it${trainingSentCount}:logProb:${heldOutLogProb}" )
     println( s"it${trainingSentCount}:testTimePerSentence:${ (parseEndTime - parseStartTime ) / testSet.size}ms/sentence" )
     println( s"it${trainingSentCount}:particlePerplexity:${p.particlePerplexity}" )
+    println( s"it${sentencesProcessed}:ess:${p.ess}" )
 
     // if( particleFilter ) {
     //   println( s"resampled ${resamplingEventCounts} times" )

@@ -11,7 +11,13 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
   stopAlpha:Double = 1D,
   chooseAlpha:Double = 1D,
   randomSeed:Int = 15
-) extends FoldUnfoldParser[C,P]( maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed ) {
+) extends FoldUnfoldParser[C,P](
+  maxLength,
+  rootAlpha,
+  stopAlpha,
+  chooseAlpha,
+  randomSeed
+) {
 
   def streamingBayesUpdate(
     miniBatch:List[Utt],

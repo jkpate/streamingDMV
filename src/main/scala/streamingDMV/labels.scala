@@ -6,6 +6,18 @@ import streamingDMV.tables.MatrixCPT
 import breeze.linalg._
 import breeze.numerics._
 
+import java.nio.ByteBuffer
+
+
+abstract class AnnotationStream[T] {
+  val annotations:Array[T]
+}
+
+case object NullAnnotation extends AnnotationStream[Nothing] {
+  val annotations = Array[Nothing]()
+}
+case class WordLengths( annotations:Array[Int] ) extends AnnotationStream[Int]
+
 case class DirectedArc( hIdx:Int, dIdx:Int )
 
 case class Parse( id:String, conParse:String, depParse:Set[DirectedArc] )
@@ -21,6 +33,35 @@ object FastHash {
 }
 
 trait FastHashable extends Product {
+  lazy val byteBuffer = {
+    val arr = productArity
+    if( arr == 0 ) {
+      ByteBuffer.allocate( 4 ).putInt( hashCode )
+    } else {
+      val bytes = ByteBuffer.allocate( 4*arr ).putInt( {
+          val el = productElement(0)
+          el match  {
+            case e:Int => e
+            case _ => el.hashCode
+          }
+        }
+      )
+
+      var i = 1
+      while( i < arr ) {
+        val el = productElement( i )
+        val int = el match {
+          case i:Int => i
+          case _ => el.hashCode
+        }
+        bytes.putInt( int )
+
+        i += 1
+      }
+
+      bytes
+    }
+  }
   def fastHash( seed:Int ) = {
     val elements = productIterator
     if( elements.size > 0 ) {
@@ -156,13 +197,20 @@ abstract class Event /*[C]*/ extends FastHashable {
 //   def apply( head:Int, dir:AttDir ) = new ChooseNorm( head, -1, dir )
 // }
 case class ChooseNorm( head:Int, context:Int, dir:AttDir ) extends NormKey {
-  override def fastHash( seed:Int ) = {
-    // var hash = FastHash( head, seed )
-    var hash = head*141650963 + FastHash( dir.hashCode, seed )
-    if( context >= 0 )
-      hash += hash*141650963 + FastHash( context, seed )
-    hash
+  override lazy val byteBuffer = {
+    val bytes = if( context >= 0 ) ByteBuffer.allocate( 12 ) else ByteBuffer.allocate( 8 )
+    bytes.putInt( head )
+    if( context >= 0 ) bytes.putInt( context )
+    bytes.putInt( dir.hashCode )
+    bytes
   }
+  // override def fastHash( seed:Int ) = {
+  //   // var hash = FastHash( head, seed )
+  //   var hash = head*141650963 + FastHash( dir.hashCode, seed )
+  //   if( context >= 0 )
+  //     hash += hash*141650963 + FastHash( context, seed )
+  //   hash
+  // }
   // override lazy val hashCode: Int= scala.runtime.ScalaRunTime._hashCode(ChooseNorm.this)
   // override val hashCode =
   //   ( (head + 1 ) * 83 ) + ( (context + 107) * 107) + dir.hashCode()
@@ -180,14 +228,22 @@ case class ChooseNorm( head:Int, context:Int, dir:AttDir ) extends NormKey {
 case class ChooseEvent( head:Int, context:Int, dir:AttDir, /*v:Decoration,*/ dep:Int ) extends
 Event /*[AttDir]*/ {
   def normKey = ChooseNorm( head, context, dir )
-  override def fastHash( seed:Int ) = {
-    // var hash = FastHash( head, seed )
-    var hash = head*141650963 + FastHash( dir.hashCode, seed )
-    if( context >= 0 )
-      hash += hash*141650963 + FastHash( context, seed )
-    hash += hash*141650963 + FastHash( dep, seed )
-    hash
+  override lazy val byteBuffer = {
+    val bytes = if( context > 0 ) ByteBuffer.allocate( 16 ) else ByteBuffer.allocate( 12 )
+    bytes.putInt( head )
+    if( context > 0 ) bytes.putInt( context )
+    bytes.putInt( dir.hashCode )
+    bytes.putInt( dep )
+    bytes
   }
+  // override def fastHash( seed:Int ) = {
+  //   // var hash = FastHash( head, seed )
+  //   var hash = head*141650963 + FastHash( dir.hashCode, seed )
+  //   if( context >= 0 )
+  //     hash += hash*141650963 + FastHash( context, seed )
+  //   hash += hash*141650963 + FastHash( dep, seed )
+  //   hash
+  // }
   /*def closedSpec = dir
   def openSpec = (head, context, dep)*/
   // override val hashCode =
@@ -299,14 +355,23 @@ object StopEvent {
 case class StopEvent( head:Int, dir:AttDir, v:Decoration, dec:StopDecision ) extends
 Event /*[Tuple3[AttDir,Decoration,StopDecision]]*/ {
   def normKey = StopNorm( head, dir, v )
-
-  override def fastHash( seed:Int ) = {
-    // var hash = FastHash( head, seed )
-    var hash = head*141650963 + FastHash( dir.hashCode, seed )
-    hash += hash*141650963 + FastHash( v.hashCode, seed )
-    hash += hash*141650963 + FastHash( dec.hashCode, seed )
-    hash
+  override lazy val byteBuffer = {
+    val bytes = if( v != NoValence ) ByteBuffer.allocate( 16 ) else ByteBuffer.allocate( 12 )
+    bytes.putInt( head )
+    bytes.putInt( dir.hashCode )
+    if( v != NoValence ) bytes.putInt( v.hashCode )
+    bytes.putInt( dec.hashCode )
+    bytes
   }
+
+  // override def fastHash( seed:Int ) = {
+  //   // var hash = FastHash( head, seed )
+  //   var hash = head*141650963 + FastHash( dir.hashCode, seed )
+  //   if( v != NoValence )
+  //     hash += hash*141650963 + FastHash( v.hashCode, seed )
+  //   hash += hash*141650963 + FastHash( dec.hashCode, seed )
+  //   hash
+  // }
 
   /*def closedSpec = (dir,v,dec)
   def openSpec = (head, 0, 0)*/
@@ -326,12 +391,20 @@ Event /*[Tuple3[AttDir,Decoration,StopDecision]]*/ {
   // }
 }
 case class StopNorm( head:Int, dir:AttDir, v:Decoration ) extends NormKey {
-  override def fastHash( seed:Int ) = {
-    // var hash = FastHash( head, seed )
-    var hash = head*141650963 + FastHash( dir.hashCode, seed )
-    hash += hash*141650963 + FastHash( v.hashCode, seed )
-    hash
+  override lazy val byteBuffer = {
+    val bytes = if( v != NoValence ) ByteBuffer.allocate( 12 ) else ByteBuffer.allocate( 8 )
+    bytes.putInt( head )
+    bytes.putInt( dir.hashCode )
+    if( v != NoValence ) bytes.putInt( v.hashCode )
+    bytes
   }
+  // override def fastHash( seed:Int ) = {
+  //   // var hash = FastHash( head, seed )
+  //   var hash = head*141650963 + FastHash( dir.hashCode, seed )
+  //   if( v != NoValence )
+  //     hash += hash*141650963 + FastHash( v.hashCode, seed )
+  //   hash
+  // }
   // override lazy val hashCode: Int= scala.runtime.ScalaRunTime._hashCode(StopNorm.this)
   // override val hashCode =
   //   ( (head + 107 ) * 107 ) + dir.hashCode() + v.hashCode()
@@ -349,6 +422,11 @@ object RootEvent {
   def apply():RootEvent = RootEvent( -1 )
 }
 case class RootEvent( root:Int ) extends Event /*[RootNorm.type]*/ {
+  override lazy val byteBuffer = {
+    val bytes = ByteBuffer.allocate( 8 )
+    bytes.putInt( root )
+    bytes
+  }
   def normKey = RootNorm
   /*def closedSpec = RootNorm
   def openSpec = (root, 0, 0)*/

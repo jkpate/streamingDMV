@@ -77,7 +77,7 @@ class TableWrapper[E<:FastHashable](
     if( inc > 0 ) {
       //println( s"incrementing event ${event} as " + approximate )
       if( approximate ) {
-        approximateCounts.conservativeIncrement( event, inc.toLong )
+        approximateCounts.conservativeIncrement( event, inc.toInt )
         // var i = 0
         // // approximateSize += event.toString
         // while( i < inc ) {

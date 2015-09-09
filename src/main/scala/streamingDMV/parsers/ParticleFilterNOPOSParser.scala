@@ -307,7 +307,7 @@ class ParticleFilterNOPOSParser[
     particles.head.rightwardSplitSpecs( i, j ).map{ case ( pDec, splits ) =>
       (
         pDec,
-        splits.view.map{ case ( k, mDec, cDec ) =>
+        splits.map{ case ( k, mDec, cDec ) =>
           (
             (k,mDec, cDec),
             rightwardCellScore( i, k, j, pDec, mDec, cDec )
@@ -321,7 +321,7 @@ class ParticleFilterNOPOSParser[
     particles.head.leftwardSplitSpecs( i, j ).map{ case ( pDec, splits ) =>
       (
         pDec,
-        splits.view.map{ case ( k, mDec, cDec ) =>
+        splits.map{ case ( k, mDec, cDec ) =>
           (
             (k,mDec, cDec),
             leftwardCellScore( i, k, j, pDec, mDec, cDec )
@@ -335,7 +335,7 @@ class ParticleFilterNOPOSParser[
     particles.head.mSplitSpecs( i, j ).map{ case (mDecoration, splits) =>
       (
         mDecoration,
-        splits.view.map{ k => 
+        splits.map{ k => 
           // println( (i,k,j,mDecoration, mCellScore( i, k, j, mDecoration ) ) )
           (k, mCellScore( i, k, j, mDecoration ) )
         }
