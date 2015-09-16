@@ -1,36 +1,42 @@
 package streamingDMV.parsers
 
 import streamingDMV.labels._
-import streamingDMV.parameters.NOPOSArcFactoredParameters
+// import streamingDMV.parameters.NOPOSArcFactoredParameters
+import streamingDMV.parameters.ArcFactoredParameters
+import streamingDMV.math.LogSum
 // import streamingDMV.parsers.FoldUnfoldNOPOSParser.RootEntry
 
 import scala.collection.mutable.{Map=>MMap}
 import scala.reflect.ClassTag
 
 class ParticleFilterNOPOSParser[
-  P<:NOPOSArcFactoredParameters,
-  R<:FoldUnfoldNOPOSParser[P]:ClassTag
+  C<:DependencyCounts,
+  P<:ArcFactoredParameters[C],
+  R<:FoldUnfoldNOPOSParser[C,P]:ClassTag
 ](
   maxLength:Int,
   rootAlpha:Double = 1D,
   stopAlpha:Double = 1D,
   chooseAlpha:Double = 1D,
   numParticles:Int = 16,
-  createParticle:(DMVCounts,Int) => R,
-  randomSeed:Int = 15
-) extends ParticleFilterParser[DMVCounts,P,R](
+  createParticle:(C,Array[SampledCounts[C]],Int) => R,
+  randomSeed:Int = 15,
+  reservoirSize:Int
+) extends ParticleFilterParser[C,P,R](
   maxLength,
   rootAlpha,
   stopAlpha,
   chooseAlpha,
   numParticles,
   createParticle,
-  randomSeed
+  randomSeed,
+  reservoirSize
 ) {
 
 
 
-  def emptyCounts = DMVCounts( rootAlpha, stopAlpha, chooseAlpha )
+  //def emptyCounts = DMVCounts( rootAlpha, stopAlpha, chooseAlpha, true )
+  def emptyCounts = particles.head.emptyCounts
 
   def extractPartialCounts(string: Array[Int]) = particles.head.extractPartialCounts( string )
   def initialCounts(utts: List[streamingDMV.labels.Utt]) = particles.head.initialCounts( utts )
@@ -54,14 +60,20 @@ class ParticleFilterNOPOSParser[
   def rightwardSplitSpecs(i:Int,j:Int) = particles.head.rightwardSplitSpecs(i,j)
   def lexFill( index:Int ) {
     lexSpecs( index ).foreach{ pDec =>
-      particles.head.insideChart( index )( index+1 )(pDec) += lexCellFactor( index, pDec )
+      particles.head.insideChart( index )( index+1 )(pDec) = LogSum(
+        particles.head.insideChart( index )( index+1 )(pDec),
+        lexCellFactor( index, pDec )
+      )
     }
   }
 
   def computeInsideMScore( i:Int, j:Int ) {
     mSplitSpecs(i,j).foreach{ case (mDecoration, splits) =>
       splits.foreach{ k =>
-        particles.head.insideChart( i )( j )( mDecoration ) += mCellScore( i, k, j, mDecoration )
+        particles.head.insideChart( i )( j )( mDecoration ) = LogSum(
+          particles.head.insideChart( i )( j )( mDecoration ),
+          mCellScore( i, k, j, mDecoration )
+        )
       }
     }
   }
@@ -70,16 +82,20 @@ class ParticleFilterNOPOSParser[
     rootSplitSpecs().foreach{ case ( k, decorationPair ) =>
       val r = intString( k )
 
-      particles.head.stringProb +=
+      particles.head.stringProb = LogSum(
+        particles.head.stringProb,
         rootCellScore( k, decorationPair.evenLeft, decorationPair.evenRight )
+      )
     }
   }
 
   def computeInsideRightwardScore( i:Int, j:Int ) {
     rightwardSplitSpecs( i, j ).foreach{ case ( pDec, splits ) =>
       splits.foreach{ case ( k, mDec, cDec ) =>
-        particles.head.insideChart( i )( j )( pDec ) +=
+        particles.head.insideChart( i )( j )( pDec ) = LogSum(
+          particles.head.insideChart( i )( j )( pDec ),
           rightwardCellScore( i, k, j, pDec, mDec, cDec )
+        )
       }
     }
   }
@@ -87,8 +103,10 @@ class ParticleFilterNOPOSParser[
   def computeInsideLeftwardScore( i:Int, j:Int ) {
     leftwardSplitSpecs( i, j ).foreach{ case ( pDec, splits ) =>
       splits.foreach{ case ( k, mDec, cDec ) =>
-        particles.head.insideChart( i )( j )( pDec ) +=
+        particles.head.insideChart( i )( j )( pDec ) = LogSum(
+          particles.head.insideChart( i )( j )( pDec ),
           leftwardCellScore( i, k, j, pDec, mDec, cDec )
+        )
       }
     }
   }
@@ -110,13 +128,25 @@ class ParticleFilterNOPOSParser[
 
   def insidePass( s:Array[Int] ) = {
     intString = s
-    particles.head.intString = intString
+    // println( s.mkString( " " ) )
+    particles.foreach( _.intString = intString )
+    if( intString.length > particles.head.insideChart.length ) {
+      particles.head.buildCharts( intString.length )
+    }
+
+    // println( s"intString.length: ${intString.length}" )
+    // println( s"particles.head.insideChart.length: ${particles.head.insideChart.length}" )
+
     (1 to ( intString.length )).foreach{ j =>
+      // println( s"> particles.head.insideChart.length: ${particles.head.insideChart.length}" )
       lexFill( j-1 )
+      //println( s">> particles.head.insideChart.length: ${particles.head.insideChart.length}" )
 
       if( j > 1 )
         (0 to (j-2)).reverse.foreach{ i =>
+          // println( s">>> particles.head.insideChart.length: ${particles.head.insideChart.length}" )
           synFill( i , j )
+          // println( s">>>> ${(i,j)} particles.head.insideChart.length: ${particles.head.insideChart.length}" )
         }
     }
   }
@@ -179,6 +209,7 @@ class ParticleFilterNOPOSParser[
     particles.head.treeRoot = null
     particles.head.stringProb = 0D
   }
+
   def clearCharts {
     (0 until particles.head.insideChart.length ).foreach{ i =>
       (0 until particles.head.insideChart.length+1 ).foreach{ j =>
@@ -295,6 +326,7 @@ class ParticleFilterNOPOSParser[
     particles.head.insideChart( 0 )( k )( leftDec ) *
       particles.head.insideChart( k )( intString.length )( rightDec ) *
         (0 until numParticles).map{ l =>
+          // println( s"particleWeights(l): ${particleWeights(l)}" )
           particleWeights(l) *
             particles(l).rootCellFactor( k )
         }.sum
@@ -302,6 +334,13 @@ class ParticleFilterNOPOSParser[
 
 
 
+  def lexCellScores( index:Int ) = {
+    particles.head.lexSpecs( index ).map{ pDec =>
+      (
+        pDec, Seq( lexCellFactor( index, pDec ) )
+      )
+    }
+  }
 
   def rightwardCellScores( i:Int, j:Int ) = {
     particles.head.rightwardSplitSpecs( i, j ).map{ case ( pDec, splits ) =>
@@ -345,7 +384,8 @@ class ParticleFilterNOPOSParser[
 
   def rootCellScores() = {
     particles.head.rootSplitSpecs().map{ case ( k, decorationPair ) =>
-      // println( k, decorationPair )
+          // println( ( k, decorationPair, rootCellScore( k, decorationPair.evenLeft,
+          //   decorationPair.evenRight ) ) )
       (
         ( k, decorationPair ),
         rootCellScore( k, decorationPair.evenLeft, decorationPair.evenRight )
@@ -402,7 +442,8 @@ class ParticleFilterNOPOSParser[
   }
   def viterbiLexFill( index:Int ) {
     particles.head.lexSpecs( index ).foreach{ pDec =>
-      particles.head.insideChart( index )( index+1 )(pDec) += lexCellFactor( index, pDec )
+      // TODO fix me for when there might be more than one possible production?
+      particles.head.insideChart( index )( index+1 )(pDec) = lexCellFactor( index, pDec )
       particles.head.insertLexEntry( index, pDec )
     }
   }
@@ -416,6 +457,9 @@ class ParticleFilterNOPOSParser[
     }
     if( intString.length > particles.head.headTrace.length ) {
       particles.head.buildVitCharts( intString.length )
+    }
+    if( intString.length > particles.head.insideChart.length ) {
+      particles.head.buildCharts( intString.length )
     }
 
     (1 to ( intString.length )).foreach{ j =>
@@ -443,13 +487,20 @@ class ParticleFilterNOPOSParser[
     (0 until numParticles).foreach{ l =>
       particles(l).intString = intString
       particles(l).theta.fullyNormalized = true
-      assert( particles(l).approximate )
+      // assert( particles(l).approximate )
+    }
+
+    if( !(math.abs( particleWeights.sum -1 ) < 0.000001 ) ) {
+      println( particleWeights.mkString("; " ) )
     }
 
     assert( math.abs( particleWeights.sum -1 ) < 0.000001 )
 
     if( intString.length > particles.head.headTrace.length ) {
       particles.head.buildVitCharts( intString.length )
+    }
+    if( intString.length > particles.head.insideChart.length ) {
+      particles.head.buildCharts( intString.length )
     }
 
 
@@ -467,7 +518,117 @@ class ParticleFilterNOPOSParser[
     Parse( utt.id, "", particles.head.treeRoot.toDepParse )
   }
 
+  def sampleTreeCounts( i:Int, j:Int, pDec:Decoration ):Seq[Tuple2[Event,Double]] = {
+    if( i%2 == 1 && j%2 == 1 ) { // M
+
+      // val splitsAndScores =
+      mCellScores(i,j).filter(_._1 == pDec).flatMap{ case (parent, splitsAndScores ) =>
+        assert( parent == pDec )
+        val ( k, score ) = argSample( splitsAndScores )
+
+        sampleScore += score
+
+        if( k%2 == 0 )
+          particles.head.mEventCounts( i, k, j, parent, 0D ) ++
+            sampleTreeCounts( i, k, parent.evenLeft ) ++
+              sampleTreeCounts( k, j, parent.evenRight )
+        else
+          particles.head.mEventCounts( i, k, j, parent, 0D ) ++
+            sampleTreeCounts( i, k, parent.oddLeft ) ++
+              sampleTreeCounts( k, j, parent.oddRight )
+      }
+
+    } else if( i%2 == 1 ) { // Rightward
+
+      // val splitsAndScores =
+      if( j-i > 1 ) {
+        rightwardCellScores(i,j).filter(_._1 == pDec).flatMap{ case (parent, splitsAndScores ) =>
+          assert( parent == pDec )
+          val ( (k, mDec, cDec) , score ) = argSample( splitsAndScores )
+
+          sampleScore += score
+
+          particles.head.rightwardEventCounts( i, k, j, pDec, mDec, cDec, 0D ) ++
+            sampleTreeCounts( i, k, mDec ) ++
+              sampleTreeCounts( k, j, cDec )
+        }
+      } else {
+        // lexMarginals( j )
+        lexCellScores( i ).filter( _._1 == pDec ).flatMap{ case ( parent, scores ) =>
+          assert( parent == pDec )
+          assert( scores.length == 1 )
+
+          sampleScore += scores.head
+          // Seq()
+          particles.head.lexEventCounts( i, pDec, 0D )
+        }
+      }
+
+    } else if( j%2 == 1 ) { // Leftward
+
+      // val splitsAndScores =
+      if( j-i > 1 ) {
+        leftwardCellScores(i,j).filter(_._1 == pDec).flatMap{ case ( parent, splitsAndScores ) =>
+          assert( parent == pDec )
+          val ( (k, mDec, cDec) , score ) = argSample( splitsAndScores )
+
+          sampleScore += score
+
+          particles.head.leftwardEventCounts( i, k, j, pDec, mDec, cDec, 0D ) ++
+            sampleTreeCounts( i, k, cDec ) ++
+              sampleTreeCounts( k, j, mDec )
+        }
+      } else {
+        // lexMarginals( i )
+        lexCellScores( i ).filter( _._1 == pDec ).flatMap{ case ( parent, scores ) =>
+          assert( parent == pDec )
+          assert( scores.length == 1 )
+
+          sampleScore += scores.head
+          particles.head.lexEventCounts( i, pDec, 0D )
+        }
+      }
+
+    } else if( i == 0 && j == intString.length ) { // Root
+      assert( pDec == RootDecoration )
+
+      val ((k,cDecs), score) = argSample( rootCellScores() )
+
+      sampleScore += score
+
+      particles.head.rootEventCounts( k, 0D ) ++
+        sampleTreeCounts( i , k, cDecs.evenLeft ) ++
+        sampleTreeCounts( k, intString.length, cDecs.evenRight )
+
+    } else {
+      Seq()
+    }
+  }
+
+  var sampleScore = 0D
   // TODO implement me?
-  def sampleTreeCounts( utt:Utt ):Tuple2[DMVCounts,Double] = (emptyCounts, Double.NaN)
+  def sampleTreeCounts( originalString:Array[Int] ):Tuple2[C,Double] = {
+    if( particles.head.stringProb == 0D ) {
+      // Only compute inside scores once per sentence -- we'll be drawing one set of counts for each
+      // particle.
+      val s = doubleString( originalString )
+      insidePass( s )
+    }
+    sampleScore = 0D
+
+    val c = emptyCounts
+    sampleScore = 0D
+    sampleTreeCounts( 0, intString.length, RootDecoration ).foreach{ case (event, count) =>
+      c.increment( event, count )
+      // event match {
+      //   case e:StopEvent => c.stopCounts.increment( e, count )
+      //   case e:ChooseEvent => c.chooseCounts.increment( e, count )
+      //   case e:RootEvent => c.rootCounts.increment( e, count )
+      // }
+    }
+
+    // (emptyCounts, Double.NaN)
+    ( c, sampleScore )
+  }
 }
 

@@ -14,9 +14,10 @@ class HeadOutAdjHeadNoValenceParser(
   chooseAlpha:Double = 1D,
   randomSeed:Int = 15,
   squarelyNormalized:Int = 0,
-  val approximate:Boolean = false
-) extends SecondOrderFoldUnfoldParser[HeadOutAdjHeadNoValenceParameters](
-  maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed
+  val approximate:Boolean = false,
+  reservoirSize:Int = 0
+) extends SecondOrderFoldUnfoldParser[DMVCounts,HeadOutAdjHeadNoValenceParameters](
+  maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed, reservoirSize
 ) {
 
   val theta = new HeadOutAdjHeadNoValenceParameters(
@@ -28,43 +29,17 @@ class HeadOutAdjHeadNoValenceParser(
     randomSeed
   )
 
+  def emptyCounts = DMVCounts( rootAlpha, stopAlpha, chooseAlpha, true )
 
-      // val insideChart = Array.tabulate[MMap[Decoration,Double]]( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
-      //   if( ( i%2 != j%2 ) ) {
-      //     MMap( NoValence -> 0D )
-      //   } else if( i%2 == 1 && j%2 == 1 ) {
-      //     MMap(
-      //       PlainM -> 0D,
-      //       LeftwardM -> 0D,
-      //       RightwardM -> 0D
-      //     )
-      //   } else {
-      //     MMap()
-      //   }
-      // )
-
-      // val outsideChart = Array.tabulate[MMap[Decoration,Double]]( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
-      //   if( ( i%2 != j%2 ) ) {
-      //     MMap( NoValence -> 0D )
-      //   } else if( i%2 == 1 && j%2 == 1 ) {
-      //     MMap(
-      //       PlainM -> 0D,
-      //       LeftwardM -> 0D,
-      //       RightwardM -> 0D
-      //     )
-      //   } else {
-      //     MMap()
-      //   }
-      // )
 
   def cellMap( i:Int, j:Int ) = {
     if( ( i%2 != j%2 ) ) {
-      MMap( NoValence -> 0D )
+      MMap( NoValence -> Double.NegativeInfinity )
     } else if( i%2 == 1 && j%2 == 1 ) {
       MMap(
-        PlainM -> 0D,
-        LeftwardM -> 0D,
-        RightwardM -> 0D
+        PlainM -> Double.NegativeInfinity,
+        LeftwardM -> Double.NegativeInfinity,
+        RightwardM -> Double.NegativeInfinity
       )
     } else {
       MMap()
@@ -121,15 +96,15 @@ class HeadOutAdjHeadNoValenceParser(
       // }
 
   def nearestArcFactor( head:Int, dir:AttDir, dep:Int ) = {
-    theta( ChooseEvent( head, dir, dep ) ) *
-    theta( StopEvent( head, dir, NoValence, NotStop ) ) *
-      theta( StopEvent( dep, dir.flip, NoValence, Stop ) ) *
+    theta( ChooseEvent( head, dir, dep ) ) +
+    theta( StopEvent( head, dir, NoValence, NotStop ) ) +
+      theta( StopEvent( dep, dir.flip, NoValence, Stop ) ) +
       theta( StopEvent( dep, dir, NoValence, Stop ) )
   }
   def outerArcFactor( head:Int, context:Int, dir:AttDir, dep:Int ) = {
-    theta( ChooseEvent( head, context, dir, dep ) ) *
-      theta( StopEvent( head, dir, NoValence, NotStop ) ) *
-        theta( StopEvent( dep, dir.flip, NoValence, Stop ) ) *
+    theta( ChooseEvent( head, context, dir, dep ) ) +
+      theta( StopEvent( head, dir, NoValence, NotStop ) ) +
+        theta( StopEvent( dep, dir.flip, NoValence, Stop ) ) +
         theta( StopEvent( dep, dir, NoValence, Stop ) )
   }
 
@@ -140,7 +115,7 @@ class HeadOutAdjHeadNoValenceParser(
 
 
   def lexSpecs( index:Int ) = Seq( NoValence )
-  def lexCellFactor( index:Int, pDec:Decoration ) = 1D
+  def lexCellFactor( index:Int, pDec:Decoration ) = 0D
   // def lexCellScores( index:Int ) = Seq( (Innermost,1D) )
 
 
@@ -196,7 +171,7 @@ class HeadOutAdjHeadNoValenceParser(
 
   def mCellFactor( i:Int, k:Int, j:Int, decoration:MDecoration ) = {
     if( decoration == PlainM ) {
-      1D
+      0D
     } else if( decoration == RightwardM ) {
       if( k-i == 1 )
         nearestArcFactor( intString(i), RightAtt, intString(j) )
@@ -212,12 +187,12 @@ class HeadOutAdjHeadNoValenceParser(
   def rootCellFactor( k:Int ) = {
     val r = intString( k )
 
-    theta( RootEvent( r ) ) *
-      theta( StopEvent( r, LeftAtt, NoValence, Stop ) ) *
+    theta( RootEvent( r ) ) +
+      theta( StopEvent( r, LeftAtt, NoValence, Stop ) ) +
       theta( StopEvent( r, RightAtt, NoValence, Stop ) )
   }
-  def leftwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = 1D
-  def rightwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = 1D
+  def leftwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = 0D
+  def rightwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = 0D
 
   def rootEventCounts( k:Int, marginal:Double ) = {
     val r = intString( k )

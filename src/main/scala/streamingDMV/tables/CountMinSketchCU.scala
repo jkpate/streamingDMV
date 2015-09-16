@@ -5,7 +5,7 @@ import streamingDMV.labels.FastHashable
 import net.jpountz.xxhash.XXHashFactory
 
 import scala.util.Random
-// import scala.util.hashing.{MurmurHash3=>MH3}
+import scala.util.hashing.{MurmurHash3=>MH3}
 import scala.math.{ceil,E,log,abs}
 import scala.collection.mutable.{Seq=>MSeq}
 
@@ -83,14 +83,14 @@ class CountMinSketch[E<:FastHashable] (
     // }.min
 
     // var minValue = countsTable( abs( event.fastHash( hashSeeds(0) ) % width ) )
-    // var minValue = countsTable( abs( MH3.productHash( event, hashSeeds(0) ) ) % width )
-    var minValue = countsTable( abs( XXHash( event, hashSeeds(0) ) ) % width )
+    var minValue = countsTable( abs( MH3.productHash( event, hashSeeds(0) ) ) % width )
+    // var minValue = countsTable( abs( XXHash( event, hashSeeds(0) ) ) % width )
     var h = 1
     while( h < depth ) {
       // val otherCount = countsTable( h*depth + abs( event.fastHash( hashSeeds(h) ) % width ) )
       val otherCount =
-        // countsTable( h*depth + abs( MH3.productHash( event, hashSeeds(h) ) ) % width )
-        countsTable( h*depth + abs( XXHash( event, hashSeeds(h) ) ) % width )
+        countsTable( h*depth + abs( MH3.productHash( event, hashSeeds(h) ) ) % width )
+        // countsTable( h*depth + abs( XXHash( event, hashSeeds(h) ) ) % width )
       if( otherCount < minValue ) minValue = otherCount
       h += 1
     }
@@ -105,8 +105,8 @@ class CountMinSketch[E<:FastHashable] (
       val hashes =
         hashSeeds.map{ seed =>
           // abs( event.fastHash( seed ) % width )
-          // abs( MH3.productHash( event, seed ) % width )
-          abs( XXHash( event, seed ) % width )
+          abs( MH3.productHash( event, seed ) % width )
+          // abs( XXHash( event, seed ) % width )
         }
 
       // val incrementTo = (0 until depth).map{ h =>
@@ -148,8 +148,8 @@ class CountMinSketch[E<:FastHashable] (
     if( c > 0 ) {
       //println( "  increment with other Event" )
       // val hashes = hashSeeds.map{ seed => abs( event.fastHash( seed ) % width ) }
-      // val hashes = hashSeeds.map{ MH3.productHash( event, _ ) % width }
-      val hashes = hashSeeds.map{ XXHash( event, _ ) % width }
+      val hashes = hashSeeds.map{ seed => abs( MH3.productHash( event, seed ) ) % width }
+      // val hashes = hashSeeds.map{ XXHash( event, _ ) % width }
 
       (0 until depth).foreach{ h =>
         // countsTable( h )( hashes(h) ) += c

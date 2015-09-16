@@ -12,13 +12,10 @@ class BackoffCPT[E<:Event with BackingOffEvent with Product](
   alpha:Map[BackoffDecision,Double],
   eps:Double = 0.1,
   delta:Double = 0.01,
-  approximate:Boolean = false,
+  val approximate:Boolean = false,
   randomSeed:Int = 15
 ) {
-  // var events = MSet[E]()
-  // var counts = MMap[E,Double]()
   var counts = new TableWrapper[E]( approximate, eps, delta, randomSeed )
-  // var denomCounts = MMap[NormKey,Double]()
   var denomCounts = new TableWrapper[NormKey with Product]( approximate, eps, delta, 37*randomSeed )
   var denoms = MMap[NormKey,MSet[E]]()
 
@@ -111,7 +108,7 @@ class BackoffCPT[E<:Event with BackingOffEvent with Product](
     events.foreach{ increment( _, inc ) }
   }
 
-  def increment( other:CPT[E] ) {
+  def increment( other:BackoffCPT[E] ) {
     // other.counts.foreach{ case( k, v) =>
     //   increment( k, v )
     // }
@@ -119,7 +116,7 @@ class BackoffCPT[E<:Event with BackingOffEvent with Product](
     denomCounts.increment( other.denomCounts )
   }
 
-  def decrement( other:CPT[E] ) {
+  def decrement( other:BackoffCPT[E] ) {
     // other.counts.foreach{ case( k, v) =>
     //   decrement( k, v )
     // }

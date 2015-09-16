@@ -43,6 +43,7 @@ object run {
     optsParser.accepts( "incIters" ).withRequiredArg
     optsParser.accepts( "logEvalRate" )
     optsParser.accepts( "evalEvery" ).withRequiredArg
+    optsParser.accepts( "evalMaxLength" ).withRequiredArg
     optsParser.accepts( "alpha" ).withRequiredArg
     optsParser.accepts( "backoffAlpha" ).withRequiredArg
     optsParser.accepts( "notBackoffAlpha" ).withRequiredArg
@@ -53,9 +54,11 @@ object run {
     optsParser.accepts( "initialMiniBatchSize" ).withRequiredArg
     optsParser.accepts( "convergeInitialMiniBatch" )
     optsParser.accepts( "printItersReached" )
+    optsParser.accepts( "printIterScores" )
     optsParser.accepts( "batchVB" )
     optsParser.accepts( "particleFilter" )
     optsParser.accepts( "numParticles" ).withRequiredArg
+    optsParser.accepts( "reservoirSize" ).withRequiredArg
     optsParser.accepts( "noResampling" )
     optsParser.accepts( "printResamplingEvents" )
     optsParser.accepts( "constituencyEval" )
@@ -129,6 +132,14 @@ object run {
           16
         else
           1
+    val reservoirSize =
+      if( opts.has( "reservoirSize" ) )
+        opts.valueOf( "reservoirSize" ).toString.toInt
+      else
+        if( opts.has( "particleFilter" ) )
+          100
+        else
+          0
     val noResampling = opts.has( "noResampling" )
     val printResamplingEvents = opts.has( "printResamplingEvents" )
     val logEvalRate = opts.has( "logEvalRate" )
@@ -137,8 +148,15 @@ object run {
         opts.valueOf( "evalEvery" ).toString.toInt
       else
         initialMiniBatchSize
+    var evalMaxLength =
+      if(opts.has( "evalMaxLength" ))
+        opts.valueOf( "evalMaxLength" ).toString.toInt
+      else
+        0
     val printItersReached =
       opts.has( "printItersReached" )
+    val printIterScores =
+      opts.has( "printIterScores" )
     val constituencyEval =
       opts.has( "constituencyEval" )
     val printInitialGrammar =
@@ -159,11 +177,13 @@ object run {
     println( s"batchVB: ${batchVB}" )
     println( s"particleFilter: ${particleFilter}" )
     println( s"numParticles: ${numParticles}" )
+    println( s"reservoirSize: ${reservoirSize}" )
     println( s"noResampling: ${noResampling}" )
     println( s"printResamplingEvents: ${printResamplingEvents}" )
     println( s"convergeInitialMiniBatch: ${convergeInitialMiniBatch}" )
     println( s"logEvalRate: ${logEvalRate}" )
     println( s"evalEvery: ${evalEvery}" )
+    println( s"evalMaxLength: ${evalMaxLength}" )
     println( s"alpha: ${alpha}" )
     println( s"backoffAlpha: ${backoffAlpha}" )
     println( s"notBackoffAlpha: ${notBackoffAlpha}" )
@@ -199,57 +219,69 @@ object run {
       if( particleFilter ) {
         if( parserType == "TopDownDMVParser" ) {
           println( "Using TopDownDMVParser" )
-          new ParticleFilterNOPOSParser[TopDownDMVParameters,TopDownDMVParser](
+          new ParticleFilterNOPOSParser[DMVCounts,TopDownDMVParameters,TopDownDMVParser](
             maxLength = 3,
             numParticles = numParticles,
-            createParticle = (counts:DMVCounts,l:Int) => {
+            createParticle = (counts:DMVCounts,reservoir:Array[SampledCounts[DMVCounts]],l:Int) => {
               val p_l = new TopDownDMVParser(
                 maxLength = 3,
                 randomSeed = l,
                 squarelyNormalized = squareNorm,
-                approximate = true
+                // approximate = true
+                approximate = false,
+                reservoirSize = reservoirSize
               )
               // p_l.zerosInit( trainSet ++ testSet )
               p_l.theta.setEventsAndCounts( counts )
+              p_l.sampleReservoir = reservoir
               // p_l.theta.incrementCounts( counts )
               p_l
-            }
+            },
+            reservoirSize = reservoirSize
           )
         } else if( parserType == "OriginalDMVParser" ) {
           println( "Using OriginalDMVParser" )
-          new ParticleFilterNOPOSParser[OriginalDMVParameters,OriginalDMVParser](
+          new ParticleFilterNOPOSParser[DMVCounts,OriginalDMVParameters,OriginalDMVParser](
             maxLength = 3,
             numParticles = numParticles,
-            createParticle = (counts:DMVCounts,l:Int) => {
+            createParticle = (counts:DMVCounts,reservoir:Array[SampledCounts[DMVCounts]],l:Int) => {
               val p_l = new OriginalDMVParser(
                 maxLength = 3,
                 randomSeed = l,
                 squarelyNormalized = squareNorm,
-                approximate = true
+                // approximate = true
+                approximate = false,
+                reservoirSize = reservoirSize
               )
               // p_l.zerosInit( trainSet ++ testSet )
               p_l.theta.setEventsAndCounts( counts )
+              p_l.sampleReservoir = reservoir
               // p_l.theta.incrementCounts( counts )
               p_l
-            }
+            },
+            reservoirSize = reservoirSize
           )
         } else if( parserType == "NoValenceParser" ) {
           println( "Using NoValenceParser" )
-          new ParticleFilterNOPOSParser[NoValenceParameters,NoValenceParser](
+          new ParticleFilterNOPOSParser[DMVCounts,NoValenceParameters,NoValenceParser](
             maxLength = maxLength,
             numParticles = numParticles,
-            createParticle = (counts:DMVCounts,l:Int) => {
+            createParticle = (counts:DMVCounts,reservoir:Array[SampledCounts[DMVCounts]],l:Int) => {
               val p_l = new NoValenceParser(
                 maxLength = 3,
                 randomSeed = l,
                 squarelyNormalized = squareNorm,
-                approximate = true
+                // approximate = true
+                approximate = false,
+                reservoirSize = reservoirSize
               )
               // p_l.zerosInit( trainSet ++ testSet )
               p_l.theta.setEventsAndCounts( counts )
+              p_l.sampleReservoir = reservoir
               // p_l.theta.incrementCounts( counts )
               p_l
-            }
+            },
+            reservoirSize = reservoirSize
           )
         } else if( parserType == "HeadOutAdjHeadNoValence" ) {
           println( "Using HeadOutAdjHeadNoValence" )
@@ -257,22 +289,26 @@ object run {
           //   maxLength = maxLength, randomSeed = randomSeed
           // )
           new
-          ParticleFilterNOPOSParser[HeadOutAdjHeadNoValenceParameters,HeadOutAdjHeadNoValenceParser](
+          ParticleFilterNOPOSParser[DMVCounts,HeadOutAdjHeadNoValenceParameters,HeadOutAdjHeadNoValenceParser](
             maxLength = 3,
             numParticles = numParticles,
-            createParticle = (counts:DMVCounts,l:Int) => {
+            createParticle = (counts:DMVCounts,reservoir:Array[SampledCounts[DMVCounts]],l:Int) => {
               val p_l =
                 new HeadOutAdjHeadNoValenceParser(
                   maxLength = 3,
                   randomSeed = r.nextInt,
                   squarelyNormalized = squareNorm,
-                  approximate = true
+                  // approximate = true
+                  approximate = false,
+                  reservoirSize = reservoirSize
                 )
               // p_l.zerosInit( trainSet ++ testSet )
               p_l.theta.setEventsAndCounts( counts )
+              p_l.sampleReservoir = reservoir
               // p_l.theta.incrementCounts( counts )
               p_l
-            }
+            },
+            reservoirSize = reservoirSize
           )
         } else if( parserType == "HeadOutInterpolatedAdjHeadNoValence" ) {
           println( "Using HeadOutInterpolatedAdjHeadNoValence" )
@@ -281,10 +317,11 @@ object run {
           //   backoffAlpha = backoffAlpha,
           //   notBackoffAlpha = notBackoffAlpha
           // )
-          new ParticleFilterNOPOSParser[HeadOutInterpolatedAdjHeadNoValenceParameters,HeadOutInterpolatedAdjHeadNoValenceParser](
+          new ParticleFilterNOPOSParser[BackoffChooseDMVCounts,HeadOutInterpolatedAdjHeadNoValenceParameters,HeadOutInterpolatedAdjHeadNoValenceParser](
             maxLength = 3,
             numParticles = numParticles,
-            createParticle = (counts:DMVCounts,l:Int) => {
+            createParticle =
+            (counts:BackoffChooseDMVCounts,reservoir:Array[SampledCounts[BackoffChooseDMVCounts]],l:Int) => {
               val p_l =
                 new HeadOutInterpolatedAdjHeadNoValenceParser(
                   maxLength = 3,
@@ -292,31 +329,39 @@ object run {
                   notBackoffAlpha = notBackoffAlpha,
                   randomSeed = r.nextInt,
                   squarelyNormalized = squareNorm,
-                  approximate = true
+                  // approximate = true
+                  approximate = false,
+                  reservoirSize = reservoirSize
                 )
               // p_l.zerosInit( trainSet ++ testSet )
               p_l.theta.setEventsAndCounts( counts )
+              p_l.sampleReservoir = reservoir
               // p_l.theta.incrementCounts( counts )
               p_l
-            }
+            },
+            reservoirSize = reservoirSize
           )
         } else {
           println( "parser type not recognized -- defaulting to OriginalDMVParser" )
-          new ParticleFilterNOPOSParser[OriginalDMVParameters,OriginalDMVParser](
+          new ParticleFilterNOPOSParser[DMVCounts,OriginalDMVParameters,OriginalDMVParser](
             maxLength = 3,
             numParticles = numParticles,
-            createParticle = (counts:DMVCounts,l:Int) => {
+            createParticle = (counts:DMVCounts,reservoir:Array[SampledCounts[DMVCounts]],l:Int) => {
               val p_l = new OriginalDMVParser(
                 maxLength = 3,
                 randomSeed = l,
                 squarelyNormalized = squareNorm,
-                approximate = true
+                // approximate = true
+                approximate = false,
+                reservoirSize = reservoirSize
               )
               // p_l.zerosInit( trainSet ++ testSet )
               p_l.theta.setEventsAndCounts( counts )
+              p_l.sampleReservoir = reservoir
               // p_l.theta.incrementCounts( counts )
               p_l
-            }
+            },
+            reservoirSize = reservoirSize
           )
         }
       } else {
@@ -399,20 +444,20 @@ object run {
     var sentencesSinceLastEval = 0
     ( firstMiniBatch :: subsequentMiniBatches ).foreach{ mb =>
 
-      // println( s"===== SENTENCE NUMBER $i" )
-
-
 
       val startTime = System.currentTimeMillis
-      val printIterScores =
+      val printFirstMBScores =
         (initialMiniBatchSize != miniBatchSize) && ( i == 0 )
       // p.miniBatchVB(
+      if( printIterScores || printItersReached || batchVB || printIterScores )
+        println( s"===== MINI BATCH $i" )
 
       p.streamingBayesUpdate(
         mb,
+        sentencesProcessed,
         { if( convergeInitialMiniBatch && i == 0 ) 0 else incIters },
         incConvergence,
-        batchVB || printIterScores,
+        batchVB || printFirstMBScores || printIterScores,
         printItersReached
       )
       val endTime = System.currentTimeMillis
@@ -430,7 +475,9 @@ object run {
       sentencesSinceLastEval += mb.size
       sentencesProcessed += mb.size
 
-      if( particleFilter && (!noResampling) ) {
+                                            // Particle weights will be uniform if we resample right
+                                            // before evaluation...
+      if( particleFilter && (!noResampling) && sentencesProcessed % evalEvery != 0 ) {
         val resamplingStartTime = System.currentTimeMillis
         val ess = p.ess
         if( ess < numParticles/2 ) {
@@ -438,12 +485,13 @@ object run {
             println( s"it${sentencesProcessed}:resamplingESS:${ess}")
           }
 
-          val ancestorCount = p.resampleParticles
+          val ( ancestorCount, acceptanceRate ) = p.resampleParticles
 
           ancestors += ancestorCount
 
           if( printResamplingEvents) {
             println( s"it${sentencesProcessed}:ancestorsResampled:${ancestorCount}")
+            println( s"it${sentencesProcessed}:acceptanceRate:${acceptanceRate}")
           }
           resamplingEventCounts += 1
         } else {
@@ -457,17 +505,17 @@ object run {
         var heldOutLogProb = 0D
         val parseStartTime = System.currentTimeMillis
         testSet.foreach{ s =>
-          if( constituencyEval ) {
-            val Parse( id, conParse, depParse ) = p.viterbiParse( s )
-            println( s"it${sentencesProcessed}:constituency:${id} ${conParse}" )
-            println( s"it${sentencesProcessed}:dependency:${id} ${printDependencyParse(depParse)}" )
-          } else {
-            val Parse( id, _, depParse ) = p.viterbiDepParse( s )
-            println( s"it${sentencesProcessed}:dependency:${id} ${printDependencyParse(depParse)}" )
+          if( evalMaxLength == 0 || s.string.length <= evalMaxLength )
+            if( constituencyEval ) {
+              val Parse( id, conParse, depParse ) = p.viterbiParse( s )
+              println( s"it${sentencesProcessed}:constituency:${id} ${conParse}" )
+              println( s"it${sentencesProcessed}:dependency:${id} ${printDependencyParse(depParse)}" )
+            } else {
+              val Parse( id, _, depParse ) = p.viterbiDepParse( s )
+              println( s"it${sentencesProcessed}:dependency:${id} ${printDependencyParse(depParse)}" )
+            }
+            heldOutLogProb += p.logProb( s.string )
           }
-          heldOutLogProb += p.logProb( s.string )
-        }
-        // val parseEndTime = System.currentTimeMillis
 
         val thisTestTime = System.currentTimeMillis - parseStartTime
         totalTestDur += thisTestTime
@@ -494,7 +542,7 @@ object run {
 
       if(
         logEvalRate &&
-        math.log10( sentencesProcessed )%1 == 0 &&
+        scala.math.log10( sentencesProcessed )%1 == 0 &&
         sentencesProcessed > evalEvery &&
         sentencesProcessed != initialMiniBatchSize
       ) {

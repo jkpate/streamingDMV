@@ -14,9 +14,10 @@ class OriginalDMVParser(
   chooseAlpha:Double = 1D,
   randomSeed:Int = 15,
   squarelyNormalized:Int = 0,
-  val approximate:Boolean = false
+  val approximate:Boolean = false,
+  reservoirSize:Int = 0
 ) extends FirstOrderFoldUnfoldNOPOSParser[OriginalDMVParameters](
-  maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed
+  maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed, reservoirSize
 ) {
 
   // println( s"my random seed is $randomSeed" )
@@ -89,24 +90,24 @@ class OriginalDMVParser(
     if( i%2 == 1 && j%2 == 1 ) {
       if( j-i >= 6 )
         MMap(
-          DecorationPair(Outer,Outer) -> 0D,
-          DecorationPair(Outer,Innermost) -> 0D,
-          DecorationPair(Innermost,Outer) -> 0D
+          DecorationPair(Outer,Outer) -> Double.NegativeInfinity,
+          DecorationPair(Outer,Innermost) -> Double.NegativeInfinity,
+          DecorationPair(Innermost,Outer) -> Double.NegativeInfinity
         )
       else if( j-i == 4 )
         MMap(
-          DecorationPair(Outer,Innermost) -> 0D,
-          DecorationPair(Innermost,Outer) -> 0D
+          DecorationPair(Outer,Innermost) -> Double.NegativeInfinity,
+          DecorationPair(Innermost,Outer) -> Double.NegativeInfinity
         )
       else// if( j-i == 2 )
         MMap(
-          DecorationPair(Innermost,Innermost) -> 0D
+          DecorationPair(Innermost,Innermost) -> Double.NegativeInfinity
         )
     } else if( i%2 != j%2 ) {
       if( j-i > 1 )
-        MMap( Outer -> 0D )
+        MMap( Outer -> Double.NegativeInfinity )
       else
-        MMap( Innermost -> 0D )
+        MMap( Innermost -> Double.NegativeInfinity )
     } else {
       MMap()
     }
@@ -138,7 +139,7 @@ class OriginalDMVParser(
   //   insideChart(index)(index+1)( Innermost ) = 1D
   // }
   def lexSpecs( index:Int ) = Seq( Innermost )
-  def lexCellFactor( index:Int, pDec:Decoration ) = 1D
+  def lexCellFactor( index:Int, pDec:Decoration ) = 0D
 
 
   // def lexMarginals( index:Int ) = Seq[Tuple2[Event,Double]]()
@@ -425,9 +426,9 @@ class OriginalDMVParser(
     val head = intString( i )
     val dep = intString( k )
 
-    theta( ChooseEvent( head, RightAtt, dep ) ) *
-      theta( StopEvent( head, RightAtt, mDec.evenLeft, NotStop ) ) *
-        theta( StopEvent( dep, LeftAtt, mDec.evenRight, Stop ) ) *
+    theta( ChooseEvent( head, RightAtt, dep ) ) +
+      theta( StopEvent( head, RightAtt, mDec.evenLeft, NotStop ) ) +
+        theta( StopEvent( dep, LeftAtt, mDec.evenRight, Stop ) ) +
         theta( StopEvent( dep, RightAtt, cDec, Stop ) )
   }
 
@@ -435,9 +436,9 @@ class OriginalDMVParser(
     val head = intString( j )
     val dep = intString( k )
 
-    theta( ChooseEvent( head, LeftAtt, dep ) ) *
-      theta( StopEvent( head, LeftAtt, mDec.evenRight, NotStop ) ) *
-        theta( StopEvent( dep, RightAtt, mDec.evenLeft, Stop ) ) *
+    theta( ChooseEvent( head, LeftAtt, dep ) ) +
+      theta( StopEvent( head, LeftAtt, mDec.evenRight, NotStop ) ) +
+        theta( StopEvent( dep, RightAtt, mDec.evenLeft, Stop ) ) +
         theta( StopEvent( dep, LeftAtt, cDec, Stop ) )
   }
 

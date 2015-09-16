@@ -17,8 +17,11 @@ abstract class FoldUnfoldUPOSParser[P<:UPOSArcFactoredParameters](
   stopAlpha:Double = 1D,
   chooseAlpha:Double = 1D,
   uposCount:Int = 3,
-  randomSeed:Int = 15
-) extends StreamingVBParser[MatrixDMVCounts,P]( maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed ) {
+  randomSeed:Int = 15,
+  reservoirSize:Int
+) extends StreamingVBParser[MatrixDMVCounts,P](
+  maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed, reservoirSize
+) {
 
   // Inside-Outside definitions
   val insideHeads:Array[Array[MMap[Decoration,DenseVector[Double]]]]
@@ -555,7 +558,7 @@ abstract class FoldUnfoldUPOSParser[P<:UPOSArcFactoredParameters](
   }
 
   // TODO implement me!
-  def sampleTreeCounts( utt:Utt ) = (emptyCounts, Double.NaN)
+  def sampleTreeCounts( originalString:Array[Int] ) = (emptyCounts, Double.NaN)
   def trueLogProb( counts:MatrixDMVCounts ) = Double.NaN
 
 

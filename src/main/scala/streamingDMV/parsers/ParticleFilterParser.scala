@@ -1,6 +1,7 @@
 package streamingDMV.parsers
 
 import streamingDMV.labels._
+import streamingDMV.math.LogSum
 import streamingDMV.parameters.ArcFactoredParameters
 
 import scala.collection.mutable.{Set => MSet}
@@ -17,12 +18,16 @@ abstract class ParticleFilterParser[
   stopAlpha:Double = 1D,
   chooseAlpha:Double = 1D,
   numParticles:Int = 16,
-  createParticle:(C,Int) => R,
-  // reservoirSize:Int = 0,
-  randomSeed:Int = 15
+  createParticle:(C,Array[SampledCounts[C]],Int) => R,
+  randomSeed:Int = 15,
+  reservoirSize:Int
 ) extends FoldUnfoldParser[C,P]( maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed ) {
 
-  val particles = Array.tabulate( numParticles )( l => createParticle(emptyCounts,l) )
+  val emptyReservoir = Array.fill( reservoirSize )(
+    SampledCounts( Array(), emptyCounts, Double.NegativeInfinity, Double.NegativeInfinity )
+  )
+
+  val particles = Array.tabulate( numParticles )( l => createParticle(emptyCounts,emptyReservoir,l) )
   val particleWeights = Array.fill( numParticles )( 1D/numParticles )
 
   def ess = {
@@ -59,7 +64,51 @@ abstract class ParticleFilterParser[
   // particle filters are always fully normalized
   particles.foreach{ _.theta.fullyNormalized == true }
 
-  // val reservoir = Array.ofDim[Tuple2[List[Utt],C]](reservoirSize,numParticles)
+
+  def rejuvenate:Double = {
+    // println( "rejuvenating..." )
+    var acceptanceCount = 0D
+    var rejectionCount = 0D
+    (0 until numParticles).foreach{ l =>
+      // particles(l).reservoir.foreach{ prev =>
+      var sentenceCount = 0
+      (0 until particles(l).reservoirSize).foreach{ reservoirIndex =>
+        val prev = particles(l).sampleReservoir( reservoirIndex )
+
+        if( prev.string.length > 0 ) {
+          sentenceCount += 1
+          particles(l).theta.decrementCounts( prev.counts )
+          val (newCounts, newProposalScore) = particles( l ).sampleTreeCounts( prev.string )
+
+          val newTrueScore = particles(l).trueLogProb( newCounts )
+          val newSamplingScore = newProposalScore - particles(l).stringProb
+
+          val mhScore = (
+            newTrueScore + prev.samplingScore
+          ) - (
+            prev.trueScore + newSamplingScore
+          )
+
+          if( mhScore > 0 || math.log( rand.nextDouble ) < mhScore ) {
+            // println( s"  accepted new sample for particle $l" )
+            acceptanceCount += 1
+            particles(l).theta.incrementCounts( newCounts )
+            particles(l).sampleReservoir( reservoirIndex ) = SampledCounts(
+              prev.string, newCounts, newSamplingScore, newTrueScore
+            )
+          } else {
+            rejectionCount += 1
+            // println( s"  rejected new sample for particle $l" )
+            particles(l).theta.incrementCounts( prev.counts )
+          }
+
+        }
+      }
+      // println( s"particle $l has $sentenceCount reservoir sentences" )
+    }
+
+    ( acceptanceCount / (acceptanceCount + rejectionCount ) )
+  }
 
   def resampleParticles /*( uttNum:Int )*/ = {
     val uniqueAncestors = MSet[Int]()
@@ -79,7 +128,7 @@ abstract class ParticleFilterParser[
             particles(l)
           } else {
             // println( s"creating particle $l" )
-            createParticle( particles(idx).theta.toCounts, rand.nextInt )
+            createParticle( particles(idx).theta.toCounts, particles(idx).sampleReservoir, rand.nextInt )
           }
         }
       )
@@ -90,14 +139,23 @@ abstract class ParticleFilterParser[
         particleWeights(l) = 1D/numParticles.toDouble
       }
     }
-    // println( s"resampling took ${System.currentTimeMillis - startTime}ms" )
-    // println( s"resampled ${uniqueAncestors.size} ancestors" )
 
-    uniqueAncestors.size
+    val ancestorsSampled = uniqueAncestors.size
+
+    val acceptanceRate = 
+      if( reservoirSize > 0 && ancestorsSampled < numParticles / 4 )
+        rejuvenate
+      else
+        Double.NegativeInfinity
+
+    ( ancestorsSampled, acceptanceRate )
   }
+
+  def clearCharts:Unit
 
   def streamingBayesUpdate(
     miniBatch:List[Utt],
+    sentenceNum:Int,
     maxIter:Int = 10,
     convergence:Double = 0.001,
     printIterScores:Boolean = false,
@@ -109,18 +167,24 @@ abstract class ParticleFilterParser[
 
     ( 0 until numParticles )/*.par*/.map{ l =>
       particles(l).theta.fullyNormalized = true
-      val (counts, proposalScore) = miniBatch.map{ s =>
+      val (counts, proposalScore) = miniBatch.zipWithIndex.map{ case ( s, i ) =>
+        // println( s"particle $l sentence ${sentenceNum + i }" )
         val (sentCounts, sentProposalScore) = particles( l ).sampleTreeCounts( s )
 
-        assert( particles(l).stringProb > 0D )
+        assert( particles(l).stringProb > Double.NegativeInfinity )
+
+        val trueScore = particles(l).trueLogProb( sentCounts )
+        val samplingScore = sentProposalScore - particles(l).stringProb
 
         particleWeights(l) =
-          particleWeights(l) +
-            ( particles(l).trueLogProb( sentCounts ) - (
-                sentProposalScore - math.log( particles(l).stringProb )
-              )
-            )
+          particleWeights(l) + ( trueScore - samplingScore )
 
+          // sentenceNum is zero-based
+        val reservoirIndex = rand.nextInt( sentenceNum + i + 1 )
+        if( reservoirIndex < particles(l).reservoirSize ) {
+          particles(l).sampleReservoir( reservoirIndex ) =
+            SampledCounts( s.string, sentCounts, samplingScore, trueScore )
+        }
 
         (sentCounts, sentProposalScore)
       }.reduce{ (a,b) => a._1.destructivePlus( b._1 ); ( a._1, a._2 + b._2 ) }
@@ -128,48 +192,14 @@ abstract class ParticleFilterParser[
       particles( l ).theta.incrementCounts( counts )
     }
 
-
-    val totalLogWeight = particleWeights.reduce( logSum( _,_) )
+    val totalLogWeight = particleWeights.reduce( LogSum( _,_) )
     (0 until numParticles).foreach{ l =>
       particleWeights(l) = math.exp( particleWeights(l) - totalLogWeight )
     }
 
-    // println( s"ess: ${ess}" )
-
-
-        // ( 0 until numParticles )/*.par*/.foreach{ l =>
-        //   particles(l).theta.fullyNormalized = true
-        //   miniBatch.foreach{ s =>
-
-        //     val (counts, proposalScore) = particles( l ).sampleTreeCounts( s )
-
-        //     assert( particles(l).stringProb > 0D )
-        //     particleWeights(l) =
-        //       particleWeights(l) *
-        //         math.exp( particles(l).trueLogProb( counts ) - (
-        //             proposalScore - math.log( particles(l).stringProb )
-        //           )
-        //         )
-
-
-        //     particles( l ).theta.incrementCounts( counts )
-        //   }
-        //   particleWeights(l) /= particleWeights.sum
-        //   println( s"ess: ${ess}" )
-        // }
-
 
   }
 
-  def logSum( a:Double, b:Double ):Double =
-    if( a == Double.NegativeInfinity )
-      b
-    else if( b == Double.NegativeInfinity )
-      a
-    else if( b < a )
-      a + log1p( exp( b - a ) )
-    else
-      b + log1p( exp( a - b ) )
 
 }
 

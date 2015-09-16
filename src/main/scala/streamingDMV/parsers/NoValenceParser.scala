@@ -14,9 +14,10 @@ class NoValenceParser(
   chooseAlpha:Double = 1D,
   randomSeed:Int = 15,
   squarelyNormalized:Int = 0,
-  val approximate:Boolean = false
+  val approximate:Boolean = false,
+  reservoirSize:Int = 0
 ) extends FirstOrderFoldUnfoldNOPOSParser[NoValenceParameters](
-  maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed
+  maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed, reservoirSize
 ) {
 
   val theta = new NoValenceParameters(
@@ -52,9 +53,9 @@ class NoValenceParser(
 
   def cellMap( i:Int, j:Int ) = {
     if( ( i%2 != j%2 ) ) {
-      MMap( NoValence -> 0D )
+      MMap( NoValence -> Double.NegativeInfinity )
     } else if( i%2 == 1 && j%2 == 1 ) {
-      MMap( PlainM -> 0D )
+      MMap( PlainM -> Double.NegativeInfinity )
     } else {
       MMap[Decoration,Double]()
     }
@@ -79,36 +80,11 @@ class NoValenceParser(
   //   insideChart(index)(index+1)( NoValence ) = 1D
   // }
   def lexSpecs( index:Int ) = Seq( NoValence )
-  def lexCellFactor( index:Int, pDec:Decoration ) = 1D
+  def lexCellFactor( index:Int, pDec:Decoration ) = 0D
 
   // def lexMarginals( index:Int ) = Seq()
   def lexEventCounts( index:Int, pDec:Decoration, marginal:Double ) = Seq()
 
-  def outsideRootWithMarginals( k:Int ) = {
-    val obs = intString( k )
-
-    val factor =
-      theta( RootEvent( obs ) ) *
-        theta( StopEvent( obs, LeftAtt, NoValence, Stop ) ) *
-        theta( StopEvent( obs, RightAtt, NoValence, Stop ) )
-
-    outsideChart( 0 )( k )( NoValence ) += 
-      insideChart( k )( intString.length )( NoValence ) * factor
-
-    outsideChart( k )( intString.length )( NoValence ) += 
-      insideChart( 0 )( k )( NoValence ) * factor
-
-    val marginal = 
-      insideChart( 0 )( k )( NoValence ) *
-        insideChart( k )( intString.length )( NoValence ) *
-          factor
-    Seq(
-      ( RootEvent( obs ) , marginal ),
-      ( StopEvent( obs, LeftAtt, NoValence, Stop ) , marginal ),
-      ( StopEvent( obs, RightAtt, NoValence, Stop ) , marginal )
-    )
-
-  }
 
 
 
@@ -152,32 +128,53 @@ class NoValenceParser(
   }
 
 
+  val rightwardCache = MMap[Tuple5[Int, Int, Decoration, MDecoration, Decoration],Double]()
   def rightwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = {
     val head = intString( i )
     val dep = intString( k )
 
-    theta( ChooseEvent( head, RightAtt, dep ) ) *
-      theta( StopEvent( head, RightAtt, NoValence, NotStop ) ) *
-        theta( StopEvent( dep, LeftAtt, NoValence, Stop ) ) *
-        theta( StopEvent( dep, RightAtt, NoValence, Stop ) )
+    if( caching )
+      leftwardCache.getOrElseUpdate(
+        ( head, dep, pDec, mDec, cDec ),
+        { theta( ChooseEvent( head, RightAtt, dep ) ) +
+          theta( StopEvent( head, RightAtt, NoValence, NotStop ) ) +
+            theta( StopEvent( dep, LeftAtt, NoValence, Stop ) ) +
+            theta( StopEvent( dep, RightAtt, NoValence, Stop ) ) }
+      )
+    else
+      theta( ChooseEvent( head, RightAtt, dep ) ) +
+        theta( StopEvent( head, RightAtt, NoValence, NotStop ) ) +
+          theta( StopEvent( dep, LeftAtt, NoValence, Stop ) ) +
+          theta( StopEvent( dep, RightAtt, NoValence, Stop ) )
   }
 
+  val leftwardCache = MMap[Tuple5[Int, Int, Decoration, MDecoration, Decoration],Double]()
   def leftwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = {
+    // println( "  " +insideChart.length )
     val head = intString( j )
     val dep = intString( k )
 
-    theta( ChooseEvent( head, LeftAtt, dep ) ) *
-      theta( StopEvent( head, LeftAtt, NoValence, NotStop ) ) *
-        theta( StopEvent( dep, RightAtt, NoValence, Stop ) ) *
-        theta( StopEvent( dep, LeftAtt, NoValence, Stop ) )
+    if( caching )
+      leftwardCache.getOrElseUpdate(
+        ( head, dep, pDec, mDec, cDec ),
+        { theta( ChooseEvent( head, LeftAtt, dep ) ) +
+          theta( StopEvent( head, LeftAtt, NoValence, NotStop ) ) +
+            theta( StopEvent( dep, RightAtt, NoValence, Stop ) ) +
+            theta( StopEvent( dep, LeftAtt, NoValence, Stop ) ) }
+      )
+    else
+      theta( ChooseEvent( head, LeftAtt, dep ) ) +
+        theta( StopEvent( head, LeftAtt, NoValence, NotStop ) ) +
+          theta( StopEvent( dep, RightAtt, NoValence, Stop ) ) +
+          theta( StopEvent( dep, LeftAtt, NoValence, Stop ) )
   }
 
 
   def rootCellFactor( k:Int ) = {
     val r = intString( k )
 
-    theta( RootEvent( r ) ) *
-      theta( StopEvent( r, LeftAtt, NoValence, Stop ) ) *
+    theta( RootEvent( r ) ) +
+      theta( StopEvent( r, LeftAtt, NoValence, Stop ) ) +
       theta( StopEvent( r, RightAtt, NoValence, Stop ) )
   }
 

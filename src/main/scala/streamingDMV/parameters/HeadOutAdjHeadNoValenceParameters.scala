@@ -40,20 +40,20 @@ class HeadOutAdjHeadNoValenceParameters(
       (0 until s.length).foreach{ t =>
         val h = s(t)
 
-        p_root.increment( RootEvent( h ), 0D )
-        p_stop.increment( possibleStopEvents( h ), 0D )
+        p_root.increment( RootEvent( h ), Double.NegativeInfinity )
+        p_stop.increment( possibleStopEvents( h ), Double.NegativeInfinity )
 
         ( 0 until t ).foreach{ i =>
-          p_choose.increment( ChooseEvent( h, LeftAtt, s(i) ), 0D )
+          p_choose.increment( ChooseEvent( h, LeftAtt, s(i) ), Double.NegativeInfinity )
 
           ((i+1) until t).foreach{ k =>
-            p_choose.increment( ChooseEvent( h, s(k), LeftAtt, s(i) ), 0D )
+            p_choose.increment( ChooseEvent( h, s(k), LeftAtt, s(i) ), Double.NegativeInfinity )
           }
         }
         ( t+1 until s.length ).foreach{ j =>
-          p_choose.increment( ChooseEvent( h, RightAtt, s(j) ), 0D )
+          p_choose.increment( ChooseEvent( h, RightAtt, s(j) ), Double.NegativeInfinity )
           ((t+1) until j).foreach{ k =>
-            p_choose.increment( ChooseEvent( h, s(k), RightAtt, s(j) ), 0D )
+            p_choose.increment( ChooseEvent( h, s(k), RightAtt, s(j) ), Double.NegativeInfinity )
           }
         }
       }

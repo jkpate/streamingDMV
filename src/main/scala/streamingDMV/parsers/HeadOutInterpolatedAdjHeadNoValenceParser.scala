@@ -3,6 +3,7 @@ package streamingDMV.parsers
 import streamingDMV.tables.{CPT,BackoffCPT}
 import streamingDMV.labels._
 import streamingDMV.parameters.HeadOutInterpolatedAdjHeadNoValenceParameters
+import streamingDMV.math.LogSum
 
 import scala.collection.mutable.{Map=>MMap}
 import scala.math.log
@@ -16,9 +17,10 @@ class HeadOutInterpolatedAdjHeadNoValenceParser(
   notBackoffAlpha:Double = 10D,
   randomSeed:Int = 15,
   squarelyNormalized:Int = 0,
-  val approximate:Boolean = false
-) extends SecondOrderFoldUnfoldParser[HeadOutInterpolatedAdjHeadNoValenceParameters](
-  maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed
+  val approximate:Boolean = false,
+  reservoirSize:Int = 0
+) extends SecondOrderFoldUnfoldParser[BackoffChooseDMVCounts,HeadOutInterpolatedAdjHeadNoValenceParameters](
+  maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed, reservoirSize
 ) {
 
   val theta = 
@@ -33,44 +35,22 @@ class HeadOutInterpolatedAdjHeadNoValenceParser(
       randomSeed
     )
 
-      // val insideChart =
-      //   Array.tabulate[MMap[Decoration,Double]]( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
-      //     if( ( i%2 != j%2 ) ) {
-      //       MMap( NoValence -> 0D )
-      //     } else if( i%2 == 1 && j%2 == 1 ) {
-      //       MMap(
-      //         PlainM -> 0D,
-      //         LeftwardM -> 0D,
-      //         RightwardM -> 0D
-      //       )
-      //     } else {
-      //       MMap()
-      //     }
-      //   )
-
-      // val outsideChart =
-      //   Array.tabulate[MMap[Decoration,Double]]( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
-      //     if( ( i%2 != j%2 ) ) {
-      //       MMap( NoValence -> 0D )
-      //     } else if( i%2 == 1 && j%2 == 1 ) {
-      //       MMap(
-      //         PlainM -> 0D,
-      //         LeftwardM -> 0D,
-      //         RightwardM -> 0D
-      //       )
-      //     } else {
-      //       MMap()
-      //     }
-      //   )
+  def emptyCounts = BackoffChooseDMVCounts(
+    rootAlpha,
+    stopAlpha,
+    chooseAlpha,
+    Map( Backoff -> backoffAlpha, NotBackoff -> notBackoffAlpha ),
+    true
+  )
 
   def cellMap( i:Int, j:Int ) = {
     if( ( i%2 != j%2 ) ) {
-      MMap( NoValence -> 0D )
+      MMap( NoValence -> Double.NegativeInfinity )
     } else if( i%2 == 1 && j%2 == 1 ) {
       MMap(
-        PlainM -> 0D,
-        LeftwardM -> 0D,
-        RightwardM -> 0D
+        PlainM -> Double.NegativeInfinity,
+        LeftwardM -> Double.NegativeInfinity,
+        RightwardM -> Double.NegativeInfinity
       )
     } else {
       MMap()
@@ -134,37 +114,39 @@ class HeadOutInterpolatedAdjHeadNoValenceParser(
 
   // def lexCellScores( index:Int ) = Seq( (Innermost,1D) )
   def lexSpecs( index:Int ) = Seq( NoValence )
-  def lexCellFactor( index:Int, pDec:Decoration ) = 1D
+  def lexCellFactor( index:Int, pDec:Decoration ) = 0D
 
 
 
   def nearestArcFactor( head:Int, dir:AttDir, dep:Int ) = {
-    theta( ChooseEvent( head, dir, dep ) ) *
-    theta( StopEvent( head, dir, NoValence, NotStop ) ) *
-      theta( StopEvent( dep, dir.flip, NoValence, Stop ) ) *
+    theta( ChooseEvent( head, dir, dep ) ) +
+    theta( StopEvent( head, dir, NoValence, NotStop ) ) +
+      theta( StopEvent( dep, dir.flip, NoValence, Stop ) ) +
       theta( StopEvent( dep, dir, NoValence, Stop ) )
   }
 
   def backoffChoose( head:Int, context:Int, dir:AttDir, dep:Int ) = {
-    theta( LambdaChooseEvent( head, context, dir, Backoff ) ) *
+    theta( LambdaChooseEvent( head, context, dir, Backoff ) ) +
       theta( ChooseEvent( head, dir, dep ) )
   }
   def notBackoffChoose( head:Int, context:Int, dir:AttDir, dep:Int ) = {
-    theta( LambdaChooseEvent( head, context, dir, NotBackoff ) ) *
+    theta( LambdaChooseEvent( head, context, dir, NotBackoff ) ) +
       theta( ChooseEvent( head, context, dir, dep ) )
   }
 
   def stopFactors( head:Int, dir:AttDir, dep:Int ) = {
-    theta( StopEvent( head, dir, NoValence, NotStop ) ) *
-    theta( StopEvent( dep, dir.flip, NoValence, Stop ) ) *
+    theta( StopEvent( head, dir, NoValence, NotStop ) ) +
+    theta( StopEvent( dep, dir.flip, NoValence, Stop ) ) +
     theta( StopEvent( dep, dir, NoValence, Stop ) )
   }
 
   def outerArcFactor( head:Int, context:Int, dir:AttDir, dep:Int ) = {
     (
-      backoffChoose( head, context, dir, dep ) +
-      notBackoffChoose( head, context, dir, dep )
-    ) * stopFactors( head, dir, dep )
+      LogSum(
+        backoffChoose( head, context, dir, dep ) ,
+        notBackoffChoose( head, context, dir, dep )
+      )
+    ) + stopFactors( head, dir, dep )
   }
 
 
@@ -224,7 +206,7 @@ class HeadOutInterpolatedAdjHeadNoValenceParser(
 
   def mCellFactor( i:Int, k:Int, j:Int, decoration:MDecoration ) = {
     if( decoration == PlainM ) {
-      1D
+      0D
     } else if( decoration == RightwardM ) {
       if( k-i == 1 )
         nearestArcFactor( intString(i), RightAtt, intString(j) )
@@ -240,12 +222,12 @@ class HeadOutInterpolatedAdjHeadNoValenceParser(
   def rootCellFactor( k:Int ) = {
     val r = intString( k )
 
-    theta( RootEvent( r ) ) *
-      theta( StopEvent( r, LeftAtt, NoValence, Stop ) ) *
+    theta( RootEvent( r ) ) +
+      theta( StopEvent( r, LeftAtt, NoValence, Stop ) ) +
       theta( StopEvent( r, RightAtt, NoValence, Stop ) )
   }
-  def leftwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = 1D
-  def rightwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = 1D
+  def leftwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = 0D
+  def rightwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = 0D
 
   def rootEventCounts( k:Int, marginal:Double ) = {
     val r = intString( k )
@@ -290,11 +272,13 @@ class HeadOutInterpolatedAdjHeadNoValenceParser(
         val rHead = intString(i)
         val rDep = intString(j)
         val rBackoffMarginal =
-          theta( LambdaChooseEvent( rHead, context, RightAtt, Backoff ) ) * marginal
+          theta( LambdaChooseEvent( rHead, context, RightAtt, Backoff ) ) + marginal
         val rNotBackoffMarginal =
-          theta( LambdaChooseEvent( rHead, context, RightAtt, NotBackoff ) ) * marginal
+          theta( LambdaChooseEvent( rHead, context, RightAtt, NotBackoff ) ) + marginal
 
         Seq(
+          ( LambdaChooseEvent( rHead, context, RightAtt, NotBackoff ), rNotBackoffMarginal ),
+          ( LambdaChooseEvent( rHead, context, RightAtt, Backoff ), rBackoffMarginal ),
           ( ChooseEvent( rHead, context, RightAtt, rDep ), rNotBackoffMarginal ),
           ( ChooseEvent( rHead, RightAtt, rDep ), rBackoffMarginal ),
           ( StopEvent( rHead, RightAtt, NoValence, NotStop ), marginal ),
@@ -305,10 +289,12 @@ class HeadOutInterpolatedAdjHeadNoValenceParser(
         val lHead = intString(j)
         val lDep = intString(i)
         val lBackoffMarginal =
-          theta( LambdaChooseEvent( lHead, context, LeftAtt, Backoff ) ) * marginal
+          theta( LambdaChooseEvent( lHead, context, LeftAtt, Backoff ) ) + marginal
         val lNotBackoffMarginal =
-          theta( LambdaChooseEvent( lHead, context, LeftAtt, NotBackoff ) ) * marginal
+          theta( LambdaChooseEvent( lHead, context, LeftAtt, NotBackoff ) ) + marginal
         Seq(
+          ( LambdaChooseEvent( lHead, context, LeftAtt, NotBackoff ), lNotBackoffMarginal ),
+          ( LambdaChooseEvent( lHead, context, LeftAtt, Backoff ), lBackoffMarginal ),
           ( ChooseEvent( lHead, context, LeftAtt, lDep ), lNotBackoffMarginal ),
           ( ChooseEvent( lHead, LeftAtt, lDep ), lBackoffMarginal ),
           ( StopEvent( lHead, LeftAtt, NoValence, NotStop ), marginal ),
@@ -319,37 +305,37 @@ class HeadOutInterpolatedAdjHeadNoValenceParser(
     }
   }
 
-  def trueLogProb( counts:DMVCounts ) = {
-    val lambdaCounts = new BackoffCPT[LambdaChooseEvent](
-      Map( Backoff -> backoffAlpha, NotBackoff -> notBackoffAlpha )
-    )
-    if( notBackoffAlpha > 0 )
-      // counts.chooseCounts.counts.foreach{ case (event, count) =>
-      counts.chooseCounts.denoms.values.flatten.foreach{ event =>
-        val count = counts.chooseCounts( event )
-        event match {
-          case ChooseEvent( head, context, dir, /*_,*/ dep ) =>
-            if( context >= 0 ) {
-              lambdaCounts.increment(
-                LambdaChooseEvent( head, context, dir, NotBackoff ),
-                count
-              )
-            //  notBackoffEvents += count
-            } else {
-              lambdaCounts.increment(
-                LambdaChooseEvent( head, context, dir, Backoff ),
-                count
-              )
-            //   backoffEvents += count
-            }
-          case _ =>
-        }
-      }
+  def trueLogProb( counts:BackoffChooseDMVCounts ) = {
+        // val lambdaCounts = new BackoffCPT[LambdaChooseEvent](
+        //   Map( Backoff -> backoffAlpha, NotBackoff -> notBackoffAlpha )
+        // )
+        // if( notBackoffAlpha > 0 )
+        //   // counts.chooseCounts.counts.foreach{ case (event, count) =>
+        //   counts.chooseCounts.denoms.values.flatten.foreach{ event =>
+        //     val count = counts.chooseCounts( event )
+        //     event match {
+        //       case ChooseEvent( head, context, dir, /*_,*/ dep ) =>
+        //         if( context >= 0 ) {
+        //           lambdaCounts.increment(
+        //             LambdaChooseEvent( head, context, dir, NotBackoff ),
+        //             count
+        //           )
+        //         //  notBackoffEvents += count
+        //         } else {
+        //           lambdaCounts.increment(
+        //             LambdaChooseEvent( head, context, dir, Backoff ),
+        //             count
+        //           )
+        //         //   backoffEvents += count
+        //         }
+        //       case _ =>
+        //     }
+        //   }
 
     theta.p_root.trueLogProb( counts.rootCounts ) +
     theta.p_stop.trueLogProb( counts.stopCounts ) +
     theta.p_choose.trueLogProb( counts.chooseCounts ) +
-    theta.lambda_choose.trueLogProb( lambdaCounts )
+    theta.lambda_choose.trueLogProb( counts.lambdaChooseCounts )
   }
 
 }

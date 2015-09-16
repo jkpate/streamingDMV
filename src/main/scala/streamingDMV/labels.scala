@@ -1,10 +1,13 @@
 package streamingDMV.labels
 
-import streamingDMV.tables.CPT
-import streamingDMV.tables.MatrixCPT
+import streamingDMV.tables.XXHash
+import streamingDMV.tables._
+import streamingDMV.math.LogSum
 
 import breeze.linalg._
 import breeze.numerics._
+
+import scala.util.hashing.{MurmurHash3=>MH3}
 
 import java.nio.ByteBuffer
 
@@ -23,6 +26,8 @@ case class DirectedArc( hIdx:Int, dIdx:Int )
 case class Parse( id:String, conParse:String, depParse:Set[DirectedArc] )
 case class Utt( id:String, string:Array[Int] )
 
+case class SampledCounts[C]( string:Array[Int], counts:C, samplingScore:Double, trueScore:Double )
+
 object FastHash {
   val prime_modulus = (1 << 31) - 1
   def apply( item:Int, seed:Int ) = {
@@ -36,7 +41,7 @@ trait FastHashable extends Product {
   lazy val byteBuffer = {
     val arr = productArity
     if( arr == 0 ) {
-      ByteBuffer.allocate( 4 ).putInt( hashCode )
+      ByteBuffer.allocate( 4 ).putInt( super.hashCode )
     } else {
       val bytes = ByteBuffer.allocate( 4*arr ).putInt( {
           val el = productElement(0)
@@ -62,6 +67,9 @@ trait FastHashable extends Product {
       bytes
     }
   }
+  // override def hashCode = streamingDMV.tables.XXHash( this, 492876863  )
+  // override val hashCode = MH3.productHash( this )
+  // override val hashCode = XXHash( this, 33 )
   def fastHash( seed:Int ) = {
     val elements = productIterator
     if( elements.size > 0 ) {
@@ -454,10 +462,117 @@ abstract class DependencyCounts {
   def totalCounts:Double
   def printTotalCountsByType:Unit
 
+  def increment( event:Event, count:Double ):Unit
+  def divideBy( x:Double ):Unit
+
   def printRootEvents:Unit
   def printStopEvents:Unit
   def printChooseEvents:Unit
 
+  def logSpace = false
+
+
+}
+
+case class BackoffChooseDMVCounts(
+  rootCounts:CPT[RootEvent],
+  stopCounts:CPT[StopEvent],
+  chooseCounts:CPT[ChooseEvent],
+  lambdaChooseCounts:BackoffCPT[LambdaChooseEvent]
+  // rootCounts:CPT[AbstractRootEvent],
+  // stopCounts:CPT[AbstractStopEvent],
+  // chooseCounts:CPT[AbstractChooseEvent]
+) extends DependencyCounts {
+  def destructivePlus[C<:DependencyCounts]( other:C ) {
+    other match {
+      case c:BackoffChooseDMVCounts => {
+        rootCounts.increment( c.rootCounts )
+        stopCounts.increment( c.stopCounts )
+        chooseCounts.increment( c.chooseCounts )
+        lambdaChooseCounts.increment( c.lambdaChooseCounts )
+      }
+    }
+  }
+
+  override def logSpace = {
+    rootCounts.counts.logSpace && chooseCounts.counts.logSpace && stopCounts.counts.logSpace
+  }
+
+  def divideBy( x:Double ) {
+    stopCounts.divideBy( x )
+    chooseCounts.divideBy( x )
+    rootCounts.divideBy( x )
+    lambdaChooseCounts.divideBy( x )
+  }
+
+  def increment( event:Event, count:Double ) {
+    event match {
+      case e:StopEvent => stopCounts.increment( e, count )
+      case e:ChooseEvent => chooseCounts.increment( e, count )
+      case e:RootEvent => rootCounts.increment( e, count )
+      case e:LambdaChooseEvent => lambdaChooseCounts.increment( e, count )
+    }
+  }
+
+  def printRootEvents =
+    println( rootCounts.counts.keys.mkString("\t","\n\t","\n\n" ) )
+  def printStopEvents =
+    stopCounts.counts.keys.foreach{ e =>
+      println( "\t" + e )
+    }
+  def printChooseEvents =
+    chooseCounts.counts.keys.foreach{ e =>
+      println( "\t" + e )
+    }
+
+  def printLambdaChooseEvents =
+    lambdaChooseCounts.counts.keys.foreach{ e =>
+      println( "\t" + e )
+    }
+
+  def totalCounts =
+    if( chooseCounts.counts.logSpace )
+      math.exp( rootCounts.counts.values.reduce(LogSum(_,_)) ) +
+      math.exp( stopCounts.counts.values.reduce(LogSum(_,_)) ) +
+      math.exp( chooseCounts.counts.values.reduce(LogSum(_,_)) ) +
+      math.exp( lambdaChooseCounts.counts.values.reduce(LogSum(_,_)) )
+    else
+      rootCounts.counts.values.sum +
+      stopCounts.counts.values.sum +
+      chooseCounts.counts.values.sum +
+      lambdaChooseCounts.counts.values.sum
+
+  def printTotalCountsByType {
+    println( s"  > ${rootCounts.counts.values.map{exp(_)}.sum} root events" )
+    println( s"  > ${stopCounts.counts.values.map{exp(_)}.sum} stop events" )
+    println( s"  > ${chooseCounts.counts.values.map{exp(_)}.sum} choose events" )
+    println( s"  > ${lambdaChooseCounts.counts.values.map{exp(_)}.sum} lambda choose events" )
+    println( s"  > ${chooseCounts.denoms.size} choose LHS" )
+  }
+}
+
+object BackoffChooseDMVCounts {
+  def apply(
+    rootAlpha:Double = 1D,
+    stopAlpha:Double = 1D,
+    chooseAlpha:Double = 1D,
+    backoffMap:Map[BackoffDecision,Double],
+    logSpace:Boolean
+  ):BackoffChooseDMVCounts =
+    if( logSpace )
+      BackoffChooseDMVCounts(
+        new LogCPT[RootEvent]( rootAlpha ),
+        new LogCPT[StopEvent]( stopAlpha ),
+        new LogCPT[ChooseEvent]( chooseAlpha ),
+        new LogBackoffCPT[LambdaChooseEvent]( backoffMap )
+      )
+    else
+      BackoffChooseDMVCounts(
+        new CPT[RootEvent]( rootAlpha ),
+        new CPT[StopEvent]( stopAlpha ),
+        new CPT[ChooseEvent]( chooseAlpha ),
+        new BackoffCPT[LambdaChooseEvent]( backoffMap  )
+      )
 }
 
 case class DMVCounts(
@@ -478,6 +593,24 @@ case class DMVCounts(
     }
   }
 
+  override def logSpace = {
+    rootCounts.counts.logSpace && chooseCounts.counts.logSpace && stopCounts.counts.logSpace
+  }
+
+  def divideBy( x:Double ) {
+    stopCounts.divideBy( x )
+    chooseCounts.divideBy( x )
+    rootCounts.divideBy( x )
+  }
+
+  def increment( event:Event, count:Double ) {
+    event match {
+      case e:StopEvent => stopCounts.increment( e, count )
+      case e:ChooseEvent => chooseCounts.increment( e, count )
+      case e:RootEvent => rootCounts.increment( e, count )
+    }
+  }
+
   def printRootEvents =
     println( rootCounts.counts.keys.mkString("\t","\n\t","\n\n" ) )
   def printStopEvents =
@@ -489,27 +622,46 @@ case class DMVCounts(
       println( "\t" + e )
     }
 
-  def totalCounts = 
-    rootCounts.counts.values.sum +
-    stopCounts.counts.values.sum +
-    chooseCounts.counts.values.sum
+  def totalCounts =
+    if( chooseCounts.counts.logSpace )
+      math.exp(
+        rootCounts.counts.values.reduceOption(LogSum(_,_)).getOrElse( Double.NegativeInfinity ) ) +
+      math.exp( stopCounts.counts.values.reduceOption(LogSum(_,_)).getOrElse( Double.NegativeInfinity ) ) +
+      math.exp( chooseCounts.counts.values.reduceOption(LogSum(_,_)).getOrElse( Double.NegativeInfinity ) )
+    else
+      rootCounts.counts.values.sum +
+      stopCounts.counts.values.sum +
+      chooseCounts.counts.values.sum
+
   def printTotalCountsByType {
-    println( s"> ${rootCounts.counts.values.sum} root events" )
-    println( s"> ${stopCounts.counts.values.sum} stop events" )
-    println( s"> ${chooseCounts.counts.values.sum} choose events" )
-    println( s"> ${chooseCounts.denoms.size} choose LHS" )
+    println( s"  > ${rootCounts.counts.values.map{exp(_)}.sum} root events" )
+    println( s"  > ${rootCounts.denomCounts.values.map{exp(_)}.sum} root denom events" )
+    println( s"  > ${stopCounts.counts.values.map{exp(_)}.sum} stop events" )
+    println( s"  > ${stopCounts.denomCounts.values.map{exp(_)}.sum} stop denom events" )
+    println( s"  > ${chooseCounts.counts.values.map{exp(_)}.sum} choose events" )
+    println( s"  > ${chooseCounts.denomCounts.values.map{exp(_)}.sum} choose denom events" )
+    println( s"  > ${chooseCounts.denoms.size} choose LHS" )
   }
 }
 object DMVCounts {
   def apply(
     rootAlpha:Double = 1D,
     stopAlpha:Double = 1D,
-    chooseAlpha:Double = 1D
-  ):DMVCounts = DMVCounts(
-    new CPT[RootEvent]( rootAlpha ),
-    new CPT[StopEvent]( stopAlpha ),
-    new CPT[ChooseEvent]( chooseAlpha )
-  )
+    chooseAlpha:Double = 1D,
+    logSpace:Boolean
+  ):DMVCounts =
+    if( logSpace )
+      DMVCounts(
+        new LogCPT[RootEvent]( rootAlpha ),
+        new LogCPT[StopEvent]( stopAlpha ),
+        new LogCPT[ChooseEvent]( chooseAlpha )
+      )
+    else
+      DMVCounts(
+        new CPT[RootEvent]( rootAlpha ),
+        new CPT[StopEvent]( stopAlpha ),
+        new CPT[ChooseEvent]( chooseAlpha )
+      )
 }
 
 case class MatrixDMVCounts(
@@ -531,6 +683,16 @@ case class MatrixDMVCounts(
     sum( rootCounts.counts.values.reduce(_ :+ _) ) +
     sum( stopCounts.counts.values.reduce(_ :+ _) ) +
     sum( chooseCounts.counts.values.reduce(_ :+ _) )
+
+  def increment( event:Event, count:Double ) {
+    throw new UnsupportedOperationException( "increment not yet implemented for MatrixDMVCounts" )
+  }
+
+  def divideBy( x:Double ) {
+    stopCounts.divideBy( x )
+    chooseCounts.divideBy( x )
+    rootCounts.divideBy( x )
+  }
 
   def printRootEvents =
   println( rootCounts.counts.keys.map{e=>e+": " + rootCounts(e)}.mkString("\t","\t","" ) )

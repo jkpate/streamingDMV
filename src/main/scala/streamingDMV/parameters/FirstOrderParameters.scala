@@ -46,17 +46,17 @@ abstract class FirstOrderArcFactoredParameters(
 
         // rootEvents += RootEvent( h )
         // stopEvents ++= possibleStopEvents( h )
-        p_root.increment( RootEvent( h ), 0D )
-        p_stop.increment( possibleStopEvents( h ), 0D )
+        p_root.increment( RootEvent( h ), Double.NegativeInfinity )
+        p_stop.increment( possibleStopEvents( h ), Double.NegativeInfinity )
 
         ( 0 until t ).foreach{ i =>
           // chooseEvents += ChooseEvent( h, LeftAtt, s(i) )
-          p_choose.increment( ChooseEvent( h, LeftAtt, s(i) ), 0D )
+          p_choose.increment( ChooseEvent( h, LeftAtt, s(i) ), Double.NegativeInfinity )
 
         }
         ( t+1 until s.length ).foreach{ j =>
           // chooseEvents += ChooseEvent( h, RightAtt, s(j) )
-          p_choose.increment( ChooseEvent( h, RightAtt, s(j) ), 0D )
+          p_choose.increment( ChooseEvent( h, RightAtt, s(j) ), Double.NegativeInfinity )
         }
       }
     }
@@ -68,6 +68,7 @@ abstract class FirstOrderArcFactoredParameters(
     // p_stop.setEvents( stopEvents.toSet )
     // p_choose.setEvents( chooseEvents.toSet )
   }
+
 
 }
 

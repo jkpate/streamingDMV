@@ -3,14 +3,15 @@ package streamingDMV.parsers
 import streamingDMV.labels._
 import streamingDMV.parameters.ArcFactoredParameters
 
-import scala.math.log
+import math.{exp,log}
 
 abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]](
   maxLength:Int,
   rootAlpha:Double = 1D,
   stopAlpha:Double = 1D,
   chooseAlpha:Double = 1D,
-  randomSeed:Int = 15
+  randomSeed:Int = 15,
+  val reservoirSize:Int = 0
 ) extends FoldUnfoldParser[C,P](
   maxLength,
   rootAlpha,
@@ -21,6 +22,7 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
 
   def streamingBayesUpdate(
     miniBatch:List[Utt],
+    sentenceNum:Int,
     maxIter:Int = 10,
     convergence:Double = 0.001,
     printIterScores:Boolean = false,
@@ -45,21 +47,52 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
       ( iter < maxIter || maxIter == 0 ) &&
       ( math.abs( deltaScores ) > convergence || convergence == 0 )
     ) {
+      // println( s"  $iter" )
       var thisMiniBatchScores = 0D
 
 
+      var i = 0
       val fHat = miniBatch.map{ s =>
+        // println( s"    $i" )
+        // println( s.id + " " + s.string.mkString(" ") )
         val counts = extractPartialCounts(s.string)
-        thisMiniBatchScores += log( stringProb )
+        if( !( stringProb > Double.NegativeInfinity && stringProb <= 0D ) ) {
+          println( stringProb )
+          println( s.id + " " + s.string.mkString( " " )  )
+          assert( stringProb > Double.NegativeInfinity && stringProb <= 0D )
+        }
+        thisMiniBatchScores += stringProb
+        i+=1
         counts
       }.reduce{ (a,b) => a.destructivePlus(b); a }
 
-      // if( iter > 0 )
-      // decrement every time now since lastFHat may not be zero
+      // assert( fHat.logSpace )
+      // assert( lastFHat.logSpace )
+      // assert( theta.logSpace )
+
+      // fHat.printTotalCountsByType
+      // println( s"thisFHat: ${fHat.totalCounts} total events seen" )
+      // println( s"lastFHat: ${lastFHat.totalCounts} total events seen" )
+
+
+          // println( s"before incrementing or decrementing" )
+          // theta.printTotalCountsByType
+
+          // println( s"description of lastFHat:" )
+          // lastFHat.printTotalCountsByType
+
       theta.decrementCounts( lastFHat )
-      // println( miniBatch.map{_.string.length}.sum )
-      // println( "about to increment by fHat:\n" )
+
+          // println( s"before incrementing" )
+          // theta.printTotalCountsByType
+
+          // println( s"description of fHat:" )
+          // fHat.printTotalCountsByType
+
       theta.incrementCounts( fHat )
+
+          // println( s"after incrementing" )
+          // theta.printTotalCountsByType
 
       deltaScores = ( lastMiniBatchScores - thisMiniBatchScores ) / lastMiniBatchScores
       if( printIterScores )
@@ -75,9 +108,16 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
       println( s"iters\t$iter" )
   }
 
+
+  var caching = false
+
+  var sampleReservoir = Array.fill( reservoirSize )(
+    SampledCounts( Array(), emptyCounts, Double.NegativeInfinity, Double.NegativeInfinity )
+  )
+
   def particlePerplexity = 1D
   def ess = 1D
-  def resampleParticles = 0
+  def resampleParticles = (0,0)
   def trueLogProb( counts:C ):Double
 
 }

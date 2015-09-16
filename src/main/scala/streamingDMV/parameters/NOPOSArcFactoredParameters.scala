@@ -1,10 +1,12 @@
 package streamingDMV.parameters
 
 import streamingDMV.labels._
-import streamingDMV.tables.CPT
+import streamingDMV.tables.LogCPT
 
 import collection.mutable.{Set=>MSet}
+import math.{exp,log}
 
+// abstract class NOPOSArcFactoredParameters(
 abstract class NOPOSArcFactoredParameters(
   rootAlpha:Double,
   stopAlpha:Double,
@@ -21,29 +23,29 @@ abstract class NOPOSArcFactoredParameters(
   // else
   //   println( "creating exact parameters" )
 
-  val p_root = new CPT[RootEvent](
+  val p_root = new LogCPT[RootEvent](
     rootAlpha,
     squarelyNormalized,
     approximate = approximate,
-    eps = 1E-5,
+    eps = 1E-6,
     delta = 3E-2,
     randomSeed = rand.nextInt
   )
   val p_stop =
-    new CPT[StopEvent](
+    new LogCPT[StopEvent](
       stopAlpha,
       approximate = approximate,
-      eps = 1E-5,
+      eps = 1E-6,
       delta = 3E-2,
       randomSeed = rand.nextInt
     )
   val p_choose =
-    new CPT[ChooseEvent](
+    new LogCPT[ChooseEvent](
       chooseAlpha,
       squarelyNormalized,
       approximate = approximate,
-      eps = 1E-5,
-      delta = 1E-4,
+      eps = 1E-7,
+      delta = 1E-2,
       randomSeed = rand.nextInt
     )
 
@@ -107,11 +109,13 @@ abstract class NOPOSArcFactoredParameters(
     p_choose.increment( counts.chooseCounts )
   }
 
+  /*
   def setEvents( counts:DMVCounts ) {
     p_root.setEvents( counts.rootCounts )
     p_stop.setEvents( counts.stopCounts )
     p_choose.setEvents( counts.chooseCounts )
   }
+  */
 
   def setEventsAndCounts( counts:DMVCounts ) {
     p_root.setEventsAndCounts( counts.rootCounts )
@@ -124,6 +128,20 @@ abstract class NOPOSArcFactoredParameters(
     p_root.decrement( counts.rootCounts )
     p_stop.decrement( counts.stopCounts )
     p_choose.decrement( counts.chooseCounts )
+  }
+
+  override def printTotalCountsByType {
+    println( s"  > ${p_root.counts.values.map{exp(_)}.sum} root events" )
+    println( s"  > ${p_root.denomCounts.values.map{exp(_)}.sum} root denom events" )
+    println( s"  > ${p_stop.counts.values.map{exp(_)}.sum} stop events" )
+    println( s"  > ${p_stop.denomCounts.values.map{exp(_)}.sum} stop denom events" )
+    println( s"  > ${p_choose.counts.values.map{exp(_)}.sum} choose events" )
+    println( s"  > ${p_choose.denomCounts.values.map{exp(_)}.sum} choose denom events" )
+    println( s"  > ${p_choose.denoms.size} choose LHS" )
+  }
+
+  override def logSpace = {
+    p_root.counts.logSpace && p_stop.counts.logSpace && p_choose.counts.logSpace
   }
 
   def printOut( logSpace:Boolean = false ) {

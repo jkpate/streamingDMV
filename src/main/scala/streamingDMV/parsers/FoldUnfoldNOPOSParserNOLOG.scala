@@ -2,24 +2,22 @@ package streamingDMV.parsers
 
 import streamingDMV.labels._
 import streamingDMV.math.LogSum
-import streamingDMV.tables.LogCPT
-// import streamingDMV.parameters.NOPOSArcFactoredParameters
-import streamingDMV.parameters.ArcFactoredParameters
+import streamingDMV.tables.CPT
+import streamingDMV.parameters.NOPOSArcFactoredParameters
 
 
 import scala.collection.mutable.{Map=>MMap}
 import math.log
 
 
-// abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:NOPOSArcFactoredParameters](
-abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]](
+abstract class FoldUnfoldNOPOSParserNOLOG[P<:NOPOSArcFactoredParameters](
   maxLength:Int,
   rootAlpha:Double = 1D,
   stopAlpha:Double = 1D,
   chooseAlpha:Double = 1D,
   randomSeed:Int = 15,
   reservoirSize:Int = 0
-) extends StreamingVBParser[C,P](
+) extends StreamingVBParser[DMVCounts,P](
   maxLength,
   rootAlpha,
   stopAlpha,
@@ -44,21 +42,8 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
   def lexCellFactor( index:Int, pDec:Decoration ):Double
   def lexFill( index:Int ) {
     lexSpecs( index ).foreach{ pDec =>
-        // println( s"incrementing ${(index,pDec)} by ${lexCellFactor( index, pDec )}" )
-      if( LogSum(
-          insideChart( index )( index+1 )(pDec),
-          lexCellFactor( index, pDec )
-        ) > 0
-      ) {
-        println( (index,pDec) )
-        println( s"adding ${lexCellFactor( index, pDec )} to ${insideChart( index )( index+1)(pDec)}")
-      }
-
-      insideChart( index )( index+1 )(pDec) = LogSum(
-        insideChart( index )( index+1 )(pDec),
-        lexCellFactor( index, pDec )
-      )
-      assert( insideChart( index )( index+1 )(pDec) <= 0D )
+      // println( s"incrementing ${(index,pDec)} by ${lexCellFactor( index, pDec )}" )
+      insideChart( index )( index+1 )(pDec) += lexCellFactor( index, pDec )
     }
   }
   def insidePass( s:Array[Int] ) = {
@@ -82,67 +67,50 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
   def leftwardSplitSpecs(i:Int,j:Int):Seq[Tuple2[Decoration,Seq[Tuple3[Int,MDecoration,Decoration]]]]
 
   def rightwardCellScore( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = {
-    insideChart( i )( k )( mDec ) +
-      insideChart( k )( j )( cDec ) +
+    insideChart( i )( k )( mDec ) *
+      insideChart( k )( j )( cDec ) *
         rightwardCellFactor( i, k, j, pDec, mDec, cDec )
   }
   def leftwardCellScore( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = {
-    insideChart( i )( k )( cDec ) +
-      insideChart( k )( j )( mDec ) +
+    insideChart( i )( k )( cDec ) *
+      insideChart( k )( j )( mDec ) *
         leftwardCellFactor( i, k, j, pDec, mDec, cDec )
   }
   def mCellScore( i:Int, k:Int, j:Int, mDecoration:MDecoration ) = {
-    val score = 
-      if( k%2 == 0 ) {
-        insideChart( i )( k )( mDecoration.evenLeft ) +
-          insideChart( k )( j )( mDecoration.evenRight ) +
-            mCellFactor( i, k, j, mDecoration )
-      } else {
-        insideChart( i )( k )( mDecoration.oddLeft ) +
-          insideChart( k )( j )( mDecoration.oddRight ) +
-            mCellFactor( i, k, j, mDecoration )
-      }
-
-    if( !( score > Double.NegativeInfinity && score <= 0D ) ) {
-      println( s"mCellScore: ${(i,k,j,mDecoration,score)}" )
-      println( "  left:" + insideChart( i )( k )( mDecoration.evenLeft ) )
-      println( "  right:" + insideChart( k )( j )( mDecoration.evenRight ) )
-      println( "  factor:" + mCellFactor( i, k, j, mDecoration ) )
+    if( k%2 == 0 ) {
+      insideChart( i )( k )( mDecoration.evenLeft ) *
+        insideChart( k )( j )( mDecoration.evenRight ) *
+          mCellFactor( i, k, j, mDecoration )
+    } else {
+      insideChart( i )( k )( mDecoration.oddLeft ) *
+        insideChart( k )( j )( mDecoration.oddRight ) *
+          mCellFactor( i, k, j, mDecoration )
     }
-
-    score
   }
   def rootCellScore( k:Int, leftDec:Decoration, rightDec:Decoration ) = {
-    insideChart( 0 )( k )( leftDec ) +
-      insideChart( k )( intString.length )( rightDec ) +
+      // println( (k, leftDec, rightDec) )
+      // println( 
+      //   "  " + insideChart( 0 )( k )( leftDec )
+      // )
+      // println( 
+      //   "  " + insideChart( k )( intString.length )( rightDec ) + "\n\n"
+      // )
+    insideChart( 0 )( k )( leftDec ) *
+      insideChart( k )( intString.length )( rightDec ) *
         rootCellFactor( k )
   }
 
 
+  val SCALING_FACTOR = 1.0
   def computeInsideMScore( i:Int, j:Int ) {
     mSplitSpecs(i,j).foreach{ case (mDecoration, splits) =>
       splits.foreach{ k =>
-        insideChart( i )( j )( mDecoration ) = LogSum(
-            insideChart( i )( j )( mDecoration ),
-            mCellScore( i, k, j, mDecoration )
-          )
+        insideChart( i )( j )( mDecoration ) += /*SCALING_FACTOR**/mCellScore( i, k, j, mDecoration )
 
-        if( !( insideChart( i )( j )( mDecoration ) > Double.NegativeInfinity )) {
+        if( !( insideChart( i )( j )( mDecoration ) > 0D )) {
           println( (i,j,mDecoration,insideChart( i )( j )( mDecoration ) ) )
         }
-        assert( insideChart( i )( j )( mDecoration ) > Double.NegativeInfinity )
-
-
-        if( !( insideChart( i )( j )( mDecoration ) <= 0D ) ) {
-          println( (i,j,mDecoration ) )
-          println( s"${insideChart( i )( j )( mDecoration ) } <= 0D = " +
-            { insideChart( i )( j )( mDecoration ) <= 0D } )
-
-          println( "left: " + insideChart( i )( k )( mDecoration.evenLeft ) )
-          println( "right: " + insideChart( k )( j )( mDecoration.evenRight ) )
-        }
-        assert( insideChart( i )( j )( mDecoration ) <= 0D )
-
+        assert( insideChart( i )( j )( mDecoration ) > 0D )
       }
     }
   }
@@ -150,32 +118,28 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
     rootSplitSpecs().foreach{ case ( k, decorationPair ) =>
       val r = intString( k )
 
-      stringProb = LogSum(
-        stringProb,
+      stringProb +=
         rootCellScore( k, decorationPair.evenLeft, decorationPair.evenRight )
-      )
 
-      if( !( stringProb > Double.NegativeInfinity )) {
+      if( !( stringProb > 0D )) {
         println( stringProb )
       }
-      assert( stringProb > Double.NegativeInfinity )
-      assert( stringProb <= 0D )
+      assert( stringProb > 0D )
+        // insideChart( 0 )( k )( decorationPair.evenLeft ) *
+        //   insideChart( k )( intString.length )( decorationPair.evenRight ) *
+        //     rootCellFactor( k )
     }
   }
   def computeInsideRightwardScore( i:Int, j:Int ) {
     rightwardSplitSpecs( i, j ).foreach{ case ( pDec, splits ) =>
       splits.foreach{ case ( k, mDec, cDec ) =>
+        insideChart( i )( j )( pDec ) +=
+          /*SCALING_FACTOR**/rightwardCellScore( i, k, j, pDec, mDec, cDec )
 
-        insideChart( i )( j )( pDec ) = LogSum(
-            insideChart( i )( j )( pDec ),
-            rightwardCellScore( i, k, j, pDec, mDec, cDec )
-          )
-
-        if( !( insideChart( i )( j )( pDec ) > Double.NegativeInfinity ) ) {
+        if( !( insideChart( i )( j )( pDec ) > 0D ) ) {
           println( (i,j,pDec, insideChart( i )( j )( pDec ) ) )
         }
-        assert( insideChart( i )( j )( pDec ) > Double.NegativeInfinity )
-        assert( insideChart( i )( j )( pDec ) <= 0D )
+        assert( insideChart( i )( j )( pDec ) > 0D )
 
       }
     }
@@ -183,17 +147,13 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
   def computeInsideLeftwardScore( i:Int, j:Int ) {
     leftwardSplitSpecs( i, j ).foreach{ case ( pDec, splits ) =>
       splits.foreach{ case ( k, mDec, cDec ) =>
-        insideChart( i )( j )( pDec ) = LogSum(
-            insideChart( i )( j )( pDec ),
-            leftwardCellScore( i, k, j, pDec, mDec, cDec )
-          )
+        insideChart( i )( j )( pDec ) +=
+          /*SCALING_FACTOR**/leftwardCellScore( i, k, j, pDec, mDec, cDec )
 
-        if( !( insideChart( i )( j )( pDec ) > Double.NegativeInfinity &&
-                insideChart( i )( j )( pDec ) <= 0D ) ) {
+        if( !( insideChart( i )( j )( pDec ) > 0D ) ) {
           println( (i,j,pDec, insideChart( i )( j )( pDec ) ) )
         }
-        assert( insideChart( i )( j )( pDec ) > Double.NegativeInfinity )
-        assert( insideChart( i )( j )( pDec ) <= 0D )
+        assert( insideChart( i )( j )( pDec ) > 0D )
       }
     }
   }
@@ -282,15 +242,11 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
               val r = intString( k )
               val factorAndOutside = rootCellFactor( k )
 
-              outsideChart( 0 )( k )( decorationPair.evenLeft ) = LogSum(
-                  outsideChart( 0 )( k )( decorationPair.evenLeft ) ,
-                  insideChart( k )( intString.length )( decorationPair.evenRight ) + factorAndOutside
-                )
+              outsideChart( 0 )( k )( decorationPair.evenLeft ) +=
+                insideChart( k )( intString.length )( decorationPair.evenRight ) * factorAndOutside
 
-              outsideChart( k )( intString.length )( decorationPair.evenRight ) = LogSum(
-                outsideChart( k )( intString.length )( decorationPair.evenRight ),
-                insideChart( 0 )( k )( decorationPair.evenLeft ) + factorAndOutside
-              )
+              outsideChart( k )( intString.length )( decorationPair.evenRight ) +=
+                insideChart( 0 )( k )( decorationPair.evenLeft ) * factorAndOutside
             }
           }
         } else if( i%2 == 0 && j%2 == 1 ) { // Leftward label
@@ -298,22 +254,18 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
             leftwardSplitSpecs( i, j ).foreach{ case ( decoration, splits ) =>
               splits.foreach{ case ( k, mDec, cDec ) =>
                 val factorAndOutside =
-                  outsideChart( i )( j )( decoration ) +
+                  outsideChart( i )( j )( decoration ) *
                     leftwardCellFactor( i, k, j, decoration, mDec, cDec )
 
                 // to left child
-                outsideChart( i )( k )( cDec ) = LogSum(
-                    outsideChart( i )( k )( cDec ),
-                    insideChart( k )( j )( mDec ) +
-                      factorAndOutside
-                  )
+                outsideChart( i )( k )( cDec ) +=
+                  insideChart( k )( j )( mDec ) *
+                    factorAndOutside
 
                 // to right child
-                outsideChart( k )( j )( mDec ) = LogSum(
-                    outsideChart( k )( j )( mDec ),
-                    insideChart( i )( k )( cDec ) +
-                      factorAndOutside
-                  )
+                outsideChart( k )( j )( mDec ) +=
+                  insideChart( i )( k )( cDec ) *
+                    factorAndOutside
               }
             }
           }
@@ -322,22 +274,18 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
             rightwardSplitSpecs( i, j ).foreach{ case ( decoration, splits ) =>
               splits.foreach{ case ( k, mDec, cDec ) =>
                 val factorAndOutside =
-                  outsideChart( i )( j )( decoration ) +
+                  outsideChart( i )( j )( decoration ) *
                     rightwardCellFactor( i, k, j, decoration, mDec, cDec )
 
                 // to left child
-                outsideChart( i )( k )( mDec ) = LogSum(
-                    outsideChart( i )( k )( mDec ),
-                    insideChart( k )( j )( cDec ) +
-                      factorAndOutside
-                  )
+                outsideChart( i )( k )( mDec ) +=
+                  insideChart( k )( j )( cDec ) *
+                    factorAndOutside
 
                 // to right child
-                outsideChart( k )( j )( cDec ) = LogSum(
-                    outsideChart( k )( j )( cDec ),
-                    insideChart( i )( k )( mDec ) +
-                      factorAndOutside
-                  )
+                outsideChart( k )( j )( cDec ) +=
+                  insideChart( i )( k )( mDec ) *
+                    factorAndOutside
               }
             }
           }
@@ -345,36 +293,28 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
           mSplitSpecs( i, j ).foreach{ case (mDecoration, splits) =>
             splits.foreach{ k =>
               val factorAndOutside =
-                outsideChart( i )( j )( mDecoration ) + mCellFactor( i, k, j, mDecoration )
+                outsideChart( i )( j )( mDecoration ) * mCellFactor( i, k, j, mDecoration )
 
               if( k%2 == 0 ) {
                 // to left child
-                outsideChart( i )( k )( mDecoration.evenLeft ) = LogSum(
-                    outsideChart( i )( k )( mDecoration.evenLeft ),
-                    insideChart( k )( j )( mDecoration.evenRight ) +
-                      factorAndOutside
-                  )
+                outsideChart( i )( k )( mDecoration.evenLeft ) +=
+                  insideChart( k )( j )( mDecoration.evenRight ) *
+                    factorAndOutside
 
                 // to right child
-                outsideChart( k )( j )( mDecoration.evenRight ) = LogSum(
-                    outsideChart( k )( j )( mDecoration.evenRight ),
-                    insideChart( i )( k )( mDecoration.evenLeft ) +
-                      factorAndOutside
-                  )
+                outsideChart( k )( j )( mDecoration.evenRight ) +=
+                  insideChart( i )( k )( mDecoration.evenLeft ) *
+                    factorAndOutside
               } else {
                 // to left child
-                outsideChart( i )( k )( mDecoration.oddLeft ) = LogSum(
-                    outsideChart( i )( k )( mDecoration.oddLeft ),
-                    insideChart( k )( j )( mDecoration.oddRight ) +
-                      factorAndOutside
-                  )
+                outsideChart( i )( k )( mDecoration.oddLeft ) +=
+                  insideChart( k )( j )( mDecoration.oddRight ) *
+                    factorAndOutside
 
                 // to right child
-                outsideChart( k )( j )( mDecoration.oddRight ) = LogSum(
-                    outsideChart( k )( j )( mDecoration.oddRight ),
-                    insideChart( i )( k )( mDecoration.oddLeft ) +
-                      factorAndOutside
-                  )
+                outsideChart( k )( j )( mDecoration.oddRight ) +=
+                  insideChart( i )( k )( mDecoration.oddLeft ) *
+                    factorAndOutside
               }
             }
           }
@@ -603,19 +543,19 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
       }
     }
     treeRoot = null
-    stringProb = Double.NegativeInfinity
+    stringProb = 0D
   }
   def clearCharts {
     (0 until insideChart.length ).foreach{ i =>
       (0 until insideChart.length+1 ).foreach{ j =>
         insideChart(i)(j).keys.foreach{ vs =>
-          insideChart(i)(j)(vs) = Double.NegativeInfinity
-          outsideChart(i)(j)(vs) = Double.NegativeInfinity
+          insideChart(i)(j)(vs) = 0D
+          outsideChart(i)(j)(vs) = 0D
         }
       }
     }
     treeRoot = null
-    stringProb = Double.NegativeInfinity
+    stringProb = 0D
   }
 
   def sampleTreeCounts( i:Int, j:Int, pDec:Decoration ):Seq[Tuple2[Event,Double]] = {
@@ -624,16 +564,16 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
       // val splitsAndScores =
       mCellScores(i,j).filter(_._1 == pDec).flatMap{ case (parent, splitsAndScores ) =>
         assert( parent == pDec )
-        val ( k, score ) = argSample( splitsAndScores, logSpace = true )
+        val ( k, score ) = argSample( splitsAndScores )
 
-        sampleScore += score
+        sampleScore += math.log( score )
 
         if( k%2 == 0 )
-          mEventCounts( i, k, j, parent, 0D ) ++
+          mEventCounts( i, k, j, parent, 1D ) ++
             sampleTreeCounts( i, k, parent.evenLeft ) ++
               sampleTreeCounts( k, j, parent.evenRight )
         else
-          mEventCounts( i, k, j, parent, 0D ) ++
+          mEventCounts( i, k, j, parent, 1D ) ++
             sampleTreeCounts( i, k, parent.oddLeft ) ++
               sampleTreeCounts( k, j, parent.oddRight )
       }
@@ -644,11 +584,11 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
       if( j-i > 1 ) {
         rightwardCellScores(i,j).filter(_._1 == pDec).flatMap{ case (parent, splitsAndScores ) =>
           assert( parent == pDec )
-          val ( (k, mDec, cDec) , score ) = argSample( splitsAndScores, logSpace = true )
+          val ( (k, mDec, cDec) , score ) = argSample( splitsAndScores )
 
-          sampleScore += score
+          sampleScore += math.log( score )
 
-          rightwardEventCounts( i, k, j, pDec, mDec, cDec, 0D ) ++
+          rightwardEventCounts( i, k, j, pDec, mDec, cDec, 1D ) ++
             sampleTreeCounts( i, k, mDec ) ++
               sampleTreeCounts( k, j, cDec )
         }
@@ -658,9 +598,9 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
           assert( parent == pDec )
           assert( scores.length == 1 )
 
-          sampleScore += scores.head
+          sampleScore += math.log( scores.head )
           // Seq()
-          lexEventCounts( i, pDec, 0D )
+          lexEventCounts( i, pDec, 1D )
         }
       }
 
@@ -670,11 +610,11 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
       if( j-i > 1 ) {
         leftwardCellScores(i,j).filter(_._1 == pDec).flatMap{ case ( parent, splitsAndScores ) =>
           assert( parent == pDec )
-          val ( (k, mDec, cDec) , score ) = argSample( splitsAndScores, logSpace = true )
+          val ( (k, mDec, cDec) , score ) = argSample( splitsAndScores )
 
-          sampleScore += score
+          sampleScore += math.log( score )
 
-          leftwardEventCounts( i, k, j, pDec, mDec, cDec, 0D ) ++
+          leftwardEventCounts( i, k, j, pDec, mDec, cDec, 1D ) ++
             sampleTreeCounts( i, k, cDec ) ++
               sampleTreeCounts( k, j, mDec )
         }
@@ -684,19 +624,19 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
           assert( parent == pDec )
           assert( scores.length == 1 )
 
-          sampleScore += scores.head
-          lexEventCounts( i, pDec, 0D )
+          sampleScore += math.log( scores.head )
+          lexEventCounts( i, pDec, 1D )
         }
       }
 
     } else if( i == 0 && j == intString.length ) { // Root
       assert( pDec == RootDecoration )
 
-      val ((k,cDecs), score) = argSample( rootCellScores(), logSpace = true )
+      val ((k,cDecs), score) = argSample( rootCellScores() )
 
-      sampleScore += score
+      sampleScore += math.log( score )
 
-      rootEventCounts( k, 0D ) ++
+      rootEventCounts( k, 1D ) ++
         sampleTreeCounts( i , k, cDecs.evenLeft ) ++
         sampleTreeCounts( k, intString.length, cDecs.evenRight )
 
@@ -705,12 +645,12 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
     }
   }
 
-  // def emptyCounts = DMVCounts( rootAlpha, stopAlpha, chooseAlpha, true )
+  def emptyCounts = DMVCounts( rootAlpha, stopAlpha, chooseAlpha, false )
 
 
   var sampleScore = 0D
 
-  def sampleTreeCounts( originalString:Array[Int] ):Tuple2[C,Double] = {
+  def sampleTreeCounts( originalString:Array[Int] ):Tuple2[DMVCounts,Double] = {
     val s = doubleString( originalString )
     clearCharts
     val normalized = theta.fullyNormalized
@@ -720,13 +660,12 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
     sampleScore = 0D
     // println( "incrementing counts for sample" )
     sampleTreeCounts( 0, intString.length, RootDecoration ).foreach{ case (event, count) =>
-      // println( s"increment $event by $count (${math.exp(count)})" )
-      // event match {
-      //   case e:StopEvent => c.stopCounts.increment( e, count )
-      //   case e:ChooseEvent => c.chooseCounts.increment( e, count )
-      //   case e:RootEvent => c.rootCounts.increment( e, count )
-      // }
-      c.increment( event, count )
+      // println( event, count )
+      event match {
+        case e:StopEvent => c.stopCounts.increment( e, count )
+        case e:ChooseEvent => c.chooseCounts.increment( e, count )
+        case e:RootEvent => c.rootCounts.increment( e, count )
+      }
     }
     theta.fullyNormalized = normalized
     // println( "done incrementing counts for sample" )
@@ -743,8 +682,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
     theta.fullyNormalized = true
     insidePass( s )
     theta.fullyNormalized = false
-    // math.log(stringProb)
-    stringProb
+    math.log(stringProb)
   }
 
   // training stuff
@@ -760,15 +698,15 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
   def mEventCounts( i:Int, k:Int, j:Int, mDecoration:MDecoration, marginal:Double ):Seq[Tuple2[Event,Double]]
   def lexEventCounts( index:Int, pDec:Decoration, marginal:Double ):Seq[Tuple2[Event,Double]]
 
-  def outsidePassWithCounts( s:Array[Int] ):C = {
-    // println( s"creating counts in outsidePassWithCounts" )
-    // val c = DMVCounts(
-    //   new LogCPT[RootEvent]( rootAlpha ),
-    //   new LogCPT[StopEvent]( stopAlpha ),
-    //   new LogCPT[ChooseEvent]( chooseAlpha )
-    // )
+  def outsidePassWithCounts( s:Array[Int] ):DMVCounts = {
+    val c = DMVCounts(
+      new CPT[RootEvent]( rootAlpha ),
+      new CPT[StopEvent]( stopAlpha ),
+      new CPT[ChooseEvent]( chooseAlpha )
+    )
 
-    val c = emptyCounts
+    val nodeCount = math.pow( 2, (intString.length/2)+1 ) // - 1
+    // def nodeCount( length:Int ) = math.pow( 2, length+1 ) - 1
 
     ( 1 to s.length ).reverse.foreach{ length =>
       ( 0 to ( s.length - length ) ).foreach{ i =>
@@ -779,27 +717,25 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
               val r = intString( k )
               val factorAndOutside = rootCellFactor( k )
 
-              outsideChart( 0 )( k )( decorationPair.evenLeft ) = LogSum(
-                outsideChart( 0 )( k )( decorationPair.evenLeft ),
-                insideChart( k )( intString.length )( decorationPair.evenRight ) + factorAndOutside
-              )
+              outsideChart( 0 )( k )( decorationPair.evenLeft ) +=
+                insideChart( k )( intString.length )( decorationPair.evenRight ) *
+                factorAndOutside /** SCALING_FACTOR*/
 
-              outsideChart( k )( intString.length )( decorationPair.evenRight ) = LogSum(
-                outsideChart( k )( intString.length )( decorationPair.evenRight ) ,
-                insideChart( 0 )( k )( decorationPair.evenLeft ) + factorAndOutside
-              )
+              outsideChart( k )( intString.length )( decorationPair.evenRight ) +=
+                insideChart( 0 )( k )( decorationPair.evenLeft ) *
+                factorAndOutside /** SCALING_FACTOR*/
 
-              val marginal =
-                insideChart( 0 )( k )( decorationPair.evenLeft ) +
-                  insideChart( k )( intString.length )( decorationPair.evenRight ) +
+              val marginal = (
+                insideChart( 0 )( k )( decorationPair.evenLeft ) *
+                  insideChart( k )( intString.length )( decorationPair.evenRight ) *
                     factorAndOutside
+                ) /*/ (math.pow(SCALING_FACTOR,nodeCount))*/
 
               rootEventCounts( k, marginal ).foreach{ case (event, count) =>
-                c.increment( event, count )
-                // event match {
-                //   case e:StopEvent => c.stopCounts.increment( e, count )
-                //   case e:RootEvent => c.rootCounts.increment( e, count )
-                // }
+                event match {
+                  case e:StopEvent => c.stopCounts.increment( e, count )
+                  case e:RootEvent => c.rootCounts.increment( e, count )
+                }
               }
             }
           }
@@ -809,49 +745,52 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
               splits.foreach{ case ( k, mDec, cDec ) =>
                 // println( (i,k,j,pDec, mDec, cDec ) )
                 val factorAndOutside =
-                  outsideChart( i )( j )( pDec ) +
+                  outsideChart( i )( j )( pDec ) *
                     leftwardCellFactor( i, k, j, pDec, mDec, cDec )
 
                 // to left child
-                outsideChart( i )( k )( cDec ) = LogSum(
-                    outsideChart( i )( k )( cDec ),
-                    insideChart( k )( j )( mDec ) +
-                      factorAndOutside
-                  )
+                outsideChart( i )( k )( cDec ) +=
+                  insideChart( k )( j )( mDec ) *
+                    factorAndOutside /** SCALING_FACTOR*/
 
                 // to right child
-                outsideChart( k )( j )( mDec ) = LogSum(
-                    outsideChart( k )( j )( mDec ),
-                    insideChart( i )( k )( cDec ) +
-                      factorAndOutside
-                  )
+                outsideChart( k )( j )( mDec ) +=
+                  insideChart( i )( k )( cDec ) *
+                    factorAndOutside /** SCALING_FACTOR*/
 
                 val marginal = 
-                  insideChart( i )( k )( cDec ) +
-                    insideChart( k )( j )( mDec ) +
-                      factorAndOutside
+                  insideChart( i )( k )( cDec ) *
+                    insideChart( k )( j )( mDec ) *
+                      factorAndOutside /*/ (math.pow(SCALING_FACTOR,nodeCount))*/
 
                 leftwardEventCounts( i, k, j, pDec, mDec, cDec, marginal ).foreach{ case (event, count) =>
-                  c.increment( event, count )
-                  // event match {
-                  //   case e:StopEvent => c.stopCounts.increment( e, count )
-                  //   case e:ChooseEvent => c.chooseCounts.increment( e, count )
-                  // }
+                  event match {
+                    case e:StopEvent => c.stopCounts.increment( e, count )
+                    case e:ChooseEvent => c.chooseCounts.increment( e, count )
+                  }
                 }
               }
             }
           } else {
             lexSpecs( i ).foreach{ pDec =>
+
+              // Let's divide the terminal cells of the inside and outside chart
+              // instead of the marginal so the product of these probabilities
+              // matches the string probability:
+              /*insideChart(i)(i+1)(pDec) /= SCALING_FACTOR
+              outsideChart(i)(i+1)(pDec) /= math.pow( SCALING_FACTOR, nodeCount)*/
+
+
               // Don't include stop factor -- it's actually already included in insideChart (the
               // *real* inside score for each terminal is 1)
               val marginal =
-                insideChart(i)(i+1)(pDec) + outsideChart(i)(i+1)(pDec)
+                insideChart(i)(i+1)(pDec) * outsideChart(i)(i+1)(pDec)
+
               lexEventCounts( i, pDec, marginal ).foreach{ case (event, count) =>
-                c.increment( event, count )
-                // event match {
-                //   case e:StopEvent => c.stopCounts.increment( e, count )
-                //   case e:ChooseEvent => c.chooseCounts.increment( e, count )
-                // }
+                event match {
+                  case e:StopEvent => c.stopCounts.increment( e, count )
+                  case e:ChooseEvent => c.chooseCounts.increment( e, count )
+                }
               }
             }
                 // lexMarginals( i ).foreach{ case (event, count) =>
@@ -866,55 +805,51 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
             rightwardSplitSpecs( i, j ).foreach{ case ( pDec, splits ) =>
               splits.foreach{ case ( k, mDec, cDec ) =>
                 val factorAndOutside =
-                  outsideChart( i )( j )( pDec ) +
+                  outsideChart( i )( j )( pDec ) *
                     rightwardCellFactor( i, k, j, pDec, mDec, cDec )
 
                 // to left child
-                outsideChart( i )( k )( mDec ) = LogSum(
-                    outsideChart( i )( k )( mDec ),
-                    insideChart( k )( j )( cDec ) +
-                      factorAndOutside
-                  )
+                outsideChart( i )( k )( mDec ) +=
+                  insideChart( k )( j )( cDec ) *
+                    factorAndOutside /** SCALING_FACTOR*/
 
                 // to right child
-                outsideChart( k )( j )( cDec ) = LogSum(
-                    outsideChart( k )( j )( cDec ),
-                    insideChart( i )( k )( mDec ) +
-                      factorAndOutside
-                  )
+                outsideChart( k )( j )( cDec ) +=
+                  insideChart( i )( k )( mDec ) *
+                    factorAndOutside /** SCALING_FACTOR*/
 
                 val marginal = 
-                  insideChart( i )( k )( mDec ) +
-                    insideChart( k )( j )( cDec ) +
-                      factorAndOutside
+                  insideChart( i )( k )( mDec ) *
+                    insideChart( k )( j )( cDec ) *
+                      factorAndOutside /*/ (math.pow(SCALING_FACTOR,nodeCount))*/
 
                 rightwardEventCounts( i, k, j, pDec, mDec, cDec, marginal ).foreach{ case (event, count) =>
-                  c.increment( event, count )
-                  // event match {
-                  //   case e:StopEvent => c.stopCounts.increment( e, count )
-                  //   case e:ChooseEvent => c.chooseCounts.increment( e, count )
-                  // }
+                  event match {
+                    case e:StopEvent => c.stopCounts.increment( e, count )
+                    case e:ChooseEvent => c.chooseCounts.increment( e, count )
+                  }
                 }
               }
             }
           } else {
-              // lexMarginals( j ).foreach{ case (event, count) =>
-              //   event match {
-              //     case e:StopEvent => c.stopCounts.increment( e, count )
-              //     case e:ChooseEvent => c.chooseCounts.increment( e, count )
-              //   }
-              // }
             lexSpecs( i ).foreach{ pDec =>
+
+              // Let's divide the terminal cells of the inside and outside chart
+              // instead of the marginal so the product of these probabilities
+              // matches the string probability:
+              /*insideChart(i)(i+1)(pDec) /= SCALING_FACTOR
+              outsideChart(i)(i+1)(pDec) /= math.pow( SCALING_FACTOR, nodeCount)*/
+
               // Don't include stop factor -- it's actually already included in insideChart (the
               // *real* inside score for each terminal is 1)
               val marginal = 
-                insideChart(i)(i+1)(pDec) + outsideChart(i)(i+1)(pDec)
+                insideChart(i)(i+1)(pDec) * outsideChart(i)(i+1)(pDec)
+
               lexEventCounts( i, pDec, marginal ).foreach{ case (event, count) =>
-                c.increment( event, count )
-                // event match {
-                //   case e:StopEvent => c.stopCounts.increment( e, count )
-                //   case e:ChooseEvent => c.chooseCounts.increment( e, count )
-                // }
+                event match {
+                  case e:StopEvent => c.stopCounts.increment( e, count )
+                  case e:ChooseEvent => c.chooseCounts.increment( e, count )
+                }
               }
             }
           }
@@ -922,56 +857,47 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
           mSplitSpecs( i, j ).foreach{ case (mDecoration, splits) =>
             splits.foreach{ k =>
               val factorAndOutside =
-                outsideChart( i )( j )( mDecoration ) + mCellFactor( i, k, j, mDecoration )
+                outsideChart( i )( j )( mDecoration ) * mCellFactor( i, k, j, mDecoration )
 
               if( k%2 == 0 ) {
                 // to left child
-                outsideChart( i )( k )( mDecoration.evenLeft ) = LogSum(
-                    outsideChart( i )( k )( mDecoration.evenLeft ),
-                    insideChart( k )( j )( mDecoration.evenRight ) +
-                      factorAndOutside
-                  )
+                outsideChart( i )( k )( mDecoration.evenLeft ) +=
+                  insideChart( k )( j )( mDecoration.evenRight ) *
+                    factorAndOutside /** SCALING_FACTOR*/
 
                 // to right child
-                outsideChart( k )( j )( mDecoration.evenRight ) = LogSum(
-                    outsideChart( k )( j )( mDecoration.evenRight ),
-                    insideChart( i )( k )( mDecoration.evenLeft ) +
-                      factorAndOutside
-                  )
+                outsideChart( k )( j )( mDecoration.evenRight ) +=
+                  insideChart( i )( k )( mDecoration.evenLeft ) *
+                    factorAndOutside /** SCALING_FACTOR*/
               } else {
                 // to left child
-                outsideChart( i )( k )( mDecoration.oddLeft ) = LogSum(
-                    outsideChart( i )( k )( mDecoration.oddLeft ),
-                    insideChart( k )( j )( mDecoration.oddRight ) +
-                      factorAndOutside
-                  )
+                outsideChart( i )( k )( mDecoration.oddLeft ) +=
+                  insideChart( k )( j )( mDecoration.oddRight ) *
+                    factorAndOutside /** SCALING_FACTOR*/
 
                 // to right child
-                outsideChart( k )( j )( mDecoration.oddRight ) = LogSum(
-                    outsideChart( k )( j )( mDecoration.oddRight ),
-                    insideChart( i )( k )( mDecoration.oddLeft ) +
-                      factorAndOutside
-                  )
+                outsideChart( k )( j )( mDecoration.oddRight ) +=
+                  insideChart( i )( k )( mDecoration.oddLeft ) *
+                    factorAndOutside /** SCALING_FACTOR*/
               }
 
 
               val marginal = 
                 if( k%2 == 0 ) {
-                  insideChart( i )( k )( mDecoration.evenLeft ) +
-                    insideChart( k )( j )( mDecoration.evenRight ) +
-                      factorAndOutside
+                  insideChart( i )( k )( mDecoration.evenLeft ) *
+                    insideChart( k )( j )( mDecoration.evenRight ) *
+                      factorAndOutside /*/ (math.pow(SCALING_FACTOR,nodeCount))*/
                 } else {
-                  insideChart( i )( k )( mDecoration.oddLeft ) +
-                    insideChart( k )( j )( mDecoration.oddRight ) +
-                      factorAndOutside
+                  insideChart( i )( k )( mDecoration.oddLeft ) *
+                    insideChart( k )( j )( mDecoration.oddRight ) *
+                      factorAndOutside /*/ (math.pow(SCALING_FACTOR,nodeCount))*/
                 }
 
               mEventCounts( i, k, j, mDecoration, marginal ).foreach{ case (event, count) =>
-                c.increment( event, count )
-                // event match {
-                //   case e:StopEvent => c.stopCounts.increment( e, count )
-                //   case e:ChooseEvent => c.chooseCounts.increment( e, count )
-                // }
+                event match {
+                  case e:StopEvent => c.stopCounts.increment( e, count )
+                  case e:ChooseEvent => c.chooseCounts.increment( e, count )
+                }
               }
 
             }
@@ -980,10 +906,16 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
       }
     }
 
-    // c.rootCounts.divideBy( stringProb )
-    // c.stopCounts.divideBy( stringProb )
-    // c.chooseCounts.divideBy( stringProb )
-    c.divideBy( stringProb )
+    // println( s"stringProb is: $stringProb" )
+    // println( s"scaling factor is: ${math.pow(SCALING_FACTOR,nodeCount)}" )
+    /*stringProb /= math.pow(SCALING_FACTOR,nodeCount)*/
+    // println( s"stringProb is now: $stringProb" )
+    // println( "dividing by " + (stringProb) )
+
+
+    c.rootCounts.divideBy( stringProb )
+    c.stopCounts.divideBy( stringProb )
+    c.chooseCounts.divideBy( stringProb )
 
     c
   }

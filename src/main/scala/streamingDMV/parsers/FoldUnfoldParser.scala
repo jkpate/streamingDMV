@@ -3,6 +3,7 @@ package streamingDMV.parsers
 import streamingDMV.labels._
 import streamingDMV.tables.CPT
 import streamingDMV.parameters.ArcFactoredParameters
+import streamingDMV.math.LogSum
 import scala.collection.mutable.{Map=>MMap}
 
 import math.log
@@ -25,7 +26,7 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
 
   def particlePerplexity:Double
   def ess:Double
-  def resampleParticles:Int
+  def resampleParticles:Tuple2[Int,Double]
 
   def viterbiParse( utt:Utt ):Parse
 
@@ -47,40 +48,58 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
   def initialCounts( utts:List[Utt] ):C
 
   def extractPartialCounts( string:Array[Int] ):C
-  def sampleTreeCounts( utt:Utt ):Tuple2[C,Double]
+  def sampleTreeCounts( originalString:Array[Int] ):Tuple2[C,Double]
+  def sampleTreeCounts( utt:Utt ):Tuple2[C,Double] = sampleTreeCounts( utt.string )
 
 
   def streamingBayesUpdate(
     miniBatch:List[Utt],
+    sentenceNum:Int,
     maxIter:Int = 10,
     convergence:Double = 0.001,
     printIterScores:Boolean = false,
     printItersReached:Boolean = false
   ):Unit
 
-  def argSample[K]( seq:Seq[Tuple2[K,Double]] ):Tuple2[K,Double] = {
-    val total = seq.filter{_._2 >= Double.NegativeInfinity}.map{_._2}.sum
-    val r = rand.nextDouble()*total
-    var runningTotal = 0D
+  def argSample[K]( seq:Seq[Tuple2[K,Double]], logSpace:Boolean = false ):Tuple2[K,Double] = {
 
-    // println( seq.mkString( " " ) )
+    if( logSpace ) {
+      val logTotal = seq.filter{_._2 >= Double.NegativeInfinity}.map{_._2}.reduce(LogSum(_,_))
+      val r = math.log( rand.nextDouble() ) + logTotal
+      var runningTotal = Double.NegativeInfinity
 
-    seq.takeWhile( pair => {
-        val result = runningTotal < r
-        if( pair._2 > Double.NegativeInfinity ) runningTotal += pair._2
-        result
-      }
-    ).last
+      // println( seq.mkString( " " ) )
+
+      seq.takeWhile( pair => {
+          val result = runningTotal < r
+          if( pair._2 > Double.NegativeInfinity ) runningTotal = LogSum( runningTotal, pair._2 )
+          result
+        }
+      ).last
+    } else {
+      val total = seq.filter{_._2 >= Double.NegativeInfinity}.map{_._2}.sum
+      val r = rand.nextDouble()*total
+      var runningTotal = 0D
+
+      // println( seq.mkString( " " ) )
+
+      seq.takeWhile( pair => {
+          val result = runningTotal < r
+          if( pair._2 > Double.NegativeInfinity ) runningTotal += pair._2
+          result
+        }
+      ).last
+    }
   }
   def argMax[K]( seq:Iterable[Tuple2[K,Double]] ):Tuple2[K,Double] = {
     var bestIdx = List[K]()
     var bestScore = Double.NegativeInfinity
 
     seq.foreach{ case ( idx, score ) =>
-      if( !( score > 0 ) ) {
+      if( !( score > Double.NegativeInfinity && score <= 0D ) ) {
         println( idx, score )
       }
-      assert( score > 0 )
+      assert( score > Double.NegativeInfinity && score <= 0D )
       if( score > bestScore ) {
         bestScore = score
         bestIdx = idx :: Nil

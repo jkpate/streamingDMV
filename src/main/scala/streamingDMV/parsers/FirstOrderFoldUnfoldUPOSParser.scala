@@ -12,9 +12,11 @@ abstract class FirstOrderFoldUnfoldUPOSParser[P<:UPOSArcFactoredParameters](
   stopAlpha:Double = 1D,
   chooseAlpha:Double = 1D,
   uposCount:Int,
-  randomSeed:Int = 15
+  randomSeed:Int = 15,
+  reservoirSize:Int = 0
 ) extends FoldUnfoldUPOSParser[P](
-  maxLength, rootAlpha, stopAlpha, chooseAlpha, uposCount, randomSeed
+  maxLength, rootAlpha, stopAlpha, chooseAlpha, uposCount, randomSeed,
+  reservoirSize
 ) {
 
   def mSplits( i:Int, j:Int ):Iterable[Int] = ( (i+1) to (j-1) by 2 )

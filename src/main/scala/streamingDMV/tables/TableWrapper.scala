@@ -1,5 +1,6 @@
 package streamingDMV.tables
 
+import streamingDMV.math.{LogSum,LogDifference}
 import streamingDMV.labels.FastHashable
 // import com.twitter.algebird.CMSHasherImplicits._
 // import com.twitter.algebird.{CMSMonoid,CMS,BloomFilterMonoid}
@@ -10,9 +11,13 @@ class TableWrapper[E<:FastHashable](
   val approximate:Boolean = true,
   eps:Double,
   delta:Double,
-  randomSeed:Int = 15
+  randomSeed:Int = 15,
+  val logSpace:Boolean = false
 ) {
-  lazy val exactCounts = MMap[E,Double]().withDefaultValue(0D)
+  val myZero = if( logSpace ) Double.NegativeInfinity else 0D
+  // println( s"TableWrapper is logspace: $logSpace" )
+  // lazy val exactCounts = MMap[E,Double]().withDefaultValue(0D)
+  var exactCounts = Map[E,Double]().withDefaultValue( myZero )
   lazy val approximateCounts = new CountMinSketch[E]( eps, delta, randomSeed )
   // val cmsMonoid = CMS.monoid[Long]( eps, delta, randomSeed )
   // var approximateCounts = cmsMonoid.zero
@@ -43,6 +48,7 @@ class TableWrapper[E<:FastHashable](
           // else
           //   approximateCounts ++= other.approximateCounts
     } else if( ! other.approximate ) {
+      assert( logSpace == other.logSpace )
       other.exactCounts.foreach{ case ( k, v ) =>
         increment( k, v )
       }
@@ -56,8 +62,9 @@ class TableWrapper[E<:FastHashable](
     if( other.approximate && approximate ) {
       approximateCounts.set( other.approximateCounts )
     } else if( !other.approximate ) {
-      exactCounts.clear
-      increment( other )
+      // exactCounts.clear
+      exactCounts = other.exactCounts
+      // increment( other )
     } else {
       throw new UnsupportedOperationException( "cannot set exact counts with approximate counts" )
     }
@@ -69,32 +76,51 @@ class TableWrapper[E<:FastHashable](
       // approximateCounts = cmsMonoid.zero
       approximateCounts.clear
     } else {
-      exactCounts.clear
+      exactCounts = Map().withDefaultValue(myZero)
     }
   }
 
   def increment( event:E, inc:Double ) {
-    if( inc > 0 ) {
-      //println( s"incrementing event ${event} as " + approximate )
+    if( inc > myZero ) {
       if( approximate ) {
         approximateCounts.conservativeIncrement( event, inc.toInt )
-        // var i = 0
-        // // approximateSize += event.toString
-        // while( i < inc ) {
-        //   approximateCounts += event.hashCode.toLong
-        //   i += 1
-        // }
       } else {
-        exactCounts += event -> { exactCounts.getOrElse( event, 0D ) + inc }
+        exactCounts = exactCounts.updated(
+          event,
+          if( logSpace ) {
+            // println( s"incrementing $event by $inc" )
+            LogSum( exactCounts( event ) , inc )
+          } else {
+            exactCounts( event ) + inc
+          }
+        )
       }
     }
   }
 
   def decrement( event:E, dec:Double ) {
     if( approximate && dec != 0 ) {
+      // OK, so actually this is possible, but I haven't implemented it
       throw new UnsupportedOperationException( "cannot decrement approximate counts" )
     } else {
-      exactCounts(event) -= dec
+      // exactCounts(event) -= dec
+      // println( s"subtracting $dec from event $event (currently ${exactCounts(event)})" )
+      exactCounts = 
+        exactCounts.updated(
+          event,
+          if( logSpace ) {
+            val c = exactCounts( event )
+            if( c < dec )
+              Double.NegativeInfinity
+            else
+              LogDifference( c , dec )
+          } else {
+            Seq(
+              0,
+              exactCounts(event) - dec
+            ).max
+          }
+        )
     }
   }
 
@@ -102,6 +128,7 @@ class TableWrapper[E<:FastHashable](
     if( other.approximate ) {
       throw new UnsupportedOperationException( "cannot decrement approximate counts" )
     } else {
+      assert( logSpace == other.logSpace )
       other.exactCounts.foreach{ case ( k, v ) =>
         decrement( k, v )
       }
@@ -114,7 +141,22 @@ class TableWrapper[E<:FastHashable](
     if( approximate && x != 1 ) {
       throw new UnsupportedOperationException( "cannot divideBy approximate counts" )
     } else {
-      exactCounts.keys.foreach{ exactCounts(_) /= x }
+      if( logSpace ) {
+        assert( x > Double.NegativeInfinity && x <= 0D )
+        exactCounts.keys.foreach{ event =>
+          exactCounts = exactCounts.updated(
+            event,
+            exactCounts(event) - x
+          )
+        }
+      } else {
+        exactCounts.keys.foreach{ event =>
+          exactCounts = exactCounts.updated(
+            event,
+            exactCounts(event) / x
+          )
+        }
+      }
     }
   }
 
@@ -162,7 +204,7 @@ class TableWrapper[E<:FastHashable](
   // }
 
   override def clone = {
-    val toReturn = new TableWrapper[E]( approximate, eps, delta, randomSeed )
+    val toReturn = new TableWrapper[E]( approximate, eps, delta, randomSeed, logSpace )
     if( approximate ) {
       // TODO optimize here??
       // toReturn.approximateCounts = approximateCounts ++ cmsMonoid.zero
@@ -170,7 +212,7 @@ class TableWrapper[E<:FastHashable](
       // toReturn.approximateCounts.countsTable = approximateCounts.countsTable.map{_.clone}
       toReturn.approximateCounts.set( approximateCounts )
     } else {
-      toReturn.exactCounts ++= exactCounts
+      toReturn.exactCounts = exactCounts
     }
     toReturn
   }

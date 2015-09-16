@@ -55,5 +55,16 @@ class NoValenceUPOSParameters(
     )
   }
 
+  def printOut( logSpace:Boolean = false ) {
+    // println( "p_root:" )
+    // p_root.printOut( logSpace )
+    // println( "p_stop:" )
+    // p_stop.printOut( logSpace )
+    // println( "p_choose:" )
+    // p_choose.printOut( logSpace )
+    // println( "lambda_choose:" )
+    // lambda_choose.printOut( logSpace )
+  }
+
 }
 

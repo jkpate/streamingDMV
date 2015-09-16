@@ -1,6 +1,5 @@
 package streamingDMV.parsers
 
-import streamingDMV.tables.CPT
 import streamingDMV.labels._
 import streamingDMV.parameters.TopDownDMVParameters
 
@@ -14,9 +13,10 @@ class TopDownDMVParser(
   chooseAlpha:Double = 1D,
   randomSeed:Int = 15,
   squarelyNormalized:Int = 0,
-  val approximate:Boolean = false
+  val approximate:Boolean = false,
+  reservoirSize:Int = 0
 ) extends FirstOrderFoldUnfoldNOPOSParser[TopDownDMVParameters](
-  maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed
+  maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed, reservoirSize
 ) {
 
   val theta = new TopDownDMVParameters(
@@ -54,11 +54,11 @@ class TopDownDMVParser(
 
   def cellMap( i:Int, j:Int ) = {
     if( ( i%2 == 1 || j%2 == 1 ) && i%2 != j%2 )
-      MMap( Outermost -> 0D, Inner -> 0D )
+      MMap( Outermost -> Double.NegativeInfinity, Inner -> Double.NegativeInfinity )
     else if( i%2 == 1 && j%2 == 1 )
       MMap(
-        DecorationPair(Outermost,Inner) -> 0D,
-        DecorationPair(Inner,Outermost) -> 0D
+        DecorationPair(Outermost,Inner) -> Double.NegativeInfinity,
+        DecorationPair(Inner,Outermost) -> Double.NegativeInfinity
       )
     else
       MMap()
@@ -129,10 +129,16 @@ class TopDownDMVParser(
   def lexCellFactor( index:Int, pDec:Decoration ) = {
     // println( intString.mkString("{"," ","}") )
     val head = intString( index )
-    if( index%2 == 0 )
-      theta( StopEvent( head, LeftAtt, pDec, Stop ) )
-    else
-      theta( StopEvent( head, RightAtt, pDec, Stop ) )
+    val score = 
+      if( index%2 == 0 )
+        theta( StopEvent( head, LeftAtt, pDec, Stop ) )
+      else
+        theta( StopEvent( head, RightAtt, pDec, Stop ) )
+    // if( !( score > Double.NegativeInfinity && score <= 0D ) ) {
+      // println( "TopDownDMVParser.lexCellFactor: " + (index,pDec,score) )
+    // }
+    assert( ( score > Double.NegativeInfinity && score <= 0D ) )
+    score
   }
 
   def lexSpecs( index:Int ) = {
@@ -273,14 +279,14 @@ class TopDownDMVParser(
     val head = intString( i )
     val dep = intString( k )
 
-    theta( ChooseEvent( head, RightAtt, dep ) ) *
+    theta( ChooseEvent( head, RightAtt, dep ) ) +
       theta( StopEvent( head, RightAtt, pDec, NotStop ) )
   }
   def leftwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = {
     val head = intString( j )
     val dep = intString( k )
 
-    theta( ChooseEvent( head, LeftAtt, dep ) ) *
+    theta( ChooseEvent( head, LeftAtt, dep ) ) +
       theta( StopEvent( head, LeftAtt, pDec, NotStop ) )
   }
 

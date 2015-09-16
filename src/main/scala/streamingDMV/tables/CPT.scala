@@ -5,9 +5,9 @@ import collection.mutable.{Map=>MMap,Set=>MSet}
 
 // import com.twitter.algebird.CMSMonoid
 
-// import org.apache.commons.math3.special.{Gamma=>G}
+import org.apache.commons.math3.special.{Gamma=>G}
 
-import math.{log,log1p}
+import math.{log,log1p,exp}
 
 
 // symmetric Dirichlet Multinomial CPT
@@ -21,7 +21,7 @@ class CPT[E<:Event with Product](
   randomSeed:Int = 15
 ) {
   // var counts = MMap[E,Double]().withDefaultValue(0D)
-  var counts = new TableWrapper[E]( approximate, eps, delta, randomSeed )
+  var counts = new TableWrapper[E]( approximate, eps, delta, randomSeed, false )
   // var denomCounts = MMap[NormKey,Double]()
   var denomCounts = new TableWrapper[NormKey with Product]( approximate, eps,
     2*delta, 37*randomSeed )
@@ -35,9 +35,14 @@ class CPT[E<:Event with Product](
     // println( s"  I am approximate: $approximate" )
     // println( s"  my counts are approximate: ${counts.approximate}" )
     val n = event.normKey
-    ( counts( event ) + alpha ) / (
-      denomCounts( n ) + (alpha * { if( squarelyNormalized > 0 ) squarelyNormalized else denoms(n).size } )
-    )
+    if( squarelyNormalized  > 0  )
+      ( counts( event ) + alpha/squarelyNormalized ) / (
+        denomCounts( n ) + (alpha)
+      )
+    else
+      ( counts( event ) + alpha ) / (
+        denomCounts( n ) + (alpha * denoms(n).size)
+      )
   }
 
 
@@ -52,12 +57,37 @@ class CPT[E<:Event with Product](
 
   def expDigammaNormalized( event:E ) = {
     val n = event.normKey
-    taylorExpDigamma( 
-      ( counts( event ) + alpha  ) 
-    ) / taylorExpDigamma(
-      denomCounts( n ) + (alpha * { if( squarelyNormalized > 0 ) squarelyNormalized else
-        denoms(n).size } )
-    )
+
+    val score = 
+      if( squarelyNormalized > 0 )
+        // taylorExpDigamma( 
+        exp( G.digamma( 
+          ( counts( event ) + alpha/squarelyNormalized  ) 
+        // ) / taylorExpDigamma(
+        ) ) / exp( G.digamma(
+          denomCounts( n ) + (alpha)
+        ) )
+      else
+        // taylorExpDigamma( 
+        exp( G.digamma( 
+          ( counts( event ) + alpha  ) 
+        // ) / taylorExpDigamma(
+        ) ) / exp( G.digamma(
+          denomCounts( n ) + (alpha * denoms(n).size)
+        ) )
+
+    if( !( score > 0 ) ) {
+      println( s"$event\t$score" )
+      // println( "  " + taylorExpDigamma( ( counts( event ) + alpha  ) ) )
+      println( "  " + ( counts( event ) + alpha  ) )
+      println( "  " + exp( G.digamma( ( counts( event ) + alpha  ) ) ) )
+      // println( "    " + taylorExpDigamma( denomCounts( n ) + (alpha *
+      println( "    " + ( denomCounts( n ) + (alpha * denoms(n).size)) )
+      println( "    " + G.digamma( denomCounts( n ) + (alpha * denoms(n).size)) )
+    }
+    assert( score > 0 )
+
+    score
   }
 
   // from https://code.google.com/p/fastapprox/source/browse/trunk/fastapprox/src/fastgamma.h
@@ -137,11 +167,14 @@ class CPT[E<:Event with Product](
   def increment( event:E, inc:Double ) = {
     // to have a faster zerosInit
     // if( inc > 0 ) counts += event -> { counts.getOrElse( event, 0D ) + inc }
-    if( inc > 0 ) counts.increment( event, inc )
-
+    println( " === NON-LOG SPACE INCREMENT ===" )
     val n = event.normKey
+    if( inc > 0 ) {
+      counts.increment( event, inc )
+      denomCounts.increment( n, inc )
+    }
+
     // denomCounts += n -> { denomCounts.getOrElse( n, 0D ) + inc }
-    denomCounts.increment( n, inc )
 
     denoms.getOrElseUpdate( n, MSet() ) += event
   }
@@ -160,6 +193,8 @@ class CPT[E<:Event with Product](
   }
 
   def decrement( other:CPT[E] ) {
+    assert( counts.logSpace == other.counts.logSpace )
+    assert( denomCounts.logSpace == other.denomCounts.logSpace )
     // other.counts.foreach{ case( k, v) =>
     //   decrement( k, v )
     // }
@@ -170,6 +205,7 @@ class CPT[E<:Event with Product](
   def divideBy( x:Double ) {
     // counts.keys.foreach{ counts(_) /= x }
     counts.divideBy( x )
+    denomCounts.divideBy( x )
   }
 
   def decrement( event:E, dec:Double ) = {
@@ -194,15 +230,17 @@ class CPT[E<:Event with Product](
       //   e -> 0D
       // }
       // denomCounts += n -> 0D
-      denomCounts.increment( n, 0D )
+      // denomCounts.increment( n, 0D )
       denoms += n -> MSet( events.toSeq:_* )
     }
   }
 
   def setEvents( other:CPT[E] ) {
+    assert( counts.logSpace == other.counts.logSpace )
+    assert( denomCounts.logSpace == other.denomCounts.logSpace )
     clear
     denoms = other.denoms//.clone
-    denomCounts = other.denomCounts.clone
+    denomCounts = other.denomCounts//.clone
     // events = other.events.clone
   }
 
@@ -219,6 +257,8 @@ class CPT[E<:Event with Product](
     // denomCounts.increment( other.denomCounts.clone )
     // counts.increment( other.counts.clone )
 
+    println( s"setting logSpace counts: ${other.counts.logSpace}" )
+
     denomCounts.setCounts( other.denomCounts )
     counts.setCounts( other.counts )
   }
@@ -228,7 +268,7 @@ class CPT[E<:Event with Product](
     counts.randomize( r, scale )
   }
 
-  def size = counts.size
+  def size = denoms.values.map{_.size}.sum
 
   def printOut( logSpace:Boolean = false ) {
     denoms.foreach{ case (n, events) =>
