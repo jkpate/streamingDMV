@@ -96,17 +96,12 @@ abstract class NOPOSArcFactoredParameters(
     p_choose.randomizeCounts( r, scale )
   }
 
-  def incrementCounts( counts:DMVCounts ) {
-    // println( "increment by\n" )
-    // counts.rootCounts.printOut()
+  def incrementCounts( counts:DMVCounts, updateEvents:Boolean = true ) {
 
-    p_root.increment( counts.rootCounts )
+    p_root.increment( counts.rootCounts, updateEvents )
 
-    // println( "\n\n-------\n\nRESULT\n" )
-    // p_root.printOut()
-
-    p_stop.increment( counts.stopCounts )
-    p_choose.increment( counts.chooseCounts )
+    p_stop.increment( counts.stopCounts, updateEvents )
+    p_choose.increment( counts.chooseCounts, updateEvents  )
   }
 
   /*

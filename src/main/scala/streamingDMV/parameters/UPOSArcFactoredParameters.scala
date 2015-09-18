@@ -55,7 +55,7 @@ abstract class UPOSArcFactoredParameters(
     p_choose.randomizeCounts( r, scale )
   }
 
-  def incrementCounts( counts:MatrixDMVCounts ) {
+  def incrementCounts( counts:MatrixDMVCounts, updateEvents:Boolean = true ) {
     p_root.increment( counts.rootCounts )
     p_stop.increment( counts.stopCounts )
     p_choose.increment( counts.chooseCounts )

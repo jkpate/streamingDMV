@@ -91,29 +91,31 @@ class BackoffCPT[E<:Event with BackingOffEvent with Product](
     }.reduce(_+_)
   }
 
-  def increment( event:E, inc:Double ) = {
-    // counts.getOrElseUpdate( event, 0D ) += inc
-    // counts += event -> { counts.getOrElse( event, 0D ) + inc }
-    counts.increment( event, inc )
-
+  def increment( event:E, inc:Double, updateEvents:Boolean = true ) = {
     val n = event.normKey
-    // denomCounts( n ) += inc
-    // denomCounts += n -> { denomCounts.getOrElse( n, 0D ) + inc }
-    denomCounts.increment( n, inc )
+    if( inc > 0 ) {
+      counts.increment( event, inc )
+      denomCounts.increment( n, inc )
+    }
 
-    denoms.getOrElseUpdate( n, MSet() ) += event
+    if( updateEvents ) {
+      denoms.getOrElseUpdate( n, MSet() ) += event
+    }
   }
 
   def increment( events:Seq[E], inc:Double ) {
     events.foreach{ increment( _, inc ) }
   }
 
-  def increment( other:BackoffCPT[E] ) {
+  def increment( other:BackoffCPT[E], updateEvents:Boolean ) {
     // other.counts.foreach{ case( k, v) =>
     //   increment( k, v )
     // }
     counts.increment( other.counts )
     denomCounts.increment( other.denomCounts )
+    other.denoms.flatMap{_._2}.foreach{ event =>
+      increment( event, other(event), updateEvents )
+    }
   }
 
   def decrement( other:BackoffCPT[E] ) {
@@ -127,6 +129,7 @@ class BackoffCPT[E<:Event with BackingOffEvent with Product](
   def divideBy( x:Double ) {
     // counts.keys.foreach{ counts(_) /= x }
     counts.divideBy( x )
+    denomCounts.divideBy( x )
   }
 
   def decrement( event:E, dec:Double ) = {

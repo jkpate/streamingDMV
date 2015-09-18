@@ -47,7 +47,7 @@ class LogBackoffCPT[E<:Event with BackingOffEvent with Product](
       )
   }
 
-  override def increment( event:E, inc:Double ) = {
+  override def increment( event:E, inc:Double, updateEvents:Boolean = true ) = {
     // to have a faster zerosInit
     // if( inc > 0 ) counts += event -> { counts.getOrElse( event, 0D ) + inc }
     val n = event.normKey
@@ -58,7 +58,9 @@ class LogBackoffCPT[E<:Event with BackingOffEvent with Product](
 
     // denomCounts += n -> { denomCounts.getOrElse( n, 0D ) + inc }
 
-    denoms.getOrElseUpdate( n, MSet() ) += event
+    if( updateEvents ) {
+      denoms.getOrElseUpdate( n, MSet() ) += event
+    }
   }
 
   override def trueLogProb( other:BackoffCPT[E] ) = {

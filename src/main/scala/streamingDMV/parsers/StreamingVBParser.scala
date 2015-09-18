@@ -37,7 +37,7 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
         //   new CPT[ChooseEvent]( chooseAlpha )
         // )
 
-    theta.incrementCounts( lastFHat )
+    theta.incrementCounts( lastFHat, updateEvents = false )
 
     var lastMiniBatchScores = 1D
     var insideScores = 0D
@@ -89,7 +89,8 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
           // println( s"description of fHat:" )
           // fHat.printTotalCountsByType
 
-      theta.incrementCounts( fHat )
+                                    // Grammar should already be defined -- avoid useless hashing
+      theta.incrementCounts( fHat, updateEvents = false )
 
           // println( s"after incrementing" )
           // theta.printTotalCountsByType

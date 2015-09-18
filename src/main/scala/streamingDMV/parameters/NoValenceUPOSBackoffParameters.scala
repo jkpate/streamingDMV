@@ -113,7 +113,7 @@ class NoValenceUPOSBackoffParameters(
     )
   }
 
-  override def incrementCounts( counts:MatrixDMVCounts ) {
+  override def incrementCounts( counts:MatrixDMVCounts, updateEvents:Boolean = true ) {
     p_root.increment( counts.rootCounts )
     p_stop.increment( counts.stopCounts )
     p_choose.increment( counts.chooseCounts )

@@ -18,7 +18,7 @@ abstract class ArcFactoredParameters[C<:DependencyCounts](
 
   def randomizeCounts( seed:Int, scale:Int ):Unit
 
-  def incrementCounts( counts:C ):Unit
+  def incrementCounts( counts:C, updateEvents:Boolean = true ):Unit
   // def setEvents( counts:C ):Unit
   def setEventsAndCounts( counts:C ):Unit
 

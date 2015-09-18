@@ -154,11 +154,11 @@ class HeadOutInterpolatedAdjHeadNoValenceParameters(
 
   }
 
-  def incrementCounts( counts:BackoffChooseDMVCounts ) {
-    p_root.increment( counts.rootCounts )
-    p_stop.increment( counts.stopCounts )
-    p_choose.increment( counts.chooseCounts )
-    lambda_choose.increment( counts.lambdaChooseCounts )
+  def incrementCounts( counts:BackoffChooseDMVCounts, updateEvents:Boolean = true ) {
+    p_root.increment( counts.rootCounts, updateEvents )
+    p_stop.increment( counts.stopCounts , updateEvents )
+    p_choose.increment( counts.chooseCounts , updateEvents )
+    lambda_choose.increment( counts.lambdaChooseCounts , updateEvents )
 
 
         // var backoffEvents = 0D

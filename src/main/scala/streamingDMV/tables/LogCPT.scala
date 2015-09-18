@@ -74,15 +74,18 @@ class LogCPT[E<:Event with Product](
 
   }
 
-  override def increment( event:E, inc:Double ) = {
+  override def increment( event:E, inc:Double, updateEvents:Boolean = true ) = {
     // to have a faster zerosInit
     // if( inc > 0 ) counts += event -> { counts.getOrElse( event, 0D ) + inc }
     val n = event.normKey
 
-    if( ! denoms.keySet.contains(n) ) {
-      denoms += n -> MSet()
+    if( updateEvents ) {
+      // if( ! denoms.keySet.contains(n) ) {
+      //   denoms += n -> MSet()
+      // }
+      // denoms(n) += event
+      denoms.getOrElseUpdate( n, MSet() ) += event
     }
-    denoms(n) += event
 
     if( inc > Double.NegativeInfinity ) {
       counts.increment( event, inc )
@@ -90,7 +93,6 @@ class LogCPT[E<:Event with Product](
 
     }
 
-    denoms.getOrElseUpdate( n, MSet() ) += event
   }
 
 

@@ -486,10 +486,10 @@ case class BackoffChooseDMVCounts(
   def destructivePlus[C<:DependencyCounts]( other:C ) {
     other match {
       case c:BackoffChooseDMVCounts => {
-        rootCounts.increment( c.rootCounts )
-        stopCounts.increment( c.stopCounts )
-        chooseCounts.increment( c.chooseCounts )
-        lambdaChooseCounts.increment( c.lambdaChooseCounts )
+        rootCounts.increment( c.rootCounts, updateEvents = true )
+        stopCounts.increment( c.stopCounts, updateEvents = true )
+        chooseCounts.increment( c.chooseCounts, updateEvents = true )
+        lambdaChooseCounts.increment( c.lambdaChooseCounts, updateEvents = true )
       }
     }
   }
@@ -586,9 +586,9 @@ case class DMVCounts(
   def destructivePlus[C<:DependencyCounts]( other:C ) {
     other match {
       case c:DMVCounts => {
-        rootCounts.increment( c.rootCounts )
-        stopCounts.increment( c.stopCounts )
-        chooseCounts.increment( c.chooseCounts )
+        rootCounts.increment( c.rootCounts, updateEvents = true )
+        stopCounts.increment( c.stopCounts, updateEvents = true )
+        chooseCounts.increment( c.chooseCounts, updateEvents = true )
       }
     }
   }

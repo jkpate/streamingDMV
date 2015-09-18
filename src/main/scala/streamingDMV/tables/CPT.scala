@@ -164,7 +164,7 @@ class CPT[E<:Event with Product](
     } else { 0D }
   }
 
-  def increment( event:E, inc:Double ) = {
+  def increment( event:E, inc:Double, updateEvents:Boolean = true ) = {
     // to have a faster zerosInit
     // if( inc > 0 ) counts += event -> { counts.getOrElse( event, 0D ) + inc }
     println( " === NON-LOG SPACE INCREMENT ===" )
@@ -176,20 +176,23 @@ class CPT[E<:Event with Product](
 
     // denomCounts += n -> { denomCounts.getOrElse( n, 0D ) + inc }
 
-    denoms.getOrElseUpdate( n, MSet() ) += event
+    if( updateEvents ) {
+      denoms.getOrElseUpdate( n, MSet() ) += event
+    }
   }
 
   def increment( events:Seq[E], inc:Double ) {
     events.foreach{ increment( _, inc ) }
   }
 
-  def increment( other:CPT[E] ) {
+  def increment( other:CPT[E], updateEvents:Boolean ) {
     // println( other.counts.approximate )
-    // other.counts.foreach{ case( k, v) =>
-    //   increment( k, v )
-    // }
-    counts.increment( other.counts )
-    denomCounts.increment( other.denomCounts )
+    other.denoms.flatMap{_._2}.foreach{ event =>
+      increment( event, other(event), updateEvents )
+    }
+    // other.
+    // counts.increment( other.counts )
+    // denomCounts.increment( other.denomCounts )
   }
 
   def decrement( other:CPT[E] ) {
