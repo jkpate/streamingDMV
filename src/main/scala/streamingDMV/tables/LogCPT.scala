@@ -39,7 +39,8 @@ class LogCPT[E<:Event with Product](
         LogSum( denomCounts( n ) , log(alpha) )
     else
       LogSum( counts( event ) , log( alpha ) ) -
-        LogSum( denomCounts( n ) , log (alpha * denoms(n).size) )
+        LogSum( denomCounts( n ) ,
+          log (alpha * denoms(n).size) )
   }
 
   override def expDigammaNormalized( event:E ) = {
@@ -80,11 +81,13 @@ class LogCPT[E<:Event with Product](
     val n = event.normKey
 
     if( updateEvents ) {
-      // if( ! denoms.keySet.contains(n) ) {
-      //   denoms += n -> MSet()
-      // }
-      // denoms(n) += event
-      denoms.getOrElseUpdate( n, MSet() ) += event
+        // if( ! denoms.keySet.contains(n) ) {
+        //   denoms += n -> MSet()
+        // }
+        // denoms(n) += event
+      // denoms.getOrElseUpdate( n, MSet() ) += event
+      // denoms.getOrElseUpdate( n, MSet() ) += event
+      denoms += n -> { denoms( n ) + event }
     }
 
     if( inc > Double.NegativeInfinity ) {

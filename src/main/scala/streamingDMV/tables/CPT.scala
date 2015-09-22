@@ -25,7 +25,7 @@ class CPT[E<:Event with Product](
   // var denomCounts = MMap[NormKey,Double]()
   var denomCounts = new TableWrapper[NormKey with Product]( approximate, eps,
     2*delta, 37*randomSeed )
-  var denoms = MMap[NormKey,MSet[E]]()
+  var denoms = Map[NormKey,Set[E]]().withDefaultValue(Set())
   // var denoms = MMap[NormKey,TableWrapper[Event]]()
 
   def apply( event:E ) =
@@ -112,7 +112,7 @@ class CPT[E<:Event with Product](
 
 
     // other.denoms *should* be empty for CPT[ChooseEvent] if there is only one word
-    if( other.denoms.isEmpty ) {
+    if( !other.denoms.isEmpty ) {
       other.denoms.map{ case (denom,otherEvents) =>
         val totalEvents = denoms( denom )
         // otherEvents.foreach{ e => assert( totalEvents.contains( e ) ) }
@@ -177,7 +177,8 @@ class CPT[E<:Event with Product](
     // denomCounts += n -> { denomCounts.getOrElse( n, 0D ) + inc }
 
     if( updateEvents ) {
-      denoms.getOrElseUpdate( n, MSet() ) += event
+      // denoms.getOrElseUpdate( n, MSet() ) += event
+      denoms += n -> { denoms( n ) + event }
     }
   }
 
@@ -223,7 +224,8 @@ class CPT[E<:Event with Product](
   def clear {
     counts.clear
     denomCounts.clear
-    denoms.clear
+    // denoms.clear
+    denoms = Map().withDefaultValue( Set() )
   }
 
   def setEvents( events:Set[E] ) {
@@ -234,7 +236,8 @@ class CPT[E<:Event with Product](
       // }
       // denomCounts += n -> 0D
       // denomCounts.increment( n, 0D )
-      denoms += n -> MSet( events.toSeq:_* )
+      // denoms += n -> MSet( events.toSeq:_* )
+      denoms += n -> Set( events.toSeq:_* )
     }
   }
 
@@ -248,19 +251,25 @@ class CPT[E<:Event with Product](
   }
 
   def setEventsAndCounts( other:CPT[E] ) {
+    // println( s"    before clear other has ${other.denoms.values.map{_.size}.sum} rules" )
     clear
+    // println( s"    after clear other has ${other.denoms.values.map{_.size}.sum} rules" )
     // TODO make it so we don't need denoms *at all*
     //      will involve hard-coding backoff chain with e.g. .noContext() method
     //      Except then how do we compute trueLogProb?
     //      Aha! denomCounts never changes -- take it as a parameter from
     //      ParticleFilterNOPOSParser.
     denoms = other.denoms//.clone
+    // println( s"    I now has ${denoms.values.map{_.size}.sum} rules" )
+    if( ! other.denoms.isEmpty ) assert( !denoms.isEmpty )
     // events = other.events.clone
 
     // denomCounts.increment( other.denomCounts.clone )
     // counts.increment( other.counts.clone )
 
-    println( s"setting logSpace counts: ${other.counts.logSpace}" )
+    // println( s"setting logSpace counts: ${other.counts.logSpace}" )
+    // println( other.counts.values.map{exp(_)}.sum + " events" )
+    // println( other.denoms.values.map{_.size}.sum + " rules" )
 
     denomCounts.setCounts( other.denomCounts )
     counts.setCounts( other.counts )

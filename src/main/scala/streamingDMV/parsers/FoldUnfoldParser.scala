@@ -47,6 +47,8 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
   def emptyCounts:C
   def initialCounts( utts:List[Utt] ):C
 
+  def initializeParticles = {}
+
   def extractPartialCounts( string:Array[Int] ):C
   def sampleTreeCounts( originalString:Array[Int] ):Tuple2[C,Double]
   def sampleTreeCounts( utt:Utt ):Tuple2[C,Double] = sampleTreeCounts( utt.string )

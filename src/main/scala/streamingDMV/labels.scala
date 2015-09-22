@@ -641,6 +641,7 @@ case class DMVCounts(
     println( s"  > ${chooseCounts.counts.values.map{exp(_)}.sum} choose events" )
     println( s"  > ${chooseCounts.denomCounts.values.map{exp(_)}.sum} choose denom events" )
     println( s"  > ${chooseCounts.denoms.size} choose LHS" )
+    println( s"  > ${chooseCounts.denoms.map{_._2.size}.sum} choose rules" )
   }
 }
 object DMVCounts {

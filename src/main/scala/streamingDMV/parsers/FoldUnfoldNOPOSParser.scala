@@ -138,8 +138,9 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
           println( s"${insideChart( i )( j )( mDecoration ) } <= 0D = " +
             { insideChart( i )( j )( mDecoration ) <= 0D } )
 
-          println( "left: " + insideChart( i )( k )( mDecoration.evenLeft ) )
-          println( "right: " + insideChart( k )( j )( mDecoration.evenRight ) )
+          println( s"  ${(i,k,j)}" )
+          println(  "    left: " + insideChart( i )( k )( mDecoration.evenLeft ) )
+          println(  "    right: " + insideChart( k )( j )( mDecoration.evenRight ) )
         }
         assert( insideChart( i )( j )( mDecoration ) <= 0D )
 

@@ -8,7 +8,7 @@ import streamingDMV.io._
 import streamingDMV.parsers._
 import streamingDMV.labels._
 import streamingDMV.parameters._
-import streamingDMV.labels.{Parse,Utt,DependencyCounts}
+import streamingDMV.labels.{Parse,Utt,DependencyCounts,DMVCounts,BackoffChooseDMVCounts}
 
 
 object run {
@@ -237,6 +237,7 @@ object run {
               // p_l.theta.incrementCounts( counts )
               p_l
             },
+            emptyCounts = DMVCounts( alpha, alpha, alpha, true ),
             reservoirSize = reservoirSize
           )
         } else if( parserType == "OriginalDMVParser" ) {
@@ -259,6 +260,7 @@ object run {
               // p_l.theta.incrementCounts( counts )
               p_l
             },
+            emptyCounts = DMVCounts( alpha, alpha, alpha, true ),
             reservoirSize = reservoirSize
           )
         } else if( parserType == "NoValenceParser" ) {
@@ -267,6 +269,8 @@ object run {
             maxLength = maxLength,
             numParticles = numParticles,
             createParticle = (counts:DMVCounts,reservoir:Array[SampledCounts[DMVCounts]],l:Int) => {
+              // println( s"creating new particle!" )
+              // counts.printTotalCountsByType
               val p_l = new NoValenceParser(
                 maxLength = 3,
                 randomSeed = l,
@@ -281,6 +285,7 @@ object run {
               // p_l.theta.incrementCounts( counts )
               p_l
             },
+            emptyCounts = DMVCounts( alpha, alpha, alpha, true ),
             reservoirSize = reservoirSize
           )
         } else if( parserType == "HeadOutAdjHeadNoValence" ) {
@@ -308,6 +313,7 @@ object run {
               // p_l.theta.incrementCounts( counts )
               p_l
             },
+            emptyCounts = DMVCounts( alpha, alpha, alpha, true ),
             reservoirSize = reservoirSize
           )
         } else if( parserType == "HeadOutInterpolatedAdjHeadNoValence" ) {
@@ -339,6 +345,13 @@ object run {
               // p_l.theta.incrementCounts( counts )
               p_l
             },
+            emptyCounts = BackoffChooseDMVCounts(
+              alpha,
+              alpha,
+              alpha,
+              Map( Backoff -> backoffAlpha, NotBackoff -> notBackoffAlpha ),
+              true
+            ),
             reservoirSize = reservoirSize
           )
         } else {
@@ -361,6 +374,7 @@ object run {
               // p_l.theta.incrementCounts( counts )
               p_l
             },
+            emptyCounts = DMVCounts( alpha, alpha, alpha, true ),
             reservoirSize = reservoirSize
           )
         }
@@ -418,6 +432,8 @@ object run {
           )
         }
       }
+
+    if( particleFilter ) { p.initializeParticles }
 
     p.zerosInit( trainSet ++ testSet )
 

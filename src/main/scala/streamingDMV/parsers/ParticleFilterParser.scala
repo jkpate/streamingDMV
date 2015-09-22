@@ -52,11 +52,17 @@ abstract class ParticleFilterParser[
   val theta = particles.head.theta
 
   override def zerosInit( corpus:List[Utt] ) {
+    // println( "--- STARTING FIRST ZEROS INIT--" )
     particles.head.theta.zerosInit( corpus )
+    // println( "--- FIRST ZEROS INIT DONE--" )
     val zeroCounts = particles.head.theta.toCounts
+    // println( "-- CREATED zeroCounts" )
+
+    // zeroCounts.printTotalCountsByType
 
 
     ( 1 until numParticles ).foreach{ l =>
+      // println( s"setting counts for particle $l" )
       particles(l).theta.setEventsAndCounts( zeroCounts )
     }
   }
@@ -170,6 +176,8 @@ abstract class ParticleFilterParser[
       val (counts, proposalScore) = miniBatch.zipWithIndex.map{ case ( s, i ) =>
         // println( s"particle $l sentence ${sentenceNum + i }" )
         val (sentCounts, sentProposalScore) = particles( l ).sampleTreeCounts( s )
+
+        // sentCounts.printTotalCountsByType
 
         assert( particles(l).stringProb > Double.NegativeInfinity )
 

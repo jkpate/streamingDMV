@@ -21,6 +21,7 @@ class ParticleFilterNOPOSParser[
   numParticles:Int = 16,
   createParticle:(C,Array[SampledCounts[C]],Int) => R,
   randomSeed:Int = 15,
+  val emptyCounts:C,
   reservoirSize:Int
 ) extends ParticleFilterParser[C,P,R](
   maxLength,
@@ -35,8 +36,8 @@ class ParticleFilterNOPOSParser[
 
 
 
-  //def emptyCounts = DMVCounts( rootAlpha, stopAlpha, chooseAlpha, true )
-  def emptyCounts = particles.head.emptyCounts
+  // def emptyCounts = DMVCounts( rootAlpha, stopAlpha, chooseAlpha, true )
+  // def emptyCounts = particles.head.emptyCounts
 
   def extractPartialCounts(string: Array[Int]) = particles.head.extractPartialCounts( string )
   def initialCounts(utts: List[streamingDMV.labels.Utt]) = particles.head.initialCounts( utts )

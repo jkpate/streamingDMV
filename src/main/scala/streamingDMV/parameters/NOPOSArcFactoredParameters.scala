@@ -113,8 +113,11 @@ abstract class NOPOSArcFactoredParameters(
   */
 
   def setEventsAndCounts( counts:DMVCounts ) {
+    // println( s"  setting root counts; ${p_root.denoms.values.map{_.size}.sum} rules" )
     p_root.setEventsAndCounts( counts.rootCounts )
+    // println( s"  setting stop counts; ${p_stop.denoms.values.map{_.size}.sum} rules" )
     p_stop.setEventsAndCounts( counts.stopCounts )
+    // println( s"  setting choose counts; ${p_choose.denoms.values.map{_.size}.sum} rules" )
     p_choose.setEventsAndCounts( counts.chooseCounts )
   }
 
