@@ -10,6 +10,8 @@ import streamingDMV.labels._
 import streamingDMV.parameters._
 import streamingDMV.labels.{Parse,Utt,DependencyCounts,DMVCounts,BackoffChooseDMVCounts}
 
+import scala.math.{pow,log10,floor}
+
 
 object run {
   var miniBatchDur = 0D
@@ -752,7 +754,9 @@ object run {
         evalEvery *= 10
         println( s"after processing $sentencesProcessed we eval every $evalEvery" )
       } else if( sentencesProcessed == initialMiniBatchSize && incIters == 1 ) {
-        evalEvery = initialMiniBatchSize
+        // evalEvery = initialMiniBatchSize
+          // evalEvery should be nearest power of ten below the initial minibatch size
+        evalEvery = pow( 10, floor( log10( initialMiniBatchSize ) ) ).toInt
       }
     }
     // println( s"sentencesProcessed: $sentencesProcessed" )
