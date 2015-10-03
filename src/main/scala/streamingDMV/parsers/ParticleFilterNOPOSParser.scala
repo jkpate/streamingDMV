@@ -3,7 +3,7 @@ package streamingDMV.parsers
 import streamingDMV.labels._
 // import streamingDMV.parameters.NOPOSArcFactoredParameters
 import streamingDMV.parameters.ArcFactoredParameters
-import streamingDMV.math.LogSum
+// import streamingDMV.math.LogSum
 // import streamingDMV.parsers.FoldUnfoldNOPOSParser.RootEntry
 
 import scala.collection.mutable.{Map=>MMap}
@@ -14,24 +14,28 @@ class ParticleFilterNOPOSParser[
   P<:ArcFactoredParameters[C],
   R<:FoldUnfoldNOPOSParser[C,P]:ClassTag
 ](
-  maxLength:Int,
-  rootAlpha:Double = 1D,
-  stopAlpha:Double = 1D,
-  chooseAlpha:Double = 1D,
+  // maxLength:Int,
+  // rootAlpha:Double = 1D,
+  // stopAlpha:Double = 1D,
+  // chooseAlpha:Double = 1D,
+  parserSpec:ParserSpec,
   numParticles:Int = 16,
   createParticle:(C,Array[SampledCounts[C]],Int) => R,
-  randomSeed:Int = 15,
-  val emptyCounts:C,
-  reservoirSize:Int
+  // randomSeed:Int = 15,
+  val emptyCounts:C//,
+  // reservoirSize:Int
 ) extends ParticleFilterParser[C,P,R](
-  maxLength,
-  rootAlpha,
-  stopAlpha,
-  chooseAlpha,
+  // maxLength,
+  // rootAlpha,
+  // stopAlpha,
+  // chooseAlpha,
+  // numParticles,
+  // createParticle,
+  // randomSeed,
+  // reservoirSize
+  parserSpec,
   numParticles,
-  createParticle,
-  randomSeed,
-  reservoirSize
+  createParticle
 ) {
 
 
@@ -61,7 +65,7 @@ class ParticleFilterNOPOSParser[
   def rightwardSplitSpecs(i:Int,j:Int) = particles.head.rightwardSplitSpecs(i,j)
   def lexFill( index:Int ) {
     lexSpecs( index ).foreach{ pDec =>
-      particles.head.insideChart( index )( index+1 )(pDec) = LogSum(
+      particles.head.insideChart( index )( index+1 )(pDec) = myPlus(
         particles.head.insideChart( index )( index+1 )(pDec),
         lexCellFactor( index, pDec )
       )
@@ -71,7 +75,7 @@ class ParticleFilterNOPOSParser[
   def computeInsideMScore( i:Int, j:Int ) {
     mSplitSpecs(i,j).foreach{ case (mDecoration, splits) =>
       splits.foreach{ k =>
-        particles.head.insideChart( i )( j )( mDecoration ) = LogSum(
+        particles.head.insideChart( i )( j )( mDecoration ) = myPlus(
           particles.head.insideChart( i )( j )( mDecoration ),
           mCellScore( i, k, j, mDecoration )
         )
@@ -83,7 +87,7 @@ class ParticleFilterNOPOSParser[
     rootSplitSpecs().foreach{ case ( k, decorationPair ) =>
       val r = intString( k )
 
-      particles.head.stringProb = LogSum(
+      particles.head.stringProb = myPlus(
         particles.head.stringProb,
         rootCellScore( k, decorationPair.evenLeft, decorationPair.evenRight )
       )
@@ -93,7 +97,7 @@ class ParticleFilterNOPOSParser[
   def computeInsideRightwardScore( i:Int, j:Int ) {
     rightwardSplitSpecs( i, j ).foreach{ case ( pDec, splits ) =>
       splits.foreach{ case ( k, mDec, cDec ) =>
-        particles.head.insideChart( i )( j )( pDec ) = LogSum(
+        particles.head.insideChart( i )( j )( pDec ) = myPlus(
           particles.head.insideChart( i )( j )( pDec ),
           rightwardCellScore( i, k, j, pDec, mDec, cDec )
         )
@@ -104,7 +108,7 @@ class ParticleFilterNOPOSParser[
   def computeInsideLeftwardScore( i:Int, j:Int ) {
     leftwardSplitSpecs( i, j ).foreach{ case ( pDec, splits ) =>
       splits.foreach{ case ( k, mDec, cDec ) =>
-        particles.head.insideChart( i )( j )( pDec ) = LogSum(
+        particles.head.insideChart( i )( j )( pDec ) = myPlus(
           particles.head.insideChart( i )( j )( pDec ),
           leftwardCellScore( i, k, j, pDec, mDec, cDec )
         )
@@ -273,64 +277,73 @@ class ParticleFilterNOPOSParser[
 
 
   def rightwardCellScore( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = {
-    particles.head.insideChart( i )( k )( mDec ) *
-      particles.head.insideChart( k )( j )( cDec ) * {
-        (0 until numParticles).map{ l =>
-          particleWeights( l ) *
-            particles(l).rightwardCellFactor( i, k, j, pDec, mDec, cDec )
-        }.sum
-      }
+    myTimes(
+      particles.head.insideChart( i )( k )( mDec ),
+        particles.head.insideChart( k )( j )( cDec ),
+        myPlusSeq(
+          (0 until numParticles).map{ l =>
+            myTimes(
+              particleWeights( l ),
+                particles(l).rightwardCellFactor( i, k, j, pDec, mDec, cDec )
+            )
+          }
+        )
+    )
   }
 
   def leftwardCellScore( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = {
-    particles.head.insideChart( i )( k )( cDec ) *
-      particles.head.insideChart( k )( j )( mDec ) *
-        (0 until numParticles).map{ l =>
-          particleWeights( l ) *
-            particles( l ).leftwardCellFactor( i, k, j, pDec, mDec, cDec )
-        }.sum
+    myTimes(
+      particles.head.insideChart( i )( k )( cDec ),
+        particles.head.insideChart( k )( j )( mDec ),
+        myPlusSeq(
+          (0 until numParticles).map{ l =>
+            myTimes(
+              particleWeights( l ),
+                particles( l ).leftwardCellFactor( i, k, j, pDec, mDec, cDec )
+            )
+          }
+        )
+    )
   }
 
   def mCellScore( i:Int, k:Int, j:Int, mDecoration:MDecoration ) = {
     if( k%2 == 0 ) {
-      particles.head.insideChart( i )( k )( mDecoration.evenLeft ) *
-        particles.head.insideChart( k )( j )( mDecoration.evenRight ) *
-          (0 until numParticles).map{ l =>
-            particleWeights(l) *
-              particles(l).mCellFactor( i, k, j, mDecoration )
-          }.sum
+      myTimes(
+        particles.head.insideChart( i )( k )( mDecoration.evenLeft ),
+          particles.head.insideChart( k )( j )( mDecoration.evenRight ),
+          myPlusSeq(
+            (0 until numParticles).map{ l =>
+              particleWeights(l) *
+                particles(l).mCellFactor( i, k, j, mDecoration )
+            }
+          )
+      )
     } else {
-      particles.head.insideChart( i )( k )( mDecoration.oddLeft ) *
-        particles.head.insideChart( k )( j )( mDecoration.oddRight ) *
-          (0 until numParticles).map{ l =>
-            particleWeights(l) *
-              particles(l).mCellFactor( i, k, j, mDecoration )
-          }.sum
+      myTimes(
+        particles.head.insideChart( i )( k )( mDecoration.oddLeft ),
+          particles.head.insideChart( k )( j )( mDecoration.oddRight ),
+          myPlusSeq(
+            (0 until numParticles).map{ l =>
+              particleWeights(l) *
+                particles(l).mCellFactor( i, k, j, mDecoration )
+            }
+          )
+      )
     }
   }
 
   def rootCellScore( k:Int, leftDec:Decoration, rightDec:Decoration ) = {
-        // println( (k, leftDec, rightDec) )
-        // println(
-        //   "  " + (0 until numParticles).map{ l =>
-        //     particleWeights(l) *
-        //       particles(l).rootCellFactor( k )
-        //   }.sum
-        // )
-        // println( 
-        //   "  " + particles.head.insideChart( 0 )( k )( leftDec )
-        // )
-        // println( 
-        //   "  " + particles.head.insideChart( k )( intString.length )( rightDec ) + "\n\n"
-        // )
-
-    particles.head.insideChart( 0 )( k )( leftDec ) *
-      particles.head.insideChart( k )( intString.length )( rightDec ) *
-        (0 until numParticles).map{ l =>
-          // println( s"particleWeights(l): ${particleWeights(l)}" )
-          particleWeights(l) *
-            particles(l).rootCellFactor( k )
-        }.sum
+    myTimes(
+      particles.head.insideChart( 0 )( k )( leftDec ),
+        particles.head.insideChart( k )( intString.length )( rightDec ),
+        myPlusSeq(
+          (0 until numParticles).map{ l =>
+            // println( s"particleWeights(l): ${particleWeights(l)}" )
+            particleWeights(l) *
+              particles(l).rootCellFactor( k )
+          }
+        )
+    )
   }
 
 

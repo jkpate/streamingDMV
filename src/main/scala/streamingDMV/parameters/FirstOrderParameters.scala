@@ -4,19 +4,21 @@ import streamingDMV.labels._
 import collection.mutable.{Set=>MSet}
 
 abstract class FirstOrderArcFactoredParameters(
-  rootAlpha:Double,
-  stopAlpha:Double,
-  chooseAlpha:Double,
-  squarelyNormalized:Int = 0,
-  approximate:Boolean = false,
-  randomSeed:Int
+  // rootAlpha:Double,
+  // stopAlpha:Double,
+  // chooseAlpha:Double,
+  // squarelyNormalized:Int = 0,
+  // approximate:Boolean = false,
+  // randomSeed:Int
+  parameterSpec:ParameterSpec
 ) extends NOPOSArcFactoredParameters(
-  rootAlpha,
-  stopAlpha,
-  chooseAlpha,
-  squarelyNormalized,
-  approximate,
-  randomSeed
+  // rootAlpha,
+  // stopAlpha,
+  // chooseAlpha,
+  // squarelyNormalized,
+  // approximate,
+  // randomSeed
+  parameterSpec
 ) {
 
   def zerosInit( corpus:List[Utt] ) {
@@ -46,17 +48,17 @@ abstract class FirstOrderArcFactoredParameters(
 
         // rootEvents += RootEvent( h )
         // stopEvents ++= possibleStopEvents( h )
-        p_root.increment( RootEvent( h ), Double.NegativeInfinity )
-        p_stop.increment( possibleStopEvents( h ), Double.NegativeInfinity )
+        p_root.increment( RootEvent( h ), myZero )
+        p_stop.increment( possibleStopEvents( h ), myZero )
 
         ( 0 until t ).foreach{ i =>
           // chooseEvents += ChooseEvent( h, LeftAtt, s(i) )
-          p_choose.increment( ChooseEvent( h, LeftAtt, s(i) ), Double.NegativeInfinity )
+          p_choose.increment( ChooseEvent( h, LeftAtt, s(i) ), myZero )
 
         }
         ( t+1 until s.length ).foreach{ j =>
           // chooseEvents += ChooseEvent( h, RightAtt, s(j) )
-          p_choose.increment( ChooseEvent( h, RightAtt, s(j) ), Double.NegativeInfinity )
+          p_choose.increment( ChooseEvent( h, RightAtt, s(j) ), myZero )
         }
       }
     }

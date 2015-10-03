@@ -30,6 +30,9 @@ my @fields = (
   "testStrings",
   "parserType",
   "alpha",
+  "rootAlpha",
+  "stopAlpha",
+  "chooseAlpha",
   "backoffAlpha",
   "notBackoffAlpha",
   "squarelyNormalized",
@@ -43,6 +46,7 @@ my @fields = (
   "numParticles",
   "miniBatchSize",
   "initialMiniBatchSize",
+  "convergeInitialMiniBatch",
   # "possiblyResampleEvery",
   "randomSeed"
 );
@@ -64,7 +68,7 @@ print join ",",
 foreach my $fPath (@ARGV) {
   print STDERR $fPath;
 
-  my $cacheName = "cachedLines/".(basename( $fPath )).".lines";
+  my $cacheName = "cachedLines/".(basename( $fPath ))."-".(basename($gold)).".lines";
 
   my %fields = ();
   my $trainingStrings = 0;
@@ -111,6 +115,10 @@ foreach my $fPath (@ARGV) {
     $fields{squarelyNormalized} = 'false' if not defined $fields{squarelyNormalized};
     $fields{noResampling} = 'false' if not defined $fields{noResampling};
     $fields{reservoirSize} = 0 if not defined $fields{reservoirSize};
+    $fields{rootAlpha} = $fields{alpha} if not defined $fields{rootAlpha};
+    $fields{stopAlpha} = $fields{alpha} if not defined $fields{stopAlpha};
+    $fields{chooseAlpha} = $fields{alpha} if not defined $fields{chooseAlpha};
+    $fields{convergeInitialMiniBatch} = "false" if not defined $fields{convergeInitialMiniBatch};
     # $fields{possiblyResampleEvery} = $fields{miniBatchSize} if not defined $fields{possiblyResampleEvery};
 
     die "$trainingStrings $testingStrings $trainingWords $testingWords $vocabSize" unless 
@@ -121,7 +129,8 @@ foreach my $fPath (@ARGV) {
     foreach my $logProbLine (@logProbLines) {
       my ($itSpec, $type, $logProb) = split ':', $logProbLine;
 
-      my $depDir = tempdir( CLEANUP => 1 );
+      # my $depDir = tempdir( CLEANUP => 1 );
+      my $depDir = File::Temp->newdir();
 
       system( "grep $itSpec:dependency $fPath > $depDir/$itSpec.dep" );
       my %eval = ();
@@ -134,6 +143,7 @@ foreach my $fPath (@ARGV) {
         $eval =~ /Ned ([0-9.]+)/;
         $eval{"ned.$maxLength"} = $1;
       }
+
 
       $itSpec =~ /(\d+)/;
       my $sentencesSeen = $1;

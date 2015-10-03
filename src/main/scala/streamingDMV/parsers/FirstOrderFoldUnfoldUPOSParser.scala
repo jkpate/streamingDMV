@@ -1,22 +1,26 @@
 package streamingDMV.parsers
 
-import streamingDMV.labels.Event
+import streamingDMV.labels.{Event,ParserSpec}
 import streamingDMV.parameters.UPOSArcFactoredParameters
 
 import breeze.linalg._
 import breeze.numerics._
 
 abstract class FirstOrderFoldUnfoldUPOSParser[P<:UPOSArcFactoredParameters](
-  maxLength:Int,
-  rootAlpha:Double = 1D,
-  stopAlpha:Double = 1D,
-  chooseAlpha:Double = 1D,
-  uposCount:Int,
-  randomSeed:Int = 15,
-  reservoirSize:Int = 0
+  // maxLength:Int,
+  // rootAlpha:Double = 1D,
+  // stopAlpha:Double = 1D,
+  // chooseAlpha:Double = 1D,
+  // uposCount:Int,
+  // randomSeed:Int = 15,
+  // reservoirSize:Int = 0
+  parserSpec:ParserSpec,
+  uposCount:Int
 ) extends FoldUnfoldUPOSParser[P](
-  maxLength, rootAlpha, stopAlpha, chooseAlpha, uposCount, randomSeed,
-  reservoirSize
+  // maxLength, rootAlpha, stopAlpha, chooseAlpha, uposCount, randomSeed,
+  // reservoirSize
+  parserSpec,
+  uposCount
 ) {
 
   def mSplits( i:Int, j:Int ):Iterable[Int] = ( (i+1) to (j-1) by 2 )

@@ -8,38 +8,49 @@ import scala.collection.mutable.{Map=>MMap}
 import scala.math.log
 
 class HeadOutAdjHeadNoValenceParser(
-  maxLength:Int,
-  rootAlpha:Double = 1D,
-  stopAlpha:Double = 1D,
-  chooseAlpha:Double = 1D,
-  randomSeed:Int = 15,
-  squarelyNormalized:Int = 0,
-  val approximate:Boolean = false,
-  reservoirSize:Int = 0
+  // maxLength:Int,
+  // rootAlpha:Double = 1D,
+  // stopAlpha:Double = 1D,
+  // chooseAlpha:Double = 1D,
+  // randomSeed:Int = 15,
+  // squarelyNormalized:Int = 0,
+  // val approximate:Boolean = false,
+  // reservoirSize:Int = 0
+  parserSpec:ParserSpec
 ) extends SecondOrderFoldUnfoldParser[DMVCounts,HeadOutAdjHeadNoValenceParameters](
-  maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed, reservoirSize
+  // maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed, reservoirSize
+  parserSpec
 ) {
 
+  // val maxLength = parserSpec.maxLength
+  // val randomSeed = parserSpec.randomSeed
+  // val rootAlpha = parserSpec.rootAlpha
+  // val stopAlpha = parserSpec.stopAlpha
+  // val chooseAlpha = parserSpec.chooseAlpha
+  // val approximate = parserSpec.approximate
+  // val squarelyNormalized = parserSpec.squarelyNormalized
+
   val theta = new HeadOutAdjHeadNoValenceParameters(
-    rootAlpha,
-    stopAlpha,
-    chooseAlpha,
-    squarelyNormalized,
-    approximate,
-    randomSeed
+    // rootAlpha,
+    // stopAlpha,
+    // chooseAlpha,
+    // squarelyNormalized,
+    // approximate,
+    // randomSeed
+    parserSpec.toParameterSpec
   )
 
-  def emptyCounts = DMVCounts( rootAlpha, stopAlpha, chooseAlpha, true )
+  def emptyCounts = DMVCounts( rootAlpha, stopAlpha, chooseAlpha, logSpace )
 
 
   def cellMap( i:Int, j:Int ) = {
     if( ( i%2 != j%2 ) ) {
-      MMap( NoValence -> Double.NegativeInfinity )
+      MMap( NoValence -> myZero )
     } else if( i%2 == 1 && j%2 == 1 ) {
       MMap(
-        PlainM -> Double.NegativeInfinity,
-        LeftwardM -> Double.NegativeInfinity,
-        RightwardM -> Double.NegativeInfinity
+        PlainM -> myZero,
+        LeftwardM -> myZero,
+        RightwardM -> myZero
       )
     } else {
       MMap()
@@ -96,16 +107,20 @@ class HeadOutAdjHeadNoValenceParser(
       // }
 
   def nearestArcFactor( head:Int, dir:AttDir, dep:Int ) = {
-    theta( ChooseEvent( head, dir, dep ) ) +
-    theta( StopEvent( head, dir, NoValence, NotStop ) ) +
-      theta( StopEvent( dep, dir.flip, NoValence, Stop ) ) +
-      theta( StopEvent( dep, dir, NoValence, Stop ) )
+    myTimes(
+      theta( ChooseEvent( head, dir, dep ) ),
+      theta( StopEvent( head, dir, NoValence, NotStop ) ),
+        theta( StopEvent( dep, dir.flip, NoValence, Stop ) ),
+        theta( StopEvent( dep, dir, NoValence, Stop ) )
+    )
   }
   def outerArcFactor( head:Int, context:Int, dir:AttDir, dep:Int ) = {
-    theta( ChooseEvent( head, context, dir, dep ) ) +
-      theta( StopEvent( head, dir, NoValence, NotStop ) ) +
-        theta( StopEvent( dep, dir.flip, NoValence, Stop ) ) +
-        theta( StopEvent( dep, dir, NoValence, Stop ) )
+    myTimes(
+      theta( ChooseEvent( head, context, dir, dep ) ),
+        theta( StopEvent( head, dir, NoValence, NotStop ) ),
+          theta( StopEvent( dep, dir.flip, NoValence, Stop ) ),
+          theta( StopEvent( dep, dir, NoValence, Stop ) )
+    )
   }
 
 
@@ -115,7 +130,7 @@ class HeadOutAdjHeadNoValenceParser(
 
 
   def lexSpecs( index:Int ) = Seq( NoValence )
-  def lexCellFactor( index:Int, pDec:Decoration ) = 0D
+  def lexCellFactor( index:Int, pDec:Decoration ) = myOne
   // def lexCellScores( index:Int ) = Seq( (Innermost,1D) )
 
 
@@ -171,7 +186,7 @@ class HeadOutAdjHeadNoValenceParser(
 
   def mCellFactor( i:Int, k:Int, j:Int, decoration:MDecoration ) = {
     if( decoration == PlainM ) {
-      0D
+      myOne
     } else if( decoration == RightwardM ) {
       if( k-i == 1 )
         nearestArcFactor( intString(i), RightAtt, intString(j) )
@@ -187,12 +202,14 @@ class HeadOutAdjHeadNoValenceParser(
   def rootCellFactor( k:Int ) = {
     val r = intString( k )
 
-    theta( RootEvent( r ) ) +
-      theta( StopEvent( r, LeftAtt, NoValence, Stop ) ) +
-      theta( StopEvent( r, RightAtt, NoValence, Stop ) )
+    myTimes(
+      theta( RootEvent( r ) ) ,
+        theta( StopEvent( r, LeftAtt, NoValence, Stop ) ) ,
+        theta( StopEvent( r, RightAtt, NoValence, Stop ) )
+    )
   }
-  def leftwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = 0D
-  def rightwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = 0D
+  def leftwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = myOne
+  def rightwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = myOne
 
   def rootEventCounts( k:Int, marginal:Double ) = {
     val r = intString( k )
@@ -256,9 +273,11 @@ class HeadOutAdjHeadNoValenceParser(
   }
 
   def trueLogProb( counts:DMVCounts ) = {
-    theta.p_root.trueLogProb( counts.rootCounts ) +
-    theta.p_stop.trueLogProb( counts.stopCounts ) +
-    theta.p_choose.trueLogProb( counts.chooseCounts )
+    myTimes(
+      theta.p_root.trueLogProb( counts.rootCounts ),
+      theta.p_stop.trueLogProb( counts.stopCounts ),
+      theta.p_choose.trueLogProb( counts.chooseCounts )
+    )
   }
 
 }

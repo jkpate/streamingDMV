@@ -8,106 +8,64 @@ import scala.collection.mutable.{Map=>MMap}
 import scala.math.log
 
 class OriginalDMVParser(
-  maxLength:Int,
-  rootAlpha:Double = 1D,
-  stopAlpha:Double = 1D,
-  chooseAlpha:Double = 1D,
-  randomSeed:Int = 15,
-  squarelyNormalized:Int = 0,
-  val approximate:Boolean = false,
-  reservoirSize:Int = 0
+  // maxLength:Int,
+  // rootAlpha:Double = 1D,
+  // stopAlpha:Double = 1D,
+  // chooseAlpha:Double = 1D,
+  // randomSeed:Int = 15,
+  // squarelyNormalized:Int = 0,
+  // val approximate:Boolean = false,
+  // reservoirSize:Int = 0
+  parserSpec:ParserSpec
 ) extends FirstOrderFoldUnfoldNOPOSParser[OriginalDMVParameters](
-  maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed, reservoirSize
+  // maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed, reservoirSize
+  parserSpec
 ) {
+
+  println( "INITIALIZING ORIGINALDMVPARSER" )
+
+      // val maxLength = parserSpec.length
+      // val randomSeed = parserSpec.randomSeed
+      // val rootAlpha = parserSpec.rootAlpha
+      // val stopAlpha = parserSpec.stopAlpha
+      // val chooseAlpha = parserSpec.chooseAlpha
+      // val approximate = parserSpec.approximate
+      // val squarelyNormalized = parserSpec.squarelyNormalized
 
   // println( s"my random seed is $randomSeed" )
   val theta = new OriginalDMVParameters(
-    rootAlpha,
-    stopAlpha,
-    chooseAlpha,
-    squarelyNormalized,
-    approximate,
-    randomSeed
+    // rootAlpha,
+    // stopAlpha,
+    // chooseAlpha,
+    // squarelyNormalized,
+    // approximate,
+    // randomSeed
+    parserSpec.toParameterSpec
   )
 
-  // One of the m-node children is a head-child, so they can't both be outermost
-      // val insideChart = Array.tabulate[MMap[Decoration,Double]]( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
-      //   if( i%2 == 1 && j%2 == 1 ) {
-      //     if( j-i >= 6 )
-      //       MMap(
-      //         DecorationPair(Outer,Outer) -> 0D,
-      //         DecorationPair(Outer,Innermost) -> 0D,
-      //         DecorationPair(Innermost,Outer) -> 0D
-      //       )
-      //     else if( j-i == 4 )
-      //       MMap(
-      //         DecorationPair(Outer,Innermost) -> 0D,
-      //         DecorationPair(Innermost,Outer) -> 0D
-      //       )
-      //     else// if( j-i == 2 )
-      //       MMap(
-      //         DecorationPair(Innermost,Innermost) -> 0D
-      //       )
-      //   } else if( i%2 != j%2 ) {
-      //     if( j-i > 1 )
-      //       MMap( Outer -> 0D )
-      //     else
-      //       MMap( Innermost -> 0D )
-      //   } else {
-      //     MMap()
-      //   }
-      // )
-
-
-      // val outsideChart = Array.tabulate[MMap[Decoration,Double]]( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
-      //   if( i%2 == 1 && j%2 == 1 ) {
-      //     if( j-i >= 6 )
-      //       MMap(
-      //         DecorationPair(Outer,Outer) -> 0D,
-      //         DecorationPair(Outer,Innermost) -> 0D,
-      //         DecorationPair(Innermost,Outer) -> 0D
-      //       )
-      //     else if( j-i == 4 )
-      //       MMap(
-      //         DecorationPair(Outer,Innermost) -> 0D,
-      //         DecorationPair(Innermost,Outer) -> 0D
-      //       )
-      //     else// if( j-i == 2 )
-      //       MMap(
-      //         DecorationPair(Innermost,Innermost) -> 0D
-      //       )
-      //   } else if( i%2 != j%2 ) {
-      //     if( j-i > 1 )
-      //       MMap( Outer -> 0D )
-      //     else
-      //       MMap( Innermost -> 0D )
-      //   } else {
-      //     MMap()
-      //   }
-      // )
 
   def cellMap( i:Int, j:Int ) = {
     if( i%2 == 1 && j%2 == 1 ) {
       if( j-i >= 6 )
         MMap(
-          DecorationPair(Outer,Outer) -> Double.NegativeInfinity,
-          DecorationPair(Outer,Innermost) -> Double.NegativeInfinity,
-          DecorationPair(Innermost,Outer) -> Double.NegativeInfinity
+          DecorationPair(Outer,Outer) -> myZero,
+          DecorationPair(Outer,Innermost) -> myZero,
+          DecorationPair(Innermost,Outer) -> myZero
         )
       else if( j-i == 4 )
         MMap(
-          DecorationPair(Outer,Innermost) -> Double.NegativeInfinity,
-          DecorationPair(Innermost,Outer) -> Double.NegativeInfinity
+          DecorationPair(Outer,Innermost) -> myZero,
+          DecorationPair(Innermost,Outer) -> myZero
         )
       else// if( j-i == 2 )
         MMap(
-          DecorationPair(Innermost,Innermost) -> Double.NegativeInfinity
+          DecorationPair(Innermost,Innermost) -> myZero
         )
     } else if( i%2 != j%2 ) {
       if( j-i > 1 )
-        MMap( Outer -> Double.NegativeInfinity )
+        MMap( Outer -> myZero )
       else
-        MMap( Innermost -> Double.NegativeInfinity )
+        MMap( Innermost -> myZero )
     } else {
       MMap()
     }
@@ -134,12 +92,8 @@ class OriginalDMVParser(
   def findRightMChild( k:Int, j:Int, decoration:MDecoration ) =
     headTrace( k )( j )( decoration.evenRight )
 
-  // def lexFill( index:Int ) {
-  //   val head = intString( index )
-  //   insideChart(index)(index+1)( Innermost ) = 1D
-  // }
   def lexSpecs( index:Int ) = Seq( Innermost )
-  def lexCellFactor( index:Int, pDec:Decoration ) = 0D
+  def lexCellFactor( index:Int, pDec:Decoration ) = myOne
 
 
   // def lexMarginals( index:Int ) = Seq[Tuple2[Event,Double]]()
@@ -157,117 +111,6 @@ class OriginalDMVParser(
       Seq(
         (
           Outer,
-                  // if( j-i == 3 )
-                  //   Seq(
-                  //     (
-                  //       i+2,
-                  //       DecorationPair( Innermost, Innermost ),
-                  //       Innermost
-                  //     )
-                  //   )
-                  // else if( j-i == 5 )
-                  //   Seq(
-                  //     (
-                  //       i+2,
-                  //       DecorationPair( Innermost, Innermost ),
-                  //       Outer
-                  //     ),
-                  //     (
-                  //       i+4,
-                  //       DecorationPair( Outer, Innermost ),
-                  //       Innermost
-                  //     ),
-                  //     (
-                  //       i+4,
-                  //       DecorationPair( Innermost, Outer ),
-                  //       Innermost
-                  //     )
-                  //   )
-                  // else if( j-i == 7 )
-                  //   Seq(
-                  //     (
-                  //       i+2,
-                  //       DecorationPair( Innermost, Innermost ),
-                  //       Outer
-                  //     ),
-                  //     (
-                  //       i+4,
-                  //       DecorationPair( Outer, Innermost ),
-                  //       Outer
-                  //     ),
-                  //     (
-                  //       i+4,
-                  //       DecorationPair( Innermost, Outer ),
-                  //       Outer
-                  //     ),
-                  //     (
-                  //       j-1,
-                  //       DecorationPair( Outer, Innermost ),
-                  //       Innermost
-                  //     ),
-                  //     (
-                  //       j-1,
-                  //       DecorationPair( Innermost, Outer ),
-                  //       Innermost
-                  //     ),
-                  //     (
-                  //       j-1,
-                  //       DecorationPair( Outer, Outer ),
-                  //       Innermost
-                  //     )
-                  //   )
-                  // else // j-i >= 9
-                  //   Seq(
-                  //     (
-                  //       i+2,
-                  //       DecorationPair( Innermost, Innermost ),
-                  //       Outer
-                  //     ),
-                  //     (
-                  //       i+4,
-                  //       DecorationPair( Outer, Innermost ),
-                  //       Outer
-                  //     ),
-                  //     (
-                  //       i+4,
-                  //       DecorationPair( Innermost, Outer ),
-                  //       Outer
-                  //     ),
-                  //     (
-                  //       j-1,
-                  //       DecorationPair( Outer, Innermost ),
-                  //       Innermost
-                  //     ),
-                  //     (
-                  //       j-1,
-                  //       DecorationPair( Innermost, Outer ),
-                  //       Innermost
-                  //     ),
-                  //     (
-                  //       j-1,
-                  //       DecorationPair( Outer, Outer ),
-                  //       Innermost
-                  //     )
-                  //   ) ++ ( (i+6) to (j-3) by 2 ).flatMap{ k =>
-                  //     Seq(
-                  //       (
-                  //         k,
-                  //         DecorationPair( Outer, Innermost ),
-                  //         Outer
-                  //       ),
-                  //       (
-                  //         k,
-                  //         DecorationPair( Innermost, Outer ),
-                  //         Outer
-                  //       ),
-                  //       (
-                  //         k,
-                  //         DecorationPair( Outer, Outer ),
-                  //         Outer
-                  //       )
-                  //     )
-                  //   }
-
             ( (i+2) to (j-1) by 2 ).flatMap{ k =>
               val childDec =
                 if( j-k == 1 ) Innermost else Outer
@@ -426,20 +269,24 @@ class OriginalDMVParser(
     val head = intString( i )
     val dep = intString( k )
 
-    theta( ChooseEvent( head, RightAtt, dep ) ) +
-      theta( StopEvent( head, RightAtt, mDec.evenLeft, NotStop ) ) +
-        theta( StopEvent( dep, LeftAtt, mDec.evenRight, Stop ) ) +
-        theta( StopEvent( dep, RightAtt, cDec, Stop ) )
+    myTimes(
+      theta( ChooseEvent( head, RightAtt, dep ) ),
+        theta( StopEvent( head, RightAtt, mDec.evenLeft, NotStop ) ),
+          theta( StopEvent( dep, LeftAtt, mDec.evenRight, Stop ) ),
+          theta( StopEvent( dep, RightAtt, cDec, Stop ) )
+    )
   }
 
   def leftwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = {
     val head = intString( j )
     val dep = intString( k )
 
-    theta( ChooseEvent( head, LeftAtt, dep ) ) +
-      theta( StopEvent( head, LeftAtt, mDec.evenRight, NotStop ) ) +
-        theta( StopEvent( dep, RightAtt, mDec.evenLeft, Stop ) ) +
-        theta( StopEvent( dep, LeftAtt, cDec, Stop ) )
+    myTimes(
+      theta( ChooseEvent( head, LeftAtt, dep ) ),
+        theta( StopEvent( head, LeftAtt, mDec.evenRight, NotStop ) ),
+          theta( StopEvent( dep, RightAtt, mDec.evenLeft, Stop ) ),
+          theta( StopEvent( dep, LeftAtt, cDec, Stop ) )
+    )
   }
 
 
@@ -449,9 +296,11 @@ class OriginalDMVParser(
     val leftV = if( k == 1 ) Innermost else Outer
     val rightV = if( k == intString.length-1 ) Innermost else Outer
 
-    theta( RootEvent( r ) ) *
-      theta( StopEvent( r, LeftAtt, leftV, Stop ) ) *
-      theta( StopEvent( r, RightAtt, rightV, Stop ) )
+    myTimes(
+      theta( RootEvent( r ) ),
+        theta( StopEvent( r, LeftAtt, leftV, Stop ) ),
+        theta( StopEvent( r, RightAtt, rightV, Stop ) )
+    )
   }
 
 
@@ -482,6 +331,12 @@ class OriginalDMVParser(
     cDec:Decoration, marginal:Double ) = {
     val head = intString( j )
     val dep = intString( k )
+    // println( ( ChooseEvent( head, LeftAtt, dep ), marginal ) )
+    // if( head == 4 && dep == 1  ) {
+    //   println( ((i,k,j),pDec,mDec) )
+    //   println( marginal )
+    // }
+
     Seq(
       ( ChooseEvent( head, LeftAtt, dep ), marginal ),
       ( StopEvent( head, LeftAtt, mDec.evenRight, NotStop ), marginal ),
@@ -491,9 +346,11 @@ class OriginalDMVParser(
   }
 
   def trueLogProb( counts:DMVCounts ) = {
-    theta.p_root.trueLogProb( counts.rootCounts ) +
-    theta.p_stop.trueLogProb( counts.stopCounts ) +
-    theta.p_choose.trueLogProb( counts.chooseCounts )
+    myTimes(
+      theta.p_root.trueLogProb( counts.rootCounts ),
+      theta.p_stop.trueLogProb( counts.stopCounts ),
+      theta.p_choose.trueLogProb( counts.chooseCounts )
+    )
   }
 
 

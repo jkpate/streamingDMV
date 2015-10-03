@@ -11,6 +11,62 @@ import scala.util.hashing.{MurmurHash3=>MH3}
 
 import java.nio.ByteBuffer
 
+case class ParserSpec(
+  maxLength:Int,
+  randomSeed:Int,
+  rootAlpha:Double,
+  stopAlpha:Double,
+  chooseAlpha:Double,
+  backoffAlpha:Double,
+  notBackoffAlpha:Double,
+  squarelyNormalized:Int,
+  approximate:Boolean,
+  reservoirSize:Int,
+  logSpace:Boolean
+) {
+  def toParameterSpec =
+    ParameterSpec(
+      rootAlpha = rootAlpha,
+      stopAlpha = stopAlpha,
+      chooseAlpha = chooseAlpha,
+      backoffAlpha = backoffAlpha,
+      notBackoffAlpha = notBackoffAlpha,
+      squarelyNormalized = squarelyNormalized,
+      approximate = approximate,
+      randomSeed = randomSeed,
+      logSpace = logSpace
+    )
+}
+object ParserSpec {
+  def withRandomSeed( parserSpec:ParserSpec, randomSeed:Int ) = {
+    ParserSpec(
+      maxLength = parserSpec.maxLength,
+      randomSeed = randomSeed,
+      rootAlpha = parserSpec.rootAlpha,
+      stopAlpha = parserSpec.stopAlpha,
+      chooseAlpha = parserSpec.chooseAlpha,
+      backoffAlpha = parserSpec.backoffAlpha,
+      notBackoffAlpha = parserSpec.notBackoffAlpha,
+      squarelyNormalized = parserSpec.squarelyNormalized,
+      approximate = parserSpec.approximate,
+      reservoirSize = parserSpec.reservoirSize,
+      logSpace = parserSpec.logSpace
+    )
+  }
+}
+
+case class ParameterSpec(
+  rootAlpha:Double,
+  stopAlpha:Double,
+  chooseAlpha:Double,
+  backoffAlpha:Double,
+  notBackoffAlpha:Double,
+  squarelyNormalized:Int,
+  approximate:Boolean,
+  randomSeed:Int,
+  logSpace:Boolean
+)
+
 
 abstract class AnnotationStream[T] {
   val annotations:Array[T]
@@ -126,6 +182,13 @@ case object NotBackoff extends BackoffDecision
 abstract class Decoration
 
 abstract class Valence extends Decoration
+
+case object FourDependentValence extends Decoration
+case object ThreeDependentValence extends Decoration
+case object TwoDependentValence extends Decoration
+case object OneDependentValence extends Decoration
+case object NoDependentValence extends Decoration
+
 case object NoValence extends Valence {
   override val hashCode = 104395303
   // override val hashCode = 31
@@ -543,11 +606,20 @@ case class BackoffChooseDMVCounts(
       lambdaChooseCounts.counts.values.sum
 
   def printTotalCountsByType {
-    println( s"  > ${rootCounts.counts.values.map{exp(_)}.sum} root events" )
-    println( s"  > ${stopCounts.counts.values.map{exp(_)}.sum} stop events" )
-    println( s"  > ${chooseCounts.counts.values.map{exp(_)}.sum} choose events" )
-    println( s"  > ${lambdaChooseCounts.counts.values.map{exp(_)}.sum} lambda choose events" )
-    println( s"  > ${chooseCounts.denoms.size} choose LHS" )
+    println( s"  > logSpace: ${logSpace}" )
+    if( logSpace ) {
+      println( s"  > ${rootCounts.counts.values.map{exp(_)}.sum} root events" )
+      println( s"  > ${stopCounts.counts.values.map{exp(_)}.sum} stop events" )
+      println( s"  > ${chooseCounts.counts.values.map{exp(_)}.sum} choose events" )
+      println( s"  > ${lambdaChooseCounts.counts.values.map{exp(_)}.sum} lambda choose events" )
+      println( s"  > ${chooseCounts.denoms.size} choose LHS" )
+    } else {
+      println( s"  > ${rootCounts.counts.values.sum} root events" )
+      println( s"  > ${stopCounts.counts.values.sum} stop events" )
+      println( s"  > ${chooseCounts.counts.values.sum} choose events" )
+      println( s"  > ${lambdaChooseCounts.counts.values.sum} lambda choose events" )
+      println( s"  > ${chooseCounts.denoms.size} choose LHS" )
+    }
   }
 }
 
@@ -634,14 +706,18 @@ case class DMVCounts(
       chooseCounts.counts.values.sum
 
   def printTotalCountsByType {
-    println( s"  > ${rootCounts.counts.values.map{exp(_)}.sum} root events" )
-    println( s"  > ${rootCounts.denomCounts.values.map{exp(_)}.sum} root denom events" )
-    println( s"  > ${stopCounts.counts.values.map{exp(_)}.sum} stop events" )
-    println( s"  > ${stopCounts.denomCounts.values.map{exp(_)}.sum} stop denom events" )
-    println( s"  > ${chooseCounts.counts.values.map{exp(_)}.sum} choose events" )
-    println( s"  > ${chooseCounts.denomCounts.values.map{exp(_)}.sum} choose denom events" )
-    println( s"  > ${chooseCounts.denoms.size} choose LHS" )
-    println( s"  > ${chooseCounts.denoms.map{_._2.size}.sum} choose rules" )
+    println( s"  > logSpace: ${logSpace}" )
+    if( logSpace ) {
+      println( s"  > ${rootCounts.counts.values.map{exp(_)}.sum} root events" )
+      println( s"  > ${stopCounts.counts.values.map{exp(_)}.sum} stop events" )
+      println( s"  > ${chooseCounts.counts.values.map{exp(_)}.sum} choose events" )
+      println( s"  > ${chooseCounts.denoms.size} choose LHS" )
+    } else {
+      println( s"  > ${rootCounts.counts.values.sum} root events" )
+      println( s"  > ${stopCounts.counts.values.sum} stop events" )
+      println( s"  > ${chooseCounts.counts.values.sum} choose events" )
+      println( s"  > ${chooseCounts.denoms.size} choose LHS" )
+    }
   }
 }
 object DMVCounts {

@@ -6,11 +6,13 @@ import streamingDMV.tables.MatrixCPT
 import collection.mutable.{Set=>MSet}
 
 abstract class UPOSArcFactoredParameters(
-  rootAlpha:Double,
-  stopAlpha:Double,
-  chooseAlpha:Double,
-  uposCount:Int
-) extends ArcFactoredParameters[MatrixDMVCounts]( rootAlpha, stopAlpha, chooseAlpha ) {
+  // rootAlpha:Double,
+  // stopAlpha:Double,
+  // chooseAlpha:Double,
+  uposCount:Int,
+  parameterSpec:ParameterSpec
+// ) extends ArcFactoredParameters[MatrixDMVCounts]( rootAlpha, stopAlpha, chooseAlpha ) {
+) extends ArcFactoredParameters[MatrixDMVCounts]( parameterSpec ) {
 
   val p_root = new MatrixCPT[RootEvent]( rootAlpha, uposCount, 1 )
   val p_stop = new MatrixCPT[StopEvent]( stopAlpha, 1, uposCount )

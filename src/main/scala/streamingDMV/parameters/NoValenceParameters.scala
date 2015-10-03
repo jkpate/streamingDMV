@@ -3,19 +3,21 @@ package streamingDMV.parameters
 import streamingDMV.labels._
 
 class NoValenceParameters(
-  rootAlpha:Double,
-  stopAlpha:Double,
-  chooseAlpha:Double,
-  squarelyNormalized:Int = 0,
-  approximate:Boolean = false,
-  randomSeed:Int
+  // rootAlpha:Double,
+  // stopAlpha:Double,
+  // chooseAlpha:Double,
+  // squarelyNormalized:Int = 0,
+  // approximate:Boolean = false,
+  // randomSeed:Int
+  parameterSpec:ParameterSpec
 ) extends FirstOrderArcFactoredParameters(
-  rootAlpha,
-  stopAlpha,
-  chooseAlpha,
-  squarelyNormalized,
-  approximate,
-  randomSeed
+  // rootAlpha,
+  // stopAlpha,
+  // chooseAlpha,
+  // squarelyNormalized,
+  // approximate,
+  // randomSeed
+  parameterSpec
 ) {
 
   def possibleStopEvents( h:Int ) = {

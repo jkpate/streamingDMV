@@ -6,28 +6,41 @@ import streamingDMV.parameters.ArcFactoredParameters
 import math.{exp,log}
 
 abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]](
-  maxLength:Int,
-  rootAlpha:Double = 1D,
-  stopAlpha:Double = 1D,
-  chooseAlpha:Double = 1D,
-  randomSeed:Int = 15,
-  val reservoirSize:Int = 0
+  // maxLength:Int,
+  // rootAlpha:Double = 1D,
+  // stopAlpha:Double = 1D,
+  // chooseAlpha:Double = 1D,
+  // randomSeed:Int = 15,
+  // val reservoirSize:Int = 0
+  parserSpec:ParserSpec
 ) extends FoldUnfoldParser[C,P](
-  maxLength,
-  rootAlpha,
-  stopAlpha,
-  chooseAlpha,
-  randomSeed
+  // maxLength,
+  // rootAlpha,
+  // stopAlpha,
+  // chooseAlpha,
+  // randomSeed
+  parserSpec
 ) {
+
+  val reservoirSize = parserSpec.reservoirSize
 
   def streamingBayesUpdate(
     miniBatch:List[Utt],
     sentenceNum:Int,
+    testSet:List[Utt],
     maxIter:Int = 10,
     convergence:Double = 0.001,
+    evalMaxLength:Int = 0,
+    evalRate:Int = 10,
+    logEvalRate:Boolean = true,
+    constituencyEval:Boolean = true,
     printIterScores:Boolean = false,
     printItersReached:Boolean = false
   ) = {
+
+    var evalEvery = evalRate
+
+    // println( s"\n\n\n-----\nevalEvery: $evalEvery\n\n-----\n\n\n" )
 
     var lastFHat = initialCounts( miniBatch )
       // emptyCounts
@@ -52,48 +65,59 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
 
 
       var i = 0
-      val fHat = miniBatch.map{ s =>
+      // val fHat = miniBatch.map{ s =>
+      val fHat = emptyCounts
+      while( i < miniBatch.size ) {
+        val s = miniBatch( i )
         // println( s"    $i" )
         // println( s.id + " " + s.string.mkString(" ") )
-        val counts = extractPartialCounts(s.string)
-        if( !( stringProb > Double.NegativeInfinity && stringProb <= 0D ) ) {
+        val counts = extractPartialCounts( s.string )
+        // val counts = extractPartialCounts( s.string, fHat )
+        if( !( stringProb > myZero && stringProb <= myOne ) ) {
           println( stringProb )
           println( s.id + " " + s.string.mkString( " " )  )
-          assert( stringProb > Double.NegativeInfinity && stringProb <= 0D )
+          assert( stringProb > myZero && stringProb <= myOne )
         }
-        thisMiniBatchScores += stringProb
+        thisMiniBatchScores += { if( logSpace ) stringProb else log( stringProb ) }
+        fHat.destructivePlus( counts )
         i+=1
-        counts
-      }.reduce{ (a,b) => a.destructivePlus(b); a }
 
-      // assert( fHat.logSpace )
-      // assert( lastFHat.logSpace )
-      // assert( theta.logSpace )
+        val sentencesProcessed = sentenceNum + i
+            // Not sure what to do if we're doing more than one max iter?
+        if( maxIter == 1 & i%evalEvery == 0 ) {
+          theta.incrementCounts( fHat )
+          if( constituencyEval )
+            printViterbiParses(
+              testSet,
+              s"it${sentencesProcessed}",
+              evalMaxLength// ,
+              // fHat
+            )
+          else
+            printViterbiDepParses(
+              testSet,
+              s"it${sentencesProcessed}",
+              evalMaxLength//,
+              // fHat
+            )
+          theta.decrementCounts( fHat )
+        }
 
-      // fHat.printTotalCountsByType
-      // println( s"thisFHat: ${fHat.totalCounts} total events seen" )
-      // println( s"lastFHat: ${lastFHat.totalCounts} total events seen" )
+        if(
+          maxIter == 1 &&
+          logEvalRate &&
+          scala.math.log10( i )%1 == 0 &&
+          i > evalEvery
+        ) {
+          evalEvery *= 10
+          println( s"after processing $sentencesProcessed of initialMiniBatch we eval every $evalEvery" )
+        }
+      }
 
 
-          // println( s"before incrementing or decrementing" )
-          // theta.printTotalCountsByType
-
-          // println( s"description of lastFHat:" )
-          // lastFHat.printTotalCountsByType
 
       theta.decrementCounts( lastFHat )
-
-          // println( s"before incrementing" )
-          // theta.printTotalCountsByType
-
-          // println( s"description of fHat:" )
-          // fHat.printTotalCountsByType
-
-                                    // Grammar should already be defined -- avoid useless hashing
       theta.incrementCounts( fHat, updateEvents = false )
-
-          // println( s"after incrementing" )
-          // theta.printTotalCountsByType
 
       deltaScores = ( lastMiniBatchScores - thisMiniBatchScores ) / lastMiniBatchScores
       if( printIterScores )
@@ -107,6 +131,8 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
     }
     if( printItersReached )
       println( s"iters\t$iter" )
+
+    iter
   }
 
 

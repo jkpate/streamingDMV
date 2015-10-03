@@ -13,18 +13,22 @@ abstract class ParticleFilterParser[
   P<:ArcFactoredParameters[C],
   R<:StreamingVBParser[C,P]:ClassTag
 ](
-  maxLength:Int,
-  rootAlpha:Double = 1D,
-  stopAlpha:Double = 1D,
-  chooseAlpha:Double = 1D,
+  // maxLength:Int,
+  // rootAlpha:Double = 1D,
+  // stopAlpha:Double = 1D,
+  // chooseAlpha:Double = 1D,
+  parserSpec:ParserSpec,
   numParticles:Int = 16,
-  createParticle:(C,Array[SampledCounts[C]],Int) => R,
-  randomSeed:Int = 15,
-  reservoirSize:Int
-) extends FoldUnfoldParser[C,P]( maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed ) {
+  createParticle:(C,Array[SampledCounts[C]],Int) => R//,
+  // randomSeed:Int = 15,
+  // reservoirSize:Int
+// ) extends FoldUnfoldParser[C,P]( maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed ) {
+) extends FoldUnfoldParser[C,P]( parserSpec ) {
+  
+  val reservoirSize = parserSpec.reservoirSize
 
   val emptyReservoir = Array.fill( reservoirSize )(
-    SampledCounts( Array(), emptyCounts, Double.NegativeInfinity, Double.NegativeInfinity )
+    SampledCounts( Array(), emptyCounts, myZero, myZero )
   )
 
   val particles = Array.tabulate( numParticles )( l => createParticle(emptyCounts,emptyReservoir,l) )
@@ -87,7 +91,11 @@ abstract class ParticleFilterParser[
           val (newCounts, newProposalScore) = particles( l ).sampleTreeCounts( prev.string )
 
           val newTrueScore = particles(l).trueLogProb( newCounts )
-          val newSamplingScore = newProposalScore - particles(l).stringProb
+          val newSamplingScore =
+            if( logSpace )
+              newProposalScore - particles(l).stringProb
+            else
+              newProposalScore - math.log( particles(l).stringProb )
 
           val mhScore = (
             newTrueScore + prev.samplingScore
@@ -120,20 +128,14 @@ abstract class ParticleFilterParser[
     val uniqueAncestors = MSet[Int]()
     val startTime = System.currentTimeMillis
     if( numParticles > 1 ) {
-      // println( s"particle weights ${particleWeights.mkString("{ ",", ", " }")}" )
       val newParticleWeights = Array.fill( numParticles )( 0D )
       val newParticles = Array.tabulate( numParticles )( l => {
           val ( idx, _ ) = argSample( particleWeights.zipWithIndex.map{ p => (p._2,p._1) }.toSeq )
-          // println( s" sampled particle $idx" )
-
           uniqueAncestors += idx
-
-          // newParticleWeights(l) = w
 
           if( l == idx ) {  // Probably doesn't buy us much...
             particles(l)
           } else {
-            // println( s"creating particle $l" )
             createParticle( particles(idx).theta.toCounts, particles(idx).sampleReservoir, rand.nextInt )
           }
         }
@@ -159,30 +161,37 @@ abstract class ParticleFilterParser[
 
   def clearCharts:Unit
 
+  // TODO increment eval during initial minibatch
   def streamingBayesUpdate(
     miniBatch:List[Utt],
     sentenceNum:Int,
+    testSet:List[Utt],
     maxIter:Int = 10,
     convergence:Double = 0.001,
+    evalMaxLength:Int = 0,
+    evalRate:Int = 10,
+    logEvalRate:Boolean = true,
+    constituencyEval:Boolean = true,
     printIterScores:Boolean = false,
     printItersReached:Boolean = false
-  ) {
+  ) = {
 
 
     (0 until numParticles ).foreach{ l => particleWeights(l) = math.log( particleWeights(l) ) }
 
-    ( 0 until numParticles )/*.par*/.map{ l =>
+    ( 0 until numParticles ).map{ l =>
       particles(l).theta.fullyNormalized = true
       val (counts, proposalScore) = miniBatch.zipWithIndex.map{ case ( s, i ) =>
-        // println( s"particle $l sentence ${sentenceNum + i }" )
         val (sentCounts, sentProposalScore) = particles( l ).sampleTreeCounts( s )
-
-        // sentCounts.printTotalCountsByType
 
         assert( particles(l).stringProb > Double.NegativeInfinity )
 
         val trueScore = particles(l).trueLogProb( sentCounts )
-        val samplingScore = sentProposalScore - particles(l).stringProb
+        val samplingScore =
+          if( logSpace )
+            sentProposalScore - particles(l).stringProb
+          else
+            sentProposalScore - log( particles(l).stringProb )
 
         particleWeights(l) =
           particleWeights(l) + ( trueScore - samplingScore )
@@ -198,6 +207,7 @@ abstract class ParticleFilterParser[
       }.reduce{ (a,b) => a._1.destructivePlus( b._1 ); ( a._1, a._2 + b._2 ) }
 
       particles( l ).theta.incrementCounts( counts )
+
     }
 
     val totalLogWeight = particleWeights.reduce( LogSum( _,_) )
@@ -206,6 +216,8 @@ abstract class ParticleFilterParser[
     }
 
 
+    // No iterations reached for particle filter
+    Double.NaN
   }
 
 

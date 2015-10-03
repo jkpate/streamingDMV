@@ -9,19 +9,25 @@ import breeze.numerics._
 
 // abstract class FirstOrderFoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters](
 abstract class FirstOrderFoldUnfoldNOPOSParser[P<:ArcFactoredParameters[DMVCounts]](
-  maxLength:Int,
-  rootAlpha:Double = 1D,
-  stopAlpha:Double = 1D,
-  chooseAlpha:Double = 1D,
-  randomSeed:Int = 15,
-  reservoirSize:Int = 0
+  // maxLength:Int,
+  // rootAlpha:Double = 1D,
+  // stopAlpha:Double = 1D,
+  // chooseAlpha:Double = 1D,
+  // randomSeed:Int = 15,
+  // reservoirSize:Int = 0
+  parserSpec:ParserSpec
 ) extends FoldUnfoldNOPOSParser[DMVCounts,P](
-  maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed, reservoirSize
+  // maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed, reservoirSize
+  parserSpec
 ) {
 
-  def emptyCounts = DMVCounts( rootAlpha, stopAlpha, chooseAlpha, true )
+    // val rootAlpha = parserSpec.rootAlpha
+    // val stopAlpha = parserSpec.stopAlpha
+    // val chooseAlpha = parserSpec.chooseAlpha
 
-  def mCellFactor( i:Int, k:Int, j:Int, decoration:MDecoration ) = 0D
+  def emptyCounts = DMVCounts( rootAlpha, stopAlpha, chooseAlpha, logSpace )
+
+  def mCellFactor( i:Int, k:Int, j:Int, decoration:MDecoration ) = myOne
   def mEventCounts( i:Int, k:Int, j:Int, mDecoration:MDecoration, marginal:Double ) = Seq()
 
 }

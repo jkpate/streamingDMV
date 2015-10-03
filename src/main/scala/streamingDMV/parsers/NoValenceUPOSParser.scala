@@ -10,17 +10,21 @@ import scala.collection.mutable.{Map=>MMap}
 
 
 class NoValenceUPOSParser(
-  maxLength:Int,
-  rootAlpha:Double = 1D,
-  stopAlpha:Double = 1D,
-  chooseAlpha:Double = 1D,
-  uposCount:Int,
-  randomSeed:Int = 15
+  // maxLength:Int,
+  // rootAlpha:Double = 1D,
+  // stopAlpha:Double = 1D,
+  // chooseAlpha:Double = 1D,
+  parserSpec:ParserSpec,
+  uposCount:Int//,
+  // randomSeed:Int = 15
 ) extends FirstOrderFoldUnfoldUPOSParser[NoValenceUPOSParameters](
-  maxLength, rootAlpha, stopAlpha, chooseAlpha, uposCount, randomSeed
+  //maxLength, rootAlpha, stopAlpha, chooseAlpha, uposCount, randomSeed
+  parserSpec,
+  uposCount
 ) {
 
-  val theta = new NoValenceUPOSParameters( rootAlpha, stopAlpha, chooseAlpha, uposCount )
+  // val theta = new NoValenceUPOSParameters( rootAlpha, stopAlpha, chooseAlpha, uposCount )
+  val theta = new NoValenceUPOSParameters( uposCount, parserSpec.toParameterSpec )
 
   def leftArcParentVs( i:Int ) = Set[Decoration]( NoValence )
   def rightArcParentVs( j:Int ) = Set[Decoration]( NoValence )

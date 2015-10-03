@@ -2,18 +2,20 @@ package streamingDMV.parsers
 
 // import streamingDMV.parameters.NOPOSArcFactoredParameters
 import streamingDMV.parameters.ArcFactoredParameters
-import streamingDMV.labels.DependencyCounts
+import streamingDMV.labels.{DependencyCounts,ParserSpec}
 
 // abstract class SecondOrderFoldUnfoldParser[C<:DependencyCounts,P<:NOPOSArcFactoredParameters](
 abstract class SecondOrderFoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]](
-  maxLength:Int,
-  rootAlpha:Double = 1D,
-  stopAlpha:Double = 1D,
-  chooseAlpha:Double = 1D,
-  randomSeed:Int = 15,
-  reservoirSize:Int = 0
+  // maxLength:Int,
+  // rootAlpha:Double = 1D,
+  // stopAlpha:Double = 1D,
+  // chooseAlpha:Double = 1D,
+  // randomSeed:Int = 15,
+  // reservoirSize:Int = 0
+  parserSpec:ParserSpec
 ) extends FoldUnfoldNOPOSParser[C,P](
-  maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed, reservoirSize
+  // maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed, reservoirSize
+  parserSpec
 ) {
 
   // // Second-order parsers use directed m-nodes that have undirected m-node children

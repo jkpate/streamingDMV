@@ -12,15 +12,17 @@ import math.log
 
 
 abstract class FoldUnfoldUPOSParser[P<:UPOSArcFactoredParameters](
-  maxLength:Int,
-  rootAlpha:Double = 1D,
-  stopAlpha:Double = 1D,
-  chooseAlpha:Double = 1D,
-  uposCount:Int = 3,
-  randomSeed:Int = 15,
-  reservoirSize:Int
+  // maxLength:Int,
+  // rootAlpha:Double = 1D,
+  // stopAlpha:Double = 1D,
+  // chooseAlpha:Double = 1D,
+  parserSpec:ParserSpec,
+  uposCount:Int = 3
+  // randomSeed:Int = 15,
+  // reservoirSize:Int
 ) extends StreamingVBParser[MatrixDMVCounts,P](
-  maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed, reservoirSize
+  // maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed, reservoirSize
+  parserSpec
 ) {
 
   // Inside-Outside definitions

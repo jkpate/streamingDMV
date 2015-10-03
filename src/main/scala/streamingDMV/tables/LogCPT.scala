@@ -53,7 +53,7 @@ class LogCPT[E<:Event with Product](
         LogSpaceExpDigamma( 
           LogSum( counts( event ) , log( alpha ) - log( squarelyNormalized ) ) 
         ) - LogSpaceExpDigamma(
-          LogSum( denomCounts( n ) , (alpha) )
+          LogSum( denomCounts( n ) , log(alpha) )
         )
       else
         LogSpaceExpDigamma( 
@@ -64,8 +64,8 @@ class LogCPT[E<:Event with Product](
 
     if( !( score > Double.NegativeInfinity && score <= 0D) ) {
       println( s"$event\t$score" )
-      println( "  " + LogSum( counts( event ) , alpha  ) )
-      println( "  " + LogSpaceExpDigamma( LogSum( counts( event ) , alpha  ) ) )
+      println( "  " + LogSum( counts( event ) , log( alpha )  ) )
+      println( "  " + LogSpaceExpDigamma( LogSum( counts( event ) , log( alpha ) ) ) )
       println( "    " + LogSum( denomCounts( n ) , log(alpha * denoms(n).size)) )
       println( "    " + LogSpaceExpDigamma( LogSum( denomCounts( n ) , log(alpha * denoms(n).size ) ) ) )
     }

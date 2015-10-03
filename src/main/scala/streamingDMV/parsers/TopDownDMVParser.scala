@@ -7,25 +7,30 @@ import scala.collection.mutable.{Map=>MMap}
 import scala.math.log
 
 class TopDownDMVParser(
-  maxLength:Int,
-  rootAlpha:Double = 1D,
-  stopAlpha:Double = 1D,
-  chooseAlpha:Double = 1D,
-  randomSeed:Int = 15,
-  squarelyNormalized:Int = 0,
-  val approximate:Boolean = false,
-  reservoirSize:Int = 0
+    // maxLength:Int,
+    // rootAlpha:Double = 1D,
+    // stopAlpha:Double = 1D,
+    // chooseAlpha:Double = 1D,
+    // randomSeed:Int = 15,
+    // squarelyNormalized:Int = 0,
+    // val approximate:Boolean = false,
+    // reservoirSize:Int = 0
+  parserSpec:ParserSpec
 ) extends FirstOrderFoldUnfoldNOPOSParser[TopDownDMVParameters](
-  maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed, reservoirSize
+  // maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed, reservoirSize
+  parserSpec
 ) {
 
+  println( "INITIALIZING TOPDOWNDMVPARSER" )
+
   val theta = new TopDownDMVParameters(
-    rootAlpha,
-    stopAlpha,
-    chooseAlpha,
-    squarelyNormalized,
-    approximate,
-    randomSeed
+    // rootAlpha,
+    // stopAlpha,
+    // chooseAlpha,
+    // squarelyNormalized,
+    // approximate,
+    // randomSeed
+    parserSpec.toParameterSpec
   )
 
       // val insideChart = Array.tabulate[MMap[Decoration,Double]]( 2*maxLength, (2*maxLength)+1 )( (i,j) =>
@@ -54,26 +59,35 @@ class TopDownDMVParser(
 
   def cellMap( i:Int, j:Int ) = {
     if( ( i%2 == 1 || j%2 == 1 ) && i%2 != j%2 )
-      MMap( Outermost -> Double.NegativeInfinity, Inner -> Double.NegativeInfinity )
+      MMap( Outermost -> myZero, Inner -> myZero )
     else if( i%2 == 1 && j%2 == 1 )
       MMap(
-        DecorationPair(Outermost,Inner) -> Double.NegativeInfinity,
-        DecorationPair(Inner,Outermost) -> Double.NegativeInfinity
+        DecorationPair(Outermost,Inner) -> myZero,
+        DecorationPair(Inner,Outermost) -> myZero
       )
     else
       MMap()
   }
 
+  def recoverM( mDV:Decoration ) = {
+    mDV match {
+      case p:DecorationPair => p
+    }
+  }
 
 
   def findLeftRootChild( k:Int ) = headTrace( 0 )( k )( Outermost )
   def findRightRootChild( k:Int ) = headTrace( k )( intString.length )( Outermost )
 
   def findLeftLeftwardChild( i:Int, k:Int ) = headTrace( i )( k )( Outermost )
-  def findRightLeftwardChild( k:Int, j:Int, hV:Decoration, mDV:Decoration ) =
+  def findRightLeftwardChild( k:Int, j:Int, hV:Decoration, mDV:Decoration ) = {
+    assert( mDV == Outermost )
     mTrace( k )( j )( DecorationPair( Outermost, Inner ) )
-  def findLeftRightwardChild( i:Int, k:Int, hV:Decoration, mDV:Decoration ) =
+  }
+  def findLeftRightwardChild( i:Int, k:Int, hV:Decoration, mDV:Decoration ) = {
+    assert( mDV == Outermost )
     mTrace( i )( k )( DecorationPair( Inner, Outermost ) )
+  }
   def findRightRightwardChild( k:Int, j:Int ) = headTrace( k )( j )( ( Outermost ) )
   def findLeftMChild( i:Int, k:Int, decoration:MDecoration ) =
     headTrace( i )( k )( decoration.evenLeft )
@@ -130,14 +144,17 @@ class TopDownDMVParser(
     // println( intString.mkString("{"," ","}") )
     val head = intString( index )
     val score = 
-      if( index%2 == 0 )
+      if( index%2 == 0 ) {
+        assert( pDec == Outermost || index > 0 )
         theta( StopEvent( head, LeftAtt, pDec, Stop ) )
-      else
+      } else {
+        assert( pDec == Outermost || index < intString.length-1 )
         theta( StopEvent( head, RightAtt, pDec, Stop ) )
+      }
     // if( !( score > Double.NegativeInfinity && score <= 0D ) ) {
       // println( "TopDownDMVParser.lexCellFactor: " + (index,pDec,score) )
     // }
-    assert( ( score > Double.NegativeInfinity && score <= 0D ) )
+    assert( ( score > myZero && score <= myOne ) )
     score
   }
 
@@ -166,26 +183,6 @@ class TopDownDMVParser(
     }
   }
 
-    // def lexMarginals( index:Int ) = {
-    //   val head = intString( index )
-    //   // Don't include stop factor -- it's actually already included in insideChart (the *real* inside
-    //   // score for each terminal is 1)
-    //   if( index%2 == 0 ) {
-    //     val lexVs = if( index > 1 ) Seq( Outermost, Inner ) else Seq(Outermost)
-    //     lexVs.map{ hV =>
-    //       StopEvent( head, LeftAtt, hV, Stop ) -> {
-    //         insideChart( index )( index +1 )( hV ) * outsideChart( index )( index +1 )( hV )
-    //       }
-    //     }
-    //   } else {
-    //     val lexVs = if( index < intString.length-1 ) Seq( Outermost, Inner ) else Seq(Outermost)
-    //     lexVs.map{ hV =>
-    //       StopEvent( head, RightAtt, hV, Stop ) -> {
-    //         insideChart( index )( index +1 )( hV ) * outsideChart( index )( index +1 )( hV )
-    //       }
-    //     }
-    //   }
-    // }
 
   // NEW DEFINITIONS
 
@@ -249,12 +246,7 @@ class TopDownDMVParser(
     Seq( DecorationPair( Outermost, Inner ) , DecorationPair( Inner, Outermost ) )
   def mSplitSpecs( i:Int, j:Int ) = {
     val ks = ( (i+1) to (j-1) by 2 )
-    mParents.map{ mDec =>
-      (
-        mDec,
-        ( (i+1) to (j-1) by 2 )
-      )
-    }
+    mParents.map{ mDec => ( mDec, ks ) }
   }
 
   def rootSplitSpecs() = {
@@ -264,10 +256,8 @@ class TopDownDMVParser(
         DecorationPair(
           {
             Outermost
-            // if(k == 1 ) Outermost else Inner
           }, {
             Outermost
-            // if( k == (intString.length-1) ) Outermost else Inner
           }
         )
       )
@@ -279,15 +269,19 @@ class TopDownDMVParser(
     val head = intString( i )
     val dep = intString( k )
 
-    theta( ChooseEvent( head, RightAtt, dep ) ) +
-      theta( StopEvent( head, RightAtt, pDec, NotStop ) )
+    myTimes(
+      theta( ChooseEvent( head, RightAtt, dep ) ),
+        theta( StopEvent( head, RightAtt, pDec, NotStop ) )
+    )
   }
   def leftwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = {
     val head = intString( j )
     val dep = intString( k )
 
-    theta( ChooseEvent( head, LeftAtt, dep ) ) +
-      theta( StopEvent( head, LeftAtt, pDec, NotStop ) )
+    myTimes(
+      theta( ChooseEvent( head, LeftAtt, dep ) ),
+        theta( StopEvent( head, LeftAtt, pDec, NotStop ) )
+    )
   }
 
 
@@ -315,24 +309,19 @@ class TopDownDMVParser(
     cDec:Decoration, marginal:Double ) = {
     val head = intString( j )
     val dep = intString( k )
+    // println( ( ChooseEvent( head, LeftAtt, dep ), marginal ) )
+
+    // if( head == 6 && dep == 3 ) { println( marginal ) }
+
     Seq(
       ( ChooseEvent( head, LeftAtt, dep ), marginal ),
       ( StopEvent( head, LeftAtt, pDec, NotStop ), marginal )
     )
   }
 
-  //def lexEventCounts( index:Int, pDec:Decoration ) = {
-  //  if( index%2 == 0 )
-  //    Seq(
-  //      StopEvent( intString(index), LeftAtt, pDec, Stop )
-  //    )
-  //  else
-  //    Seq(
-  //      StopEvent( intString(index), RightAtt, pDec, Stop )
-  //    )
-  //}
 
   def trueLogProb( counts:DMVCounts ) = {
+    // trueLogProb is always in log-space, so don't use myTimes
     theta.p_root.trueLogProb( counts.rootCounts ) +
     theta.p_stop.trueLogProb( counts.stopCounts ) +
     theta.p_choose.trueLogProb( counts.chooseCounts )

@@ -7,11 +7,13 @@ import breeze.numerics._
 
 
 class NoValenceUPOSParameters(
-  rootAlpha:Double,
-  stopAlpha:Double,
-  chooseAlpha:Double,
-  uposCount:Int
-) extends UPOSArcFactoredParameters( rootAlpha, stopAlpha, chooseAlpha, uposCount ) {
+  // rootAlpha:Double,
+  // stopAlpha:Double,
+  // chooseAlpha:Double,
+  uposCount:Int,
+  parameterSpec:ParameterSpec
+// ) extends UPOSArcFactoredParameters( rootAlpha, stopAlpha, chooseAlpha, uposCount ) {
+) extends UPOSArcFactoredParameters( uposCount, parameterSpec ) {
 
   def zerosMatrix = DenseMatrix.zeros[Double]( uposCount, uposCount )
 

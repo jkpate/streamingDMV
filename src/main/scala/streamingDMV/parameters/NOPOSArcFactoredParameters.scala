@@ -1,20 +1,21 @@
 package streamingDMV.parameters
 
 import streamingDMV.labels._
-import streamingDMV.tables.LogCPT
+import streamingDMV.tables.{LogCPT,CPT}
 
 import collection.mutable.{Set=>MSet}
 import math.{exp,log}
 
 // abstract class NOPOSArcFactoredParameters(
 abstract class NOPOSArcFactoredParameters(
-  rootAlpha:Double,
-  stopAlpha:Double,
-  chooseAlpha:Double,
-  squarelyNormalized:Int = 0,
-  approximate:Boolean = false,
-  randomSeed:Int
-) extends ArcFactoredParameters[DMVCounts]( rootAlpha, stopAlpha, chooseAlpha ) {
+  // rootAlpha:Double,
+  // stopAlpha:Double,
+  // chooseAlpha:Double,
+  // squarelyNormalized:Int = 0,
+  // approximate:Boolean = false,
+  // randomSeed:Int
+  parameterSpec:ParameterSpec
+) extends ArcFactoredParameters[DMVCounts]( parameterSpec ) {
 
   val rand = new util.Random( randomSeed )
 
@@ -23,34 +24,68 @@ abstract class NOPOSArcFactoredParameters(
   // else
   //   println( "creating exact parameters" )
 
-  val p_root = new LogCPT[RootEvent](
-    rootAlpha,
-    squarelyNormalized,
-    approximate = approximate,
-    eps = 1E-6,
-    delta = 3E-2,
-    randomSeed = rand.nextInt
-  )
+  val p_root =
+    if( logSpace )
+      new LogCPT[RootEvent](
+        rootAlpha,
+        squarelyNormalized,
+        approximate = approximate,
+        eps = 1E-6,
+        delta = 3E-2,
+        randomSeed = rand.nextInt
+      )
+    else
+      new CPT[RootEvent](
+        rootAlpha,
+        squarelyNormalized,
+        approximate = approximate,
+        eps = 1E-6,
+        delta = 3E-2,
+        randomSeed = rand.nextInt
+      )
+
+    // squarelyNormalized = 2 for p_stop b/c we always want to consider both Stop and NotStop
   val p_stop =
-    new LogCPT[StopEvent](
-      stopAlpha,
-      approximate = approximate,
-      eps = 1E-6,
-      delta = 3E-2,
-      randomSeed = rand.nextInt
-    )
+    if( logSpace )
+      new LogCPT[StopEvent](
+        stopAlpha,
+        squarelyNormalized = 2,
+        approximate = approximate,
+        eps = 1E-6,
+        delta = 3E-2,
+        randomSeed = rand.nextInt
+      )
+    else
+      new CPT[StopEvent](
+        stopAlpha,
+        squarelyNormalized = 2,
+        approximate = approximate,
+        eps = 1E-6,
+        delta = 3E-2,
+        randomSeed = rand.nextInt
+      )
+
   val p_choose =
-    new LogCPT[ChooseEvent](
-      chooseAlpha,
-      squarelyNormalized,
-      approximate = approximate,
-      eps = 1E-7,
-      delta = 1E-2,
-      randomSeed = rand.nextInt
-    )
+    if( logSpace )
+      new LogCPT[ChooseEvent](
+        chooseAlpha,
+        squarelyNormalized,
+        approximate = approximate,
+        eps = 1E-7,
+        delta = 1E-2,
+        randomSeed = rand.nextInt
+      )
+    else
+      new CPT[ChooseEvent](
+        chooseAlpha,
+        squarelyNormalized,
+        approximate = approximate,
+        eps = 1E-7,
+        delta = 1E-2,
+        randomSeed = rand.nextInt
+      )
 
   def toCounts = {
-    // val c =
     DMVCounts(
         p_root,
         p_stop,
@@ -138,9 +173,9 @@ abstract class NOPOSArcFactoredParameters(
     println( s"  > ${p_choose.denoms.size} choose LHS" )
   }
 
-  override def logSpace = {
-    p_root.counts.logSpace && p_stop.counts.logSpace && p_choose.counts.logSpace
-  }
+  // override def logSpace = {
+  //   p_root.counts.logSpace && p_stop.counts.logSpace && p_choose.counts.logSpace
+  // }
 
   def printOut( logSpace:Boolean = false ) {
     println( "p_root:" )

@@ -21,10 +21,22 @@ class CPT[E<:Event with Product](
   randomSeed:Int = 15
 ) {
   // var counts = MMap[E,Double]().withDefaultValue(0D)
-  var counts = new TableWrapper[E]( approximate, eps, delta, randomSeed, false )
+  var counts = new TableWrapper[E](
+    approximate = approximate,
+    eps = eps,
+    delta = delta,
+    randomSeed = randomSeed,
+    logSpace = false
+  )
   // var denomCounts = MMap[NormKey,Double]()
-  var denomCounts = new TableWrapper[NormKey with Product]( approximate, eps,
-    2*delta, 37*randomSeed )
+  var denomCounts =
+    new TableWrapper[NormKey with Product](
+      approximate,
+      eps,
+      2*delta,
+      37*randomSeed,
+      logSpace = false
+    )
   var denoms = Map[NormKey,Set[E]]().withDefaultValue(Set())
   // var denoms = MMap[NormKey,TableWrapper[Event]]()
 
@@ -61,12 +73,13 @@ class CPT[E<:Event with Product](
     val score = 
       if( squarelyNormalized > 0 )
         // taylorExpDigamma( 
-        exp( G.digamma( 
-          ( counts( event ) + alpha/squarelyNormalized  ) 
-        // ) / taylorExpDigamma(
-        ) ) / exp( G.digamma(
-          denomCounts( n ) + (alpha)
-        ) )
+        exp(
+          G.digamma( 
+            ( counts( event ) + alpha/squarelyNormalized  ) 
+          ) - G.digamma(
+            denomCounts( n ) + (alpha)
+          )
+        )
       else
         // taylorExpDigamma( 
         exp( G.digamma( 
@@ -167,7 +180,7 @@ class CPT[E<:Event with Product](
   def increment( event:E, inc:Double, updateEvents:Boolean = true ) = {
     // to have a faster zerosInit
     // if( inc > 0 ) counts += event -> { counts.getOrElse( event, 0D ) + inc }
-    println( " === NON-LOG SPACE INCREMENT ===" )
+    // println( " === NON-LOG SPACE INCREMENT ===" )
     val n = event.normKey
     if( inc > 0 ) {
       counts.increment( event, inc )

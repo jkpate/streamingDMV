@@ -6,19 +6,21 @@ import streamingDMV.tables.CPT
 import collection.mutable.{Set=>MSet}
 
 class HeadOutAdjHeadNoValenceParameters(
-  rootAlpha:Double,
-  stopAlpha:Double,
-  chooseAlpha:Double,
-  squarelyNormalized:Int = 0,
-  approximate:Boolean = false,
-  randomSeed:Int
+  // rootAlpha:Double,
+  // stopAlpha:Double,
+  // chooseAlpha:Double,
+  // squarelyNormalized:Int = 0,
+  // approximate:Boolean = false,
+  // randomSeed:Int
+  parameterSpec:ParameterSpec
 ) extends NOPOSArcFactoredParameters(
-  rootAlpha,
-  stopAlpha,
-  chooseAlpha,
-  squarelyNormalized,
-  approximate,
-  randomSeed
+  // rootAlpha,
+  // stopAlpha,
+  // chooseAlpha,
+  // squarelyNormalized,
+  // approximate,
+  // randomSeed
+  parameterSpec
 ) {
 
   def possibleStopEvents( h:Int ) = {
@@ -40,20 +42,20 @@ class HeadOutAdjHeadNoValenceParameters(
       (0 until s.length).foreach{ t =>
         val h = s(t)
 
-        p_root.increment( RootEvent( h ), Double.NegativeInfinity )
-        p_stop.increment( possibleStopEvents( h ), Double.NegativeInfinity )
+        p_root.increment( RootEvent( h ), myZero )
+        p_stop.increment( possibleStopEvents( h ), myZero )
 
         ( 0 until t ).foreach{ i =>
-          p_choose.increment( ChooseEvent( h, LeftAtt, s(i) ), Double.NegativeInfinity )
+          p_choose.increment( ChooseEvent( h, LeftAtt, s(i) ), myZero )
 
           ((i+1) until t).foreach{ k =>
-            p_choose.increment( ChooseEvent( h, s(k), LeftAtt, s(i) ), Double.NegativeInfinity )
+            p_choose.increment( ChooseEvent( h, s(k), LeftAtt, s(i) ), myZero )
           }
         }
         ( t+1 until s.length ).foreach{ j =>
-          p_choose.increment( ChooseEvent( h, RightAtt, s(j) ), Double.NegativeInfinity )
+          p_choose.increment( ChooseEvent( h, RightAtt, s(j) ), myZero )
           ((t+1) until j).foreach{ k =>
-            p_choose.increment( ChooseEvent( h, s(k), RightAtt, s(j) ), Double.NegativeInfinity )
+            p_choose.increment( ChooseEvent( h, s(k), RightAtt, s(j) ), myZero )
           }
         }
       }

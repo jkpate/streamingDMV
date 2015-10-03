@@ -7,13 +7,17 @@ import breeze.linalg._
 import breeze.numerics._
 
 class NoValenceUPOSBackoffParameters(
-  rootAlpha:Double,
-  stopAlpha:Double,
-  chooseAlpha:Double,
-  backoffAlpha:Double,
-  notBackoffAlpha:Double,
-  uposCount:Int
-) extends UPOSArcFactoredParameters( rootAlpha, stopAlpha, chooseAlpha, uposCount ) {
+  // rootAlpha:Double,
+  // stopAlpha:Double,
+  // chooseAlpha:Double,
+  // backoffAlpha:Double,
+  // notBackoffAlpha:Double,
+  uposCount:Int,
+  parameterSpec:ParameterSpec
+) extends UPOSArcFactoredParameters( uposCount, parameterSpec ) {
+
+  val backoffAlpha = parameterSpec.backoffAlpha
+  val notBackoffAlpha = parameterSpec.notBackoffAlpha
 
   // p_root provides P_r( rootPos )
   val p_rootLex = new CPT[RootEvent]( rootAlpha )
