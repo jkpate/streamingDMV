@@ -62,6 +62,7 @@ object run {
     optsParser.accepts( "randomSeed" ).withRequiredArg
     optsParser.accepts( "miniBatchSize" ).withRequiredArg
     optsParser.accepts( "initialMiniBatchSize" ).withRequiredArg
+    optsParser.accepts( "largeMiniBatchEvery" ).withRequiredArg
     optsParser.accepts( "convergeInitialMiniBatch" )
     optsParser.accepts( "printItersReached" )
     optsParser.accepts( "printIterScores" )
@@ -148,6 +149,11 @@ object run {
         opts.valueOf( "initialMiniBatchSize" ).toString.toInt
       else
         miniBatchSize
+    val largeMiniBatchEvery =
+      if( opts.has( "largeMiniBatchEvery" ) )
+        opts.valueOf( "largeMiniBatchEvery" ).toString.toInt
+      else
+        0
     val convergeInitialMiniBatch = opts.has( "convergeInitialMiniBatch" )
     val batchVB = opts.has( "batchVB" )
     val logSpace = opts.has( "logSpace" )
@@ -210,6 +216,7 @@ object run {
     println( s"noResampling: ${noResampling}" )
     println( s"printResamplingEvents: ${printResamplingEvents}" )
     println( s"convergeInitialMiniBatch: ${convergeInitialMiniBatch}" )
+    println( s"largeMiniBatchEvery: ${largeMiniBatchEvery}" )
     println( s"logEvalRate: ${logEvalRate}" )
     println( s"evalEvery: ${evalEvery}" )
     println( s"evalMaxLength: ${evalMaxLength}" )
@@ -619,18 +626,32 @@ object run {
     // Batch VB is just a special case of minibatch VB where the first minibatch is set to the
     // entire training corpus. Use initialMiniBatchSize to control how much of the training corpus
     // we use (so we can get learning curves against corpus size).
-    val firstMiniBatch:List[Utt] =
-        shuffledTrainSet.take( initialMiniBatchSize )
+    // val firstMiniBatch:List[Utt] =
+    //     shuffledTrainSet.take( initialMiniBatchSize )
 
-    val subsequentMiniBatches:List[List[Utt]] =
-      if( batchVB )
-        Nil
-      else
-        shuffledTrainSet.toList.drop( initialMiniBatchSize ).grouped( miniBatchSize ).toList
+    // val subsequentMiniBatches:List[List[Utt]] =
+    //   if( batchVB )
+    //     Nil
+    //   else
+    //     shuffledTrainSet.toList.drop( initialMiniBatchSize ).grouped( miniBatchSize ).toList
+
+    // println( s"largeMiniBatchEvery" )
+    val miniBatches = buildMiniBatches(
+      corpus = shuffledTrainSet,
+      largeMiniBatchSize = initialMiniBatchSize,
+      largeMiniBatchEvery = largeMiniBatchEvery,
+      miniBatchSize = miniBatchSize,
+      batchVB = batchVB
+    )
+
+    // println( miniBatches.map{ _.size }.mkString("\n") )
+
+    assert( miniBatches.map{_.size}.sum == shuffledTrainSet.size )
 
     var i = 0
     var sentencesSinceLastEval = 0
-    ( firstMiniBatch :: subsequentMiniBatches ).foreach{ mb =>
+    // ( firstMiniBatch :: subsequentMiniBatches ).foreach{ mb =>
+    miniBatches.foreach{ mb =>
 
 
       val startTime = System.currentTimeMillis
@@ -753,10 +774,12 @@ object run {
       ) {
         evalEvery *= 10
         println( s"after processing $sentencesProcessed we eval every $evalEvery" )
-      } else if( sentencesProcessed == initialMiniBatchSize && incIters == 1 ) {
+      } else if(
+        ( sentencesProcessed >= evalEvery*10 ) && incIters == 1
+      ) {
         // evalEvery = initialMiniBatchSize
-          // evalEvery should be nearest power of ten below the initial minibatch size
-        evalEvery = pow( 10, floor( log10( initialMiniBatchSize ) ) ).toInt
+          // evalEvery should be nearest power of ten below sentencesProcessed
+        evalEvery = pow( 10, floor( log10( sentencesProcessed ) ) ).toInt
       }
     }
     // println( s"sentencesProcessed: $sentencesProcessed" )
@@ -764,8 +787,8 @@ object run {
     // assert( sentencesProcessed == trainSet.size.toDouble )
     println( s"overall training took ${totalDur/(sentencesProcessed)}ms/sentence" )
 
-    val trainingSentCount =
-      ( firstMiniBatch :: subsequentMiniBatches ).map{ _.size }.sum
+    val trainingSentCount = miniBatches.map{_.size}.sum
+      // ( firstMiniBatch :: subsequentMiniBatches ).map{ _.size }.sum
     var heldOutLogProb = 0D
     val parseStartTime = System.currentTimeMillis
     testSet.foreach{ s =>

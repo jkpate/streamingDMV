@@ -37,6 +37,7 @@ my @fields = (
   "numParticles",
   "miniBatchSize",
   "initialMiniBatchSize",
+  "largeMiniBatchEvery",
   "convergeInitialMiniBatch",
   # "possiblyResampleEvery",
   "randomSeed"
@@ -98,6 +99,7 @@ foreach my $fPath (@ARGV) {
   $fields{stopAlpha} = $fields{alpha} if not defined $fields{stopAlpha};
   $fields{chooseAlpha} = $fields{alpha} if not defined $fields{chooseAlpha};
   $fields{convergeInitialMiniBatch} = "false" if not defined $fields{convergeInitialMiniBatch};
+  $fields{largeMiniBatchEvery} = "0" if not defined $fields{largeMiniBatchEvery};
 
   my $tail = `tail $fPath -n 30`;
 

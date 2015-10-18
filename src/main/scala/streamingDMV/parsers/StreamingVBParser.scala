@@ -38,6 +38,8 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
     printItersReached:Boolean = false
   ) = {
 
+    // println( s"miniBatchSize: ${miniBatch.size}" )
+
     var evalEvery = evalRate
 
     // println( s"\n\n\n-----\nevalEvery: $evalEvery\n\n-----\n\n\n" )
@@ -84,21 +86,20 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
 
         val sentencesProcessed = sentenceNum + i
             // Not sure what to do if we're doing more than one max iter?
-        if( maxIter == 1 & i%evalEvery == 0 ) {
+        if( maxIter == 1 & sentencesProcessed%evalEvery == 0 ) {
+          // println( s"\n\n  ---  STREAMING BAYES UPDATE EVAL $i $evalEvery---\n\n" )
           theta.incrementCounts( fHat )
           if( constituencyEval )
             printViterbiParses(
               testSet,
               s"it${sentencesProcessed}",
-              evalMaxLength// ,
-              // fHat
+              evalMaxLength
             )
           else
             printViterbiDepParses(
               testSet,
               s"it${sentencesProcessed}",
-              evalMaxLength//,
-              // fHat
+              evalMaxLength
             )
           theta.decrementCounts( fHat )
         }
@@ -106,11 +107,11 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
         if(
           maxIter == 1 &&
           logEvalRate &&
-          scala.math.log10( i )%1 == 0 &&
-          i > evalEvery
+          scala.math.log10( sentencesProcessed )%1 == 0 &&
+          sentencesProcessed > evalEvery
         ) {
           evalEvery *= 10
-          println( s"after processing $sentencesProcessed of initialMiniBatch we eval every $evalEvery" )
+          println( s"after processing $sentencesProcessed of largeMiniBatch we eval every $evalEvery" )
         }
       }
 
