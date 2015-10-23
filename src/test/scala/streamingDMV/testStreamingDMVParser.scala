@@ -97,7 +97,6 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
       }
       p.theta.incrementCounts( c )
       p.theta.decrementCounts( c )
-      assert( abs( c.counts.values.sum - c.denomCounts.values.sum) < 0.0001 )
       p.theta.incrementCounts( c )
       val endTime = System.currentTimeMillis
 
@@ -225,59 +224,74 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
       //   println( (endTime-startTime) / (idDMVCorpus.size) + "ms per sampled sentence" )
       // }
 
-      //   @Test def testParticleFilter {
-      //     val numParticles = 10
+      @Test def testParticleFilter {
+        val numParticles = 10
 
-      //     val startTime = System.currentTimeMillis
+        val startTime = System.currentTimeMillis
 
-      //     val pf =
-      //       new ParticleFilterNOPOSParser[TopDownDMVParameters,TopDownDMVParser](
-      //         maxLength = maxLength,
-      //         numParticles = numParticles,
-      //         createParticle = (counts:DMVCounts,reservoir:Array[SampledCounts[DMVCounts]],l:Int) => {
-      //           val p_l = new TopDownDMVParser( maxLength, randomSeed = 15 + 32*l, reservoirSize = 3 )
-      //           p_l.zerosInit( idDMVCorpus )
-      //           p_l.theta.incrementCounts( counts )
-      //           p_l.sampleReservoir = reservoir
-      //           p_l
-      //         },
-      //         reservoirSize = 3
-      //       )
+        val pf =
+          new ParticleFilterNOPOSParser[DMVCounts,TopDownDMVParameters,TopDownDMVParser](
+            parserSpec = parserSpec,
+            numParticles = numParticles,
+            createParticle = (counts:DMVCounts,reservoir:Array[SampledCounts[DMVCounts]],l:Int) => {
+              // val p_l = new TopDownDMVParser( maxLength, randomSeed = 15 + 32*l, reservoirSize = 3 )
+              val p_l = new TopDownDMVParser( ParserSpec.withRandomSeed( parserSpec, l ) )
+              p_l.zerosInit( idDMVCorpus )
+              p_l.theta.incrementCounts( counts )
+              p_l.sampleReservoir = reservoir
+              p_l
+            },
+            emptyCounts = DMVCounts( 1D, 1D, 1D, true )
+          )
+
+        pf.zerosInit( idDMVCorpus )
+        pf.particles.head.theta.printOut()
+
+        (0 until iters).foreach{ _ => pf.resampleParticles }
+        // println( "---" )
+        // pf.resampleParticles
+        // println( "---" )
+        // pf.resampleParticles
+        // println( "---" )
+        (0 until 4 ).foreach{ i =>
+          println( 
+            "particle ess before update: " + pf.ess
+          )
+          // pf.streamingBayesUpdate(
+          //   idDMVCorpus
+          // )
+
+          var i = 0 
+          idDMVCorpus.foreach{ s =>
+            println( s.string.mkString(" " ) )
+
+            pf.streamingBayesUpdate(
+              miniBatch = s::Nil,
+              sentenceNum = i,
+              testSet = Nil
+            )
+
+            // println( 
+            //   pf.viterbiParse( s )
+            // )
+            println( 
+              "particle ess after update: " + pf.ess
+            )
+            pf.resampleParticles
+            println( "---" )
+
+            i += 1
+
+            val pObs = pf.stringProb
+
+          }
+        }
+        val endTime = System.currentTimeMillis
+
+        println( (endTime-startTime) / (iters*numParticles) + "ms per particle" )
 
 
-      //     (0 until iters).foreach{ _ => pf.resampleParticles }
-      //     // println( "---" )
-      //     // pf.resampleParticles
-      //     // println( "---" )
-      //     // pf.resampleParticles
-      //     // println( "---" )
-      //           // (0 until 4 ).foreach{ i =>
-      //           //   println( 
-      //           //     "particle ess before update: " + pf.ess
-      //           //   )
-      //           //   pf.streamingBayesUpdate( idDMVCorpus )
-      //           //   idDMVCorpus.foreach{ s =>
-      //           //     println( s.string.mkString(" " ) )
-
-      //           //     println( 
-      //           //       pf.viterbiParse( s )
-      //           //     )
-      //           //     println( 
-      //           //       "particle ess after update: " + pf.ess
-      //           //     )
-      //           //     pf.resampleParticles
-      //           //     println( "---" )
-
-      //           //     val pObs = pf.stringProb
-
-      //           //   }
-      //           // }
-      //     val endTime = System.currentTimeMillis
-
-      //     println( (endTime-startTime) / (iters*numParticles) + "ms per particle" )
-
-
-      //   }
+      }
 
 
 }

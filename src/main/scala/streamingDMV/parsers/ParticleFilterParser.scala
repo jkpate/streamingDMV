@@ -115,6 +115,7 @@ abstract class ParticleFilterParser[
           val (newCounts, newProposalScore) = particles( l ).sampleTreeCounts( prev.string )
 
           val newTrueScore = particles(l).trueLogProb( newCounts )
+          // println( newTrueScore + "  <=>  " + particles(l).fastTrueLogProb( newCounts ) )
           val newSamplingScore =
             if( logSpace )
               newProposalScore - particles(l).stringProb

@@ -7,7 +7,7 @@ import collection.mutable.{Map=>MMap,Set=>MSet}
 
 import org.apache.commons.math3.special.{Gamma=>G}
 
-import math.{log,log1p,exp,abs}
+import math.{log,log1p,exp,abs,floor,max}
 import streamingDMV.math.LogSum
 
 
@@ -139,7 +139,7 @@ class CPT[E<:Event with Product](
       // }
 
   // FIX ME BEFORE USING SQUARELYSAMPLING WITH PARTICLE FILTER
-  def trueLogProb( other:CPT[E] ) = {
+  def slowTrueLogProb( other:CPT[E] ) = {
     // counts should always come from sampleTreeCounts or extractPartialCounts
     // and be exact
     assert( ! other.approximate )
@@ -215,37 +215,39 @@ class CPT[E<:Event with Product](
         // var withOtherSum = 0D
         val withOtherNumerator = totalEvents.map{ e =>
           // withOtherSum += counts( e ) + other( e ) + alpha
-          // G.logGamma( counts( e ) + other( e ) + alpha )
-          fastLogGamma( counts( e ) + other( e ) + alpha )
+          G.logGamma( counts( e ) + other( e ) + alpha )
+          // fastLogGamma( counts( e ) + other( e ) + alpha )
         }.sum
 
         // var withOtherDenomSum = 0D
         val withOtherDenom =
-          // G.logGamma(
-          fastLogGamma(
-            totalEvents.map{ e =>
-              val n = e.normKey
-              // withOtherDenomSum += denomCounts( n ) + other.denomCounts(n) + (alpha * totalEvents.size )
-              denomCounts( n ) + other.denomCounts(n)  + (alpha * totalEvents.size )
-            }.sum
+          G.logGamma(
+          // fastLogGamma(
+            // totalEvents.map{ e =>
+            //   val n = e.normKey
+            //   assert( n == denom )
+            //   // withOtherDenomSum += denomCounts( n ) + other.denomCounts(n) + (alpha * totalEvents.size )
+            denomCounts( denom ) + other.denomCounts(denom)  + (alpha * totalEvents.size )
+            // }.sum
           )
 
         // var withoutOtherSum = 0D
         val myNumerator = totalEvents.map{ e =>
           // withoutOtherSum += counts( e ) + alpha
-          // G.logGamma( counts( e ) + alpha )
-          fastLogGamma( counts( e ) + alpha )
+          G.logGamma( counts( e ) + alpha )
+          // fastLogGamma( counts( e ) + alpha )
         }.sum
 
         var withoutOtherDenomSum = 0D
         val myDenom =
-          // G.logGamma(
-          fastLogGamma(
-            totalEvents.map{ e =>
-              val n = e.normKey
-              // withoutOtherDenomSum += denomCounts( n ) + ( alpha * totalEvents.size )
-              denomCounts( n ) + ( alpha * totalEvents.size )
-            }.sum
+          G.logGamma(
+          // fastLogGamma(
+            denomCounts( denom ) + ( alpha * totalEvents.size )
+            // totalEvents.map{ e =>
+            //   val n = e.normKey
+            //   // withoutOtherDenomSum += denomCounts( n ) + ( alpha * totalEvents.size )
+            //   denomCounts( n ) + ( alpha * totalEvents.size )
+            // }.sum
           )
 
 
@@ -278,12 +280,68 @@ class CPT[E<:Event with Product](
     } else { 0D }
   }
 
+  // var cachedEventLGammas = Map[E,Double]().withDefaultValue(fastLogGamma(alpha))
+  var cachedEventLGammas = Map[E,Double]().withDefaultValue(G.logGamma(alpha))
+  def cachedLGamma( event:E, otherCount:Double ) = {
+    cachedEventLGammas( event ) + // Pochhammer symbol in log space
+      ( ( counts(event) + alpha ) until (counts(event) + otherCount + alpha ) by 1 ).map{log(_)}.sum
+  }
+
+      // def trueLogProb( other:CPT[E] ) = {
+      //   // val fast = fastTrueLogProb( other )
+      //   // val slow = slowTrueLogProb( other )
+      //   // println( s"$fast <=> $slow" )
+      //   // fast
+      //   // slowTrueLogProb( other )
+      //   fastTrueLogProb( other )
+      // }
+
+  // Counts are initially zero, so initial sumLGammas (i.e. numerator of generalized Beta function)
+  // is the sum of lgamma(alpha) for every rule
+  // var cachedSumLGammas = Map[NormKey,Double]().withDefault( n => denoms(n).size * fastLogGamma( alpha ) )
+  var cachedSumLGammas = Map[NormKey,Double]().withDefault( n => denoms(n).size * G.logGamma( alpha ) )
+  // def fastTrueLogProb( other:CPT[E] ) = {
+  def trueLogProb( other:CPT[E] ) = {
+    // Let's avoid using lgamma in expensive cases and use the identity
+    // lgamma(n+1) = lgamma(n) + log( n + 1 ) lgamma( n+m ) = 
+    other.denoms.toVector.map{ case ( denom, otherEvents ) =>
+      val totalEvents = denoms( denom ).toVector
+
+      val myNumerator = cachedSumLGammas( denom )
+      // val myDenom = fastLogGamma( denomCounts( denom ) + (alpha*totalEvents.size ) )
+      val myDenom = G.logGamma( denomCounts( denom ) + (alpha*totalEvents.size ) )
+
+      // Go through and, for only those events that differ, subtract out from myNumerator the
+      // current cached value, and then increment by the updated lgamma
+      var withOtherNumerator = myNumerator
+      otherEvents.foreach{ e =>
+        withOtherNumerator -= cachedEventLGammas( e )
+        withOtherNumerator += cachedLGamma( e, other(e) )
+      }
+      val withOtherDenom =
+        // fastLogGamma( denomCounts( denom ) + other.denomCounts( denom ) + (alpha*totalEvents.size ) )
+        G.logGamma( denomCounts( denom ) + other.denomCounts( denom ) + (alpha*totalEvents.size ) )
+
+      val trueLogProbFactor = (withOtherNumerator - withOtherDenom ) - (myNumerator - myDenom )
+
+      trueLogProbFactor
+
+    }.sum
+  }
+
   def increment( event:E, inc:Double, updateEvents:Boolean = true ) = {
-    // to have a faster zerosInit
-    // if( inc > 0 ) counts += event -> { counts.getOrElse( event, 0D ) + inc }
     // println( " === NON-LOG SPACE INCREMENT ===" )
     val n = event.normKey
     if( inc > 0 ) {
+      if( floor( inc ) == inc ) {
+        val newEventLGamma = cachedLGamma( event, inc )
+
+        cachedSumLGammas += n -> (
+          cachedSumLGammas( n ) - cachedEventLGammas( event ) + newEventLGamma
+        )
+
+        cachedEventLGammas += event -> newEventLGamma
+      }
       counts.increment( event, inc )
       denomCounts.increment( n, inc )
     }
