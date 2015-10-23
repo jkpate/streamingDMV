@@ -343,6 +343,7 @@ object run {
               // p_l.zerosInit( trainSet ++ testSet )
               p_l.theta.setEventsAndCounts( counts )
               p_l.sampleReservoir = reservoir
+              // println( s"created parser with random seed $l" )
               // p_l.theta.incrementCounts( counts )
               p_l
             },

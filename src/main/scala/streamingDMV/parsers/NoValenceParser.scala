@@ -22,6 +22,8 @@ class NoValenceParser(
   parserSpec
 ) {
 
+  // println( s"Creating NoValenceParser with random seed $randomSeed"  )
+
       // val maxLength = parserSpec.length
       // val randomSeed = parserSpec.randomSeed
       // val rootAlpha = parserSpec.rootAlpha
@@ -207,11 +209,57 @@ class NoValenceParser(
   }
 
   def trueLogProb( counts:DMVCounts ) = {
-    myTimes(
-      theta.p_root.trueLogProb( counts.rootCounts ),
-      theta.p_stop.trueLogProb( counts.stopCounts ),
-      theta.p_choose.trueLogProb( counts.chooseCounts )
-    )
+    // myTimes(
+    //   theta.p_root.trueLogProb( counts.rootCounts ),
+    //   theta.p_stop.trueLogProb( counts.stopCounts ),
+    //   theta.p_choose.trueLogProb( counts.chooseCounts )
+    // )
+    val rootLogProb = theta.p_root.trueLogProb( counts.rootCounts )
+    // println( rootLogProb )
+    if( !(
+        ( rootLogProb > Double.NegativeInfinity ) &
+        ( rootLogProb <= 0.000001 )
+      )
+    ) {
+      counts.rootCounts.printOut()
+      println( rootLogProb )
+      counts.printTotalCountsByType
+    }
+    assert( rootLogProb > Double.NegativeInfinity )
+    assert( rootLogProb <= 0.000001 )
+
+    val chooseLogProb = theta.p_choose.trueLogProb( counts.chooseCounts )
+    // println( chooseLogProb )
+    if( !(
+        ( chooseLogProb > Double.NegativeInfinity ) &
+        ( chooseLogProb <= 0.000001 )
+      )
+    ) {
+      counts.chooseCounts.printOut()
+      println( chooseLogProb )
+      counts.printTotalCountsByType
+    }
+    assert( chooseLogProb > Double.NegativeInfinity )
+    assert( chooseLogProb <= 0.000001 )
+
+    val stopLogProb = theta.p_stop.trueLogProb( counts.stopCounts )
+    // println( stopLogProb )
+    if( !(
+        ( stopLogProb > Double.NegativeInfinity ) &
+        ( stopLogProb <= 0.000001 )
+      )
+    ) {
+      counts.stopCounts.printOut()
+      println( stopLogProb )
+      counts.printTotalCountsByType
+    }
+    assert( stopLogProb > Double.NegativeInfinity )
+    assert( stopLogProb <= 0.000001 )
+
+    // Always in log-space -- don't use myTimes
+    rootLogProb +
+    stopLogProb +
+    chooseLogProb
   }
 
 }

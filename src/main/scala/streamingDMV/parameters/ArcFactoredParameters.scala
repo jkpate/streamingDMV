@@ -33,7 +33,7 @@ abstract class ArcFactoredParameters[C<:DependencyCounts](
   // def setEvents( counts:C ):Unit
   def setEventsAndCounts( counts:C ):Unit
 
-  def decrementCounts( counts:C ):Unit
+  def decrementCounts( counts:C, integerDec:Boolean = false ):Unit
 
   def printOut( logSpace:Boolean = false ):Unit
 

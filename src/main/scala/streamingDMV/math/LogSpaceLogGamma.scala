@@ -4,9 +4,10 @@ import math.log
 
 object LogSpaceLogGamma {
   def apply( v:Double ) = {
-              // log(3)
+              // log(3) -- assuming integer (count) input, log gamma for 1 and 2 is 0
     if( v <= 1.0986122886681 ) {
-      Double.NegativeInfinity
+      // Double.NegativeInfinity
+      0
     } else {
       val logTerm =                 // log(2)
         v + LogSum( 0D, v ) + LogSum( 0.6931471805599453, v )

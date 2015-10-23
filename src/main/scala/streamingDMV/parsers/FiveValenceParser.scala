@@ -20,7 +20,7 @@ class FiveValenceParser(
   // maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed, reservoirSize
   parserSpec
 ) {
-  println( "INITIALIZING FIVEVALENCEPARSER" )
+  // println( "INITIALIZING FIVEVALENCEPARSER" )
 
   val theta = new FiveValenceParameters( parserSpec.toParameterSpec )
 
@@ -178,10 +178,17 @@ class FiveValenceParser(
         assert( pDec != FourDependentValence || index <= intString.length-9 )
         theta( StopEvent( head, RightAtt, pDec, Stop ) )
       }
-    // if( !( score > Double.NegativeInfinity && score <= 0D ) ) {
-      // println( "TopDownDMVParser.lexCellFactor: " + (index,pDec,score) )
-    // }
-    assert( ( score > myZero && score <= myOne ) )
+    if( !( score > myZero && score <= myOne + 0.00001 ) ) {
+      println( "lexCellFactor: " + (index,pDec,score) )
+      println( "numerator: " + theta.p_stop( StopEvent( head, RightAtt, pDec, Stop ) ) )
+      println( "denominator: " +
+        theta.p_stop.denomCounts( StopEvent( head, RightAtt, pDec, Stop).normKey )
+      )
+      println( "numEvents: " +
+        theta.p_stop.denoms( StopEvent( head, RightAtt, pDec, Stop).normKey ).size
+      )
+    }
+    assert( ( score > myZero && score <= myOne + 0.00001 ) )
     score
   }
 

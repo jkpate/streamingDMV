@@ -157,10 +157,10 @@ abstract class NOPOSArcFactoredParameters(
   }
 
 
-  def decrementCounts( counts:DMVCounts ) {
-    p_root.decrement( counts.rootCounts )
-    p_stop.decrement( counts.stopCounts )
-    p_choose.decrement( counts.chooseCounts )
+  def decrementCounts( counts:DMVCounts, integerDec:Boolean ) {
+    p_root.decrement( counts.rootCounts, integerDec )
+    p_stop.decrement( counts.stopCounts, integerDec )
+    p_choose.decrement( counts.chooseCounts, integerDec )
   }
 
   override def printTotalCountsByType {

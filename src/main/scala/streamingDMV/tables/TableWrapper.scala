@@ -7,6 +7,8 @@ import streamingDMV.labels.FastHashable
 
 import collection.mutable.{Map=>MMap,Set=>MSet}
 
+import math.abs
+
 class TableWrapper[E<:FastHashable](
   val approximate:Boolean = true,
   eps:Double,
@@ -98,7 +100,7 @@ class TableWrapper[E<:FastHashable](
     }
   }
 
-  def decrement( event:E, dec:Double ) {
+  def decrement( event:E, dec:Double, integerDec:Boolean ) {
     if( approximate && dec != 0 ) {
       // OK, so actually this is possible, but I haven't implemented it
       throw new UnsupportedOperationException( "cannot decrement approximate counts" )
@@ -117,20 +119,29 @@ class TableWrapper[E<:FastHashable](
           } else {
             Seq(
               0,
-              exactCounts(event) - dec
+              if( integerDec )
+                math.floor( exactCounts(event) - dec )
+              else
+                exactCounts(event) - dec
             ).max
           }
         )
     }
   }
 
-  def decrement( other:TableWrapper[E] ) {
+  def decrement( other:TableWrapper[E], integerDec:Boolean = false ) {
     if( other.approximate ) {
       throw new UnsupportedOperationException( "cannot decrement approximate counts" )
     } else {
       assert( logSpace == other.logSpace )
       other.exactCounts.foreach{ case ( k, v ) =>
-        decrement( k, v )
+        // assert( abs( v - exactCounts(k)  ) <= 0.0001 )
+        // if( !(
+        //   abs( v - exactCounts(k)  ) <= 0.0001
+        // ) ) {
+        //   println( s"TableWrapper.decrement: ${(k,v)}" )
+        // }
+        decrement( k, v, integerDec )
       }
     }
 

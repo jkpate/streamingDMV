@@ -69,6 +69,8 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
   ) = {
     var heldOutLogProb = 0D
 
+    prepareForParses()
+
     // theta.incrementCounts( counts )
 
     val parseStartTime = System.currentTimeMillis
@@ -91,6 +93,8 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
     thisTestTime
   }
 
+  def prepareForParses() = {}
+
   def printViterbiDepParses(
     testSet:List[Utt],
     prefix:String,
@@ -100,6 +104,7 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
     var heldOutLogProb = 0D
 
     // theta.incrementCounts( counts )
+    prepareForParses()
 
     val parseStartTime = System.currentTimeMillis
     testSet.foreach{ s =>
@@ -192,11 +197,13 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
     var bestIdx = List[K]()
     var bestScore = Double.NegativeInfinity
 
+    // println( seq.map(_._2).mkString("{\n\t","\n\t","\n}\n") )
+
     seq.foreach{ case ( idx, score ) =>
-      if( !( score > myZero && score <= myOne ) ) {
+      if( !( score > myZero && score <= myOne + 0.000001 ) ) {
         println( idx, score )
       }
-      assert( score > myZero && score <= myOne )
+      assert( score > myZero && score <= myOne + 0.000001 )
       if( score > bestScore ) {
         bestScore = score
         bestIdx = idx :: Nil

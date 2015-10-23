@@ -161,10 +161,15 @@ class ParticleFilterNOPOSParser[
     val s = doubleString( string )
     clearCharts
     (0 until numParticles).foreach{ l =>
+      particles(l).intString = intString
       particles(l).theta.fullyNormalized = true
-      // println( particles(l).theta.p_choose.denoms.map{ v=> (v._1, v._2.size ) } )
     }
-    assert( math.abs( particleWeights.sum -1 ) < 0.000001 )
+
+    if( !( math.abs( myPlus( particleWeights.toSeq:_* ) - myOne ) < 0.000001 ) ) {
+      println( string.mkString( " " ) )
+      println( particleWeights.mkString("\n[\n\t", "\n\t", "\n]\n" ) )
+      assert( math.abs( myPlus( particleWeights.toSeq:_* ) - myOne ) < 0.000001 )
+    }
     insidePass( s )
     (0 until numParticles).foreach{ l =>
       particles(l).theta.fullyNormalized = false
@@ -281,10 +286,10 @@ class ParticleFilterNOPOSParser[
       particles.head.insideChart( i )( k )( mDec ),
         particles.head.insideChart( k )( j )( cDec ),
         myPlusSeq(
-          (0 until numParticles).map{ l =>
+          (0 until parsingParticles.size).map{ l =>
             myTimes(
-              particleWeights( l ),
-                particles(l).rightwardCellFactor( i, k, j, pDec, mDec, cDec )
+              parsingParticleWeights( l ),
+                parsingParticles(l).rightwardCellFactor( i, k, j, pDec, mDec, cDec )
             )
           }
         )
@@ -296,10 +301,10 @@ class ParticleFilterNOPOSParser[
       particles.head.insideChart( i )( k )( cDec ),
         particles.head.insideChart( k )( j )( mDec ),
         myPlusSeq(
-          (0 until numParticles).map{ l =>
+          (0 until parsingParticles.size).map{ l =>
             myTimes(
-              particleWeights( l ),
-                particles( l ).leftwardCellFactor( i, k, j, pDec, mDec, cDec )
+              parsingParticleWeights( l ),
+                parsingParticles( l ).leftwardCellFactor( i, k, j, pDec, mDec, cDec )
             )
           }
         )
@@ -312,9 +317,11 @@ class ParticleFilterNOPOSParser[
         particles.head.insideChart( i )( k )( mDecoration.evenLeft ),
           particles.head.insideChart( k )( j )( mDecoration.evenRight ),
           myPlusSeq(
-            (0 until numParticles).map{ l =>
-              particleWeights(l) *
-                particles(l).mCellFactor( i, k, j, mDecoration )
+            (0 until parsingParticles.size).map{ l =>
+              myTimes(
+                parsingParticleWeights(l),
+                  parsingParticles(l).mCellFactor( i, k, j, mDecoration )
+              )
             }
           )
       )
@@ -323,9 +330,11 @@ class ParticleFilterNOPOSParser[
         particles.head.insideChart( i )( k )( mDecoration.oddLeft ),
           particles.head.insideChart( k )( j )( mDecoration.oddRight ),
           myPlusSeq(
-            (0 until numParticles).map{ l =>
-              particleWeights(l) *
-                particles(l).mCellFactor( i, k, j, mDecoration )
+            (0 until parsingParticles.size).map{ l =>
+              myTimes(
+                parsingParticleWeights(l),
+                  parsingParticles(l).mCellFactor( i, k, j, mDecoration )
+              )
             }
           )
       )
@@ -337,10 +346,12 @@ class ParticleFilterNOPOSParser[
       particles.head.insideChart( 0 )( k )( leftDec ),
         particles.head.insideChart( k )( intString.length )( rightDec ),
         myPlusSeq(
-          (0 until numParticles).map{ l =>
+          (0 until parsingParticles.size).map{ l =>
             // println( s"particleWeights(l): ${particleWeights(l)}" )
-            particleWeights(l) *
-              particles(l).rootCellFactor( k )
+            myTimes(
+              parsingParticleWeights(l),
+                parsingParticles(l).rootCellFactor( k )
+            )
           }
         )
     )
@@ -449,10 +460,14 @@ class ParticleFilterNOPOSParser[
 
   // def lexSpecs( index:Int ) = particles.head.lexSpecs( index )
   def lexCellFactor( index:Int, pDec:Decoration ) = {
-    (0 until numParticles).map{ l =>
-      particleWeights( l ) *
-        particles( l ).lexCellFactor( index, pDec )
-    }.sum
+    myPlus(
+      (0 until parsingParticles.size).map{ l =>
+        myTimes(
+          parsingParticleWeights( l ),
+            parsingParticles( l ).lexCellFactor( index, pDec )
+        )
+      }.toSeq:_*
+    )
   }
   def viterbiLexFill( index:Int ) {
     particles.head.lexSpecs( index ).foreach{ pDec =>
@@ -469,6 +484,8 @@ class ParticleFilterNOPOSParser[
       particles(l).intString = intString
       particles(l).theta.fullyNormalized = true
     }
+    // println( s"ignoring ${particles.size - parsingParticles.size} particles" )
+
     if( intString.length > particles.head.headTrace.length ) {
       particles.head.buildVitCharts( intString.length )
     }
@@ -494,6 +511,24 @@ class ParticleFilterNOPOSParser[
     )
   }
 
+  var parsingParticles = Array[R]()
+  var parsingParticleWeights = Array[Double]()
+
+  override def prepareForParses() = {
+    parsingParticles = Array()
+    parsingParticleWeights = Array()
+    (0 until numParticles).foreach{ l =>
+      if(
+        ( logSpace && particleWeights(l) > math.log( 1E-2 / numParticles ) ) ||
+        ( (!logSpace) && particleWeights(l) > 1E-2 / numParticles )
+      ) {
+        parsingParticles +:= particles(l)
+        parsingParticleWeights +:= particleWeights(l)
+      }
+    }
+    println( s"ignoring ${particles.size - parsingParticles.size} particles" )
+  }
+
   def viterbiDepParse( utt:Utt ) = {
     clearVitCharts
     // intString = utt.string.flatMap{ w => Seq(w,w) }
@@ -501,7 +536,6 @@ class ParticleFilterNOPOSParser[
     (0 until numParticles).foreach{ l =>
       particles(l).intString = intString
       particles(l).theta.fullyNormalized = true
-      // assert( particles(l).approximate )
     }
 
     if( !(math.abs( particleWeights.sum -1 ) < 0.000001 ) ) {

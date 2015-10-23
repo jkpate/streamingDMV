@@ -97,6 +97,7 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
       }
       p.theta.incrementCounts( c )
       p.theta.decrementCounts( c )
+      assert( abs( c.counts.values.sum - c.denomCounts.values.sum) < 0.0001 )
       p.theta.incrementCounts( c )
       val endTime = System.currentTimeMillis
 

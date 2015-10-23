@@ -210,11 +210,11 @@ class HeadOutInterpolatedAdjHeadNoValenceParameters(
 
   }
 
-  def decrementCounts( counts:BackoffChooseDMVCounts ) {
-    p_root.decrement( counts.rootCounts )
-    p_stop.decrement( counts.stopCounts )
-    p_choose.decrement( counts.chooseCounts )
-    lambda_choose.decrement( counts.lambdaChooseCounts )
+  def decrementCounts( counts:BackoffChooseDMVCounts, integerDec:Boolean ) {
+    p_root.decrement( counts.rootCounts, integerDec )
+    p_stop.decrement( counts.stopCounts, integerDec )
+    p_choose.decrement( counts.chooseCounts, integerDec )
+    lambda_choose.decrement( counts.lambdaChooseCounts, integerDec )
 
   }
 

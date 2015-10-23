@@ -61,7 +61,10 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
         insideChart( index )( index+1 )(pDec),
         lexCellFactor( index, pDec )
       )
-      assert( insideChart( index )( index+1 )(pDec) <= myOne )
+      if( !( insideChart( index )( index+1 )(pDec) <= myOne +0.000001 ) ) {
+        println( (index, lexCellFactor( index, pDec ), insideChart( index )( index+1 )(pDec) ) )
+      }
+      assert( insideChart( index )( index+1 )(pDec) <= myOne +0.000001 )
     }
   }
   def insidePass( s:Array[Int] ) = {

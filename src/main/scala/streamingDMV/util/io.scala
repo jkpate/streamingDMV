@@ -60,32 +60,20 @@ object buildMiniBatches {
 
     var buildLargeMB = true
     while( ! remainingStrings.isEmpty ) {
-      if(
-        buildLargeMB
-        // (
-        //   largeMiniBatchEvery == 0 &&
-        //   miniBatches.size == 0
-        // ) || (
-        //   largeMiniBatchEvery > 0 &&
-        //   miniBatches.size % largeMiniBatchEvery == 0
-        // )
-      ) {
-        // println( "LARGE MINIBATCH" )
+      if( buildLargeMB ) {
         // miniBatches = remainingStrings.take( largeMiniBatchSize ) :: miniBatches
         miniBatches :+= remainingStrings.take( largeMiniBatchSize )
         remainingStrings = remainingStrings.drop( largeMiniBatchSize )
         buildLargeMB = false
       } else {
-        // println( "--" )
-        // miniBatches = remainingStrings.take( miniBatchSize ) :: miniBatches
-        val totalUtts = largeMiniBatchEvery * miniBatchSize
-        // println( totalUtts )
+        val totalUtts =
+          if( largeMiniBatchEvery > 0 )
+            largeMiniBatchEvery * miniBatchSize
+          else
+            remainingStrings.size
 
-        // miniBatches = miniBatches :+ remainingStrings.take( miniBatchSize )
         miniBatches ++= remainingStrings.slice(0,totalUtts).grouped( miniBatchSize ).toList
-        // remainingStrings = remainingStrings.drop( miniBatchSize )
         remainingStrings = remainingStrings.drop( totalUtts )
-        // println( remainingStrings.length )
         buildLargeMB = true
       }
 

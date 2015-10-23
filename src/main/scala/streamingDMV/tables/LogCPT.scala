@@ -140,12 +140,23 @@ class LogCPT[E<:Event with Product](
 
 
     // other.denoms *should* be empty for CPT[ChooseEvent] if there is only one word
-    if( other.denoms.isEmpty ) {
+    if( ! other.denoms.isEmpty ) {
       other.denoms.map{ case (denom,otherEvents) =>
         val totalEvents = denoms( denom )
 
         val withOtherNumerator = 
           totalEvents.map{ e =>
+              // println(
+              //   s"$e: " + 
+              //     LogSum( counts( e ),
+              //       LogSum( other( e ) , log( alpha ))
+              //     ) + " ; " +
+              //     LogSpaceLogGamma(
+              //       LogSum( counts( e ),
+              //         LogSum( other( e ) , log( alpha ))
+              //       )
+              //     ) + s" ${ log( alpha ) } "
+              // )
             LogSpaceLogGamma(
               LogSum( counts( e ),
                 LogSum( other( e ) , log( alpha ))
@@ -175,12 +186,19 @@ class LogCPT[E<:Event with Product](
             }.reduce(LogSum(_,_))
           )
 
+
+          // println( s"==}> $withOtherNumerator" )
+          // println( s"==}> $withOtherDenom" )
+          // println( s"==}> $myNumerator" )
+          // println( s"==}> $myDenom" )
+
           (
             withOtherNumerator - withOtherDenom
           ) - (
             myNumerator - myDenom
           )
-      }.reduce(LogSum(_,_))
+      // }.reduce(LogSum(_,_))
+      }.reduce(_+_)
     } else { 0D }
   }
 

@@ -118,12 +118,12 @@ class BackoffCPT[E<:Event with BackingOffEvent with Product](
     }
   }
 
-  def decrement( other:BackoffCPT[E] ) {
+  def decrement( other:BackoffCPT[E], integerDec:Boolean = false ) {
     // other.counts.foreach{ case( k, v) =>
     //   decrement( k, v )
     // }
-    counts.decrement( other.counts )
-    denomCounts.decrement( other.denomCounts )
+    counts.decrement( other.counts, integerDec )
+    denomCounts.decrement( other.denomCounts, integerDec )
   }
 
   def divideBy( x:Double ) {
@@ -132,13 +132,13 @@ class BackoffCPT[E<:Event with BackingOffEvent with Product](
     denomCounts.divideBy( x )
   }
 
-  def decrement( event:E, dec:Double ) = {
+  def decrement( event:E, dec:Double, integerDec:Boolean ) = {
     // counts( event ) -= dec
-    counts.decrement( event , dec )
+    counts.decrement( event , dec, integerDec )
 
     val n = event.normKey
     // denomCounts( n ) -= dec
-    denomCounts.decrement( n , dec )
+    denomCounts.decrement( n , dec, integerDec )
   }
 
   def clear {

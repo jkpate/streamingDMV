@@ -32,25 +32,49 @@ abstract class ParticleFilterParser[
   )
 
   val particles = Array.tabulate( numParticles )( l => createParticle(emptyCounts,emptyReservoir,l) )
-  val particleWeights = Array.fill( numParticles )( 1D/numParticles )
+  val particleWeights = Array.fill( numParticles )(
+    if( logSpace )
+      -1 * log( numParticles )
+    else
+      1D/numParticles
+  )
 
   def ess = {
-    // println( particleWeights.mkString( " " ) )
-    1D / (
-      particleWeights.map{ w => math.pow( w, 2D ) }.sum
-    )
+    // println( particleWeights.mkString( "\n" ) )
+    if( ! particleWeights.forall( _ > myZero ) )
+      -1D
+    else
+      if( logSpace )
+        -1 * (
+          particleWeights.map{ w => w * 2D }.reduce( LogSum(_,_) )
+        )
+      else
+        1D / (
+          particleWeights.map{ w => math.pow( w, 2D ) }.sum
+        )
   }
 
   def particlePerplexity = {
-    math.pow(
-      math.E,
-      -1 *
-      (0 until numParticles).map{ l =>
-        if( particleWeights(l) >= 0D )
-          particleWeights(l) * math.log( particleWeights(l) )
-        else 0D
-      }.sum
-    )
+    if( logSpace )
+      math.pow(
+        math.E,
+        -1 *
+        (0 until numParticles).map{ l =>
+          if( particleWeights(l) >= Double.NegativeInfinity )
+            math.exp( particleWeights(l) ) * particleWeights(l)
+          else 0D
+        }.sum
+      )
+    else
+      math.pow(
+        math.E,
+        -1 *
+        (0 until numParticles).map{ l =>
+          if( particleWeights(l) >= 0D )
+            particleWeights(l) * math.log( particleWeights(l) )
+          else 0D
+        }.sum
+      )
   }
 
   val theta = particles.head.theta
@@ -82,12 +106,12 @@ abstract class ParticleFilterParser[
     (0 until numParticles).foreach{ l =>
       // particles(l).reservoir.foreach{ prev =>
       var sentenceCount = 0
-      (0 until particles(l).reservoirSize).foreach{ reservoirIndex =>
+      (0 until particles(l).reservoirSize)/*.par*/.foreach{ reservoirIndex =>
         val prev = particles(l).sampleReservoir( reservoirIndex )
 
         if( prev.string.length > 0 ) {
           sentenceCount += 1
-          particles(l).theta.decrementCounts( prev.counts )
+          particles(l).theta.decrementCounts( prev.counts, integerDec = true )
           val (newCounts, newProposalScore) = particles( l ).sampleTreeCounts( prev.string )
 
           val newTrueScore = particles(l).trueLogProb( newCounts )
@@ -95,7 +119,7 @@ abstract class ParticleFilterParser[
             if( logSpace )
               newProposalScore - particles(l).stringProb
             else
-              newProposalScore - math.log( particles(l).stringProb )
+              math.log( newProposalScore ) - math.log( particles(l).stringProb )
 
           val mhScore = (
             newTrueScore + prev.samplingScore
@@ -128,9 +152,21 @@ abstract class ParticleFilterParser[
     val uniqueAncestors = MSet[Int]()
     val startTime = System.currentTimeMillis
     if( numParticles > 1 ) {
-      val newParticleWeights = Array.fill( numParticles )( 0D )
       val newParticles = Array.tabulate( numParticles )( l => {
-          val ( idx, _ ) = argSample( particleWeights.zipWithIndex.map{ p => (p._2,p._1) }.toSeq )
+          val particleProbs:Seq[Tuple2[Int,Double]] =
+            if( particleWeights.forall( w => !( w > myZero ) ) ) {
+              Seq.tabulate(numParticles){ pIdx:Int =>
+                if( logSpace ) {
+                  ( pIdx, -1D * log( numParticles ) )
+                } else {
+                  ( pIdx, 1D/numParticles )
+                }
+              }
+            } else {
+              particleWeights.zipWithIndex.map{ p => (p._2,p._1) }.toSeq
+            }
+
+          val ( idx, _ ) = argSample( particleProbs, logSpace )
           uniqueAncestors += idx
 
           if( l == idx ) {  // Probably doesn't buy us much...
@@ -141,12 +177,21 @@ abstract class ParticleFilterParser[
         }
       )
 
-      val totalWeight = newParticleWeights.filter{ _ > Double.NegativeInfinity }.sum
+      // val totalWeight = myPlus( newParticleWeights.filter{ _ > Double.NegativeInfinity }.toSeq:_* )
       (0 until numParticles).foreach{ l =>
         particles(l) = newParticles(l)
-        particleWeights(l) = 1D/numParticles.toDouble
+        particleWeights(l) =
+          if( logSpace )
+            -1 * log( numParticles.toDouble )
+          else
+            1D/numParticles.toDouble
+        if( ! ( particleWeights(l) > myZero ) ) {
+          particleWeights(l) = myZero
+        }
       }
     }
+
+
 
     val ancestorsSampled = uniqueAncestors.size
 
@@ -177,9 +222,11 @@ abstract class ParticleFilterParser[
   ) = {
 
 
-    (0 until numParticles ).foreach{ l => particleWeights(l) = math.log( particleWeights(l) ) }
+    // (0 until numParticles ).foreach{ l => particleWeights(l) = math.log( particleWeights(l) ) }
 
-    ( 0 until numParticles ).map{ l =>
+    val logWeights = particleWeights.map{ log( _ ) }
+
+    ( 0 until numParticles )/*.par*/.map{ l =>
       particles(l).theta.fullyNormalized = true
       val (counts, proposalScore) = miniBatch.zipWithIndex.map{ case ( s, i ) =>
         val (sentCounts, sentProposalScore) = particles( l ).sampleTreeCounts( s )
@@ -191,10 +238,26 @@ abstract class ParticleFilterParser[
           if( logSpace )
             sentProposalScore - particles(l).stringProb
           else
-            sentProposalScore - log( particles(l).stringProb )
+            log( sentProposalScore / particles(l).stringProb )
 
-        particleWeights(l) =
-          particleWeights(l) + ( trueScore - samplingScore )
+        // println( s"  >$l: ${particleWeights(l)}" )
+        // println( s"    } $sentProposalScore" )
+        // println( s"    } ${particles(l).stringProb}" )
+        // println( s"    } $trueScore" )
+        // println( s"    } $samplingScore" )
+
+        // particleWeights(l) =
+        //   if( logSpace )
+        //     particleWeights(l) + trueScore - samplingScore
+        //   else
+        //     particleWeights(l) * math.exp( trueScore - samplingScore )
+        logWeights(l) =
+          if( logSpace )
+            logWeights(l) + trueScore - samplingScore
+          else
+            logWeights(l) + math.log( trueScore / samplingScore )
+
+        // println( s"  $l: ${particleWeights(l)}" )
 
           // sentenceNum is zero-based
         val reservoirIndex = rand.nextInt( sentenceNum + i + 1 )
@@ -210,10 +273,43 @@ abstract class ParticleFilterParser[
 
     }
 
-    val totalLogWeight = particleWeights.reduce( LogSum( _,_) )
-    (0 until numParticles).foreach{ l =>
-      particleWeights(l) = math.exp( particleWeights(l) - totalLogWeight )
+
+    // val totalLogWeight = particleWeights.reduce( LogSum( _,_) )
+    // (0 until numParticles).foreach{ l =>
+    //   particleWeights(l) = math.exp( particleWeights(l) - totalLogWeight )
+    // }
+
+    // println( logWeights.mkString( "\n" ) )
+    // println( miniBatch.head.string.mkString(" ") )
+    // val totalWeight = myPlus( particleWeights.filter{_>Double.NegativeInfinity}.toSeq:_* )
+    if( logWeights.forall( x => !(  x >  Double.NegativeInfinity ) ) ) {
+      (0 until numParticles).foreach{ l =>
+        if( logSpace )
+          particleWeights(l) = -1D * log( numParticles )
+        else
+          particleWeights(l) = 1D / numParticles
+      }
+    } else {
+      val totalWeight = logPlus( logWeights.filter{_>Double.NegativeInfinity}.toSeq:_* )
+      (0 until numParticles).foreach{ l =>
+        // if( ! ( particleWeights(l)  > myZero ) ) {
+        //   println( (l, particleWeights(l), totalWeight ) )
+        // }
+        // assert( particleWeights(l)  > myZero )
+
+        if( logSpace )
+          particleWeights(l) = logWeights(l) - totalWeight
+        else
+          particleWeights(l) = exp( logWeights(l) - totalWeight )
+
+        if( ! ( particleWeights(l) > myZero ) ) {
+          particleWeights(l) = myZero
+        }
+
+      }
     }
+
+    // println( particleWeights.mkString( "\n[\n\t","\n\t","\n]\n" ) )
 
 
     // No iterations reached for particle filter

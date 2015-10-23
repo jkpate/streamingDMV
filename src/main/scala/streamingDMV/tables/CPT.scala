@@ -7,7 +7,8 @@ import collection.mutable.{Map=>MMap,Set=>MSet}
 
 import org.apache.commons.math3.special.{Gamma=>G}
 
-import math.{log,log1p,exp}
+import math.{log,log1p,exp,abs}
+import streamingDMV.math.LogSum
 
 
 // symmetric Dirichlet Multinomial CPT
@@ -117,63 +118,163 @@ class CPT[E<:Event with Product](
     }
   }
 
+      // def validateCPT = {
+      //   val result = denoms.forall{ case ( n, events ) =>
+      //     if( !( 
+      //         abs(
+      //           denomCounts(n) - events.map(counts(_)).sum
+      //         ) < 0.0001
+      //       )
+      //     ) {
+      //       println( events.map{e => s"$e: ${counts(e)}" }.mkString("[\n\t","\n\t","\n]\n") )
+      //       println( events.map{counts(_)}.sum )
+      //       println( n )
+      //       println( denomCounts(n) )
+      //     }
+
+      //     abs( denomCounts(n) - events.map(counts(_)).sum ) < 0.0001
+      //   }
+
+      //   assert( result )
+      // }
+
   // FIX ME BEFORE USING SQUARELYSAMPLING WITH PARTICLE FILTER
   def trueLogProb( other:CPT[E] ) = {
     // counts should always come from sampleTreeCounts or extractPartialCounts
     // and be exact
     assert( ! other.approximate )
+    assert( ! approximate )
 
 
     // other.denoms *should* be empty for CPT[ChooseEvent] if there is only one word
     if( !other.denoms.isEmpty ) {
-      other.denoms.map{ case (denom,otherEvents) =>
-        val totalEvents = denoms( denom )
-        // otherEvents.foreach{ e => assert( totalEvents.contains( e ) ) }
+          // val withOther = other.denoms.map{ case (denom,otherEvents) =>
+          //   val totalEvents = denoms( denom )
+          //   // otherEvents.foreach{ e => assert( totalEvents.contains( e ) ) }
 
-        // val eventsUnion = ( otherEvents ++ myEvents )
-        val withOtherNumerator = 
-          totalEvents.map{ e =>
-            // G.logGamma( counts( e ) + other( e ) + alpha )
-            fastLogGamma( counts( e ) + other( e ) + alpha )
-          }.reduce(_+_)
+          //   // val eventsUnion = ( otherEvents ++ myEvents )
+          //   val withOtherNumerator = 
+          //     totalEvents.map{ e =>
+          //       assert( other(e) >= 0 )
+          //       G.logGamma( counts( e ) + other( e ) + alpha )
+          //       // fastLogGamma( counts( e ) + other( e ) + alpha )
+          //     }.reduce(_+_)
 
+          //   val withOtherDenom =
+          //     G.logGamma(
+          //     // fastLogGamma(
+          //       totalEvents.map{ e =>
+          //         val n = e.normKey
+          //         denomCounts( n ) + other.denomCounts( n ) + (alpha * totalEvents.size )
+          //       // }.reduce(LogSum(_,_))
+          //       }.sum
+          //     )
+
+          //   // println(
+          //   //   s"($withOtherNumerator}/$withOtherDenom) / ($myNumerator/$myDenom)"
+          //   // )
+
+          //   // math.exp(
+
+          //   withOtherNumerator - withOtherDenom
+
+          // }.reduce(_+_)
+
+          // val withoutOther = other.denoms.map{ case (denom,otherEvents) =>
+          //   val totalEvents = denoms( denom )
+
+          //   val myNumerator = 
+          //     totalEvents.map{ e =>
+          //       G.logGamma( counts( e ) + alpha )
+          //       // fastLogGamma( counts( e ) + alpha )
+          //     }.reduce(_+_)
+
+          //   val myDenom =
+          //     G.logGamma(
+          //     // fastLogGamma(
+          //       totalEvents.map{ e =>
+          //         val n = e.normKey
+          //         assert( other.denomCounts(n) >= 0 )
+          //         denomCounts( n ) + (alpha * totalEvents.size )
+          //       // }.reduce(LogSum(_,_))
+          //       }.sum
+          //     )
+
+          //   myNumerator - myDenom
+
+          // }.reduce(_+_)
+
+          // withOther - withoutOther
+
+
+
+
+      other.denoms.keys.toVector.map{ denom =>
+        val totalEvents = denoms( denom ).toVector
+
+        // var withOtherSum = 0D
+        val withOtherNumerator = totalEvents.map{ e =>
+          // withOtherSum += counts( e ) + other( e ) + alpha
+          // G.logGamma( counts( e ) + other( e ) + alpha )
+          fastLogGamma( counts( e ) + other( e ) + alpha )
+        }.sum
+
+        // var withOtherDenomSum = 0D
         val withOtherDenom =
           // G.logGamma(
           fastLogGamma(
             totalEvents.map{ e =>
               val n = e.normKey
-              denomCounts( n ) + other.denomCounts( n ) + (alpha * totalEvents.size )
+              // withOtherDenomSum += denomCounts( n ) + other.denomCounts(n) + (alpha * totalEvents.size )
+              denomCounts( n ) + other.denomCounts(n)  + (alpha * totalEvents.size )
             }.sum
           )
 
-        val myNumerator = 
-          totalEvents.map{ e =>
-            // G.logGamma( counts( e ) + alpha )
-            fastLogGamma( counts( e ) + alpha )
-          }.reduce(_+_)
+        // var withoutOtherSum = 0D
+        val myNumerator = totalEvents.map{ e =>
+          // withoutOtherSum += counts( e ) + alpha
+          // G.logGamma( counts( e ) + alpha )
+          fastLogGamma( counts( e ) + alpha )
+        }.sum
 
+        var withoutOtherDenomSum = 0D
         val myDenom =
           // G.logGamma(
           fastLogGamma(
             totalEvents.map{ e =>
               val n = e.normKey
-              denomCounts( n ) + (alpha * totalEvents.size )
+              // withoutOtherDenomSum += denomCounts( n ) + ( alpha * totalEvents.size )
+              denomCounts( n ) + ( alpha * totalEvents.size )
             }.sum
           )
 
-        // println(
-        //   s"($withOtherNumerator}/$withOtherDenom) / ($myNumerator/$myDenom)"
-        // )
 
-        // math.exp(
-          (
-            withOtherNumerator - withOtherDenom
-          ) - (
-            myNumerator - myDenom
-          )
-        // )
+        // val trueLogProbFactor = 
+        //   ( withOtherNumerator + myDenom ) - ( myNumerator + withOtherDenom )
+        val trueLogProbFactor = 
+          ( withOtherNumerator - withOtherDenom ) - ( myNumerator - myDenom )
 
-      }.reduce(_+_)
+        if( ! ( trueLogProbFactor <= 0D & trueLogProbFactor > Double.NegativeInfinity ) ) {
+          println( "  IN TRUE LOG PROB" )
+
+          other.printOut()
+
+          println( s"  withOtherNumerator: $withOtherNumerator" )
+          println( s"  withOtherDenom: $withOtherDenom" )
+          println( s"  myNumerator: $myNumerator" )
+          println( s"  myDenom: $myDenom" )
+          // println( s"  withOtherSum: $withOtherSum" )
+          // println( s"  withOtherDenomSum: $withOtherDenomSum" )
+          // println( s"  withoutOtherSum: $withoutOtherSum" )
+          // println( s"  withoutOtherDenomSum: $withoutOtherDenomSum" )
+          println( trueLogProbFactor )
+
+        }
+
+
+        trueLogProbFactor
+
+      }.sum
     } else { 0D }
   }
 
@@ -202,21 +303,65 @@ class CPT[E<:Event with Product](
   def increment( other:CPT[E], updateEvents:Boolean ) {
     // println( other.counts.approximate )
     other.denoms.flatMap{_._2}.foreach{ event =>
+      // val inc = other(event)
+      // val beforeIncCount = counts( event )
+      // val beforeIncDenomCount = denomCounts( event.normKey )
       increment( event, other(event), updateEvents )
+
+      // assert( counts( event ) - inc == beforeIncCount )
+      // assert( denomCounts( event.normKey ) - inc == beforeIncDenomCount )
     }
+    // validateCPT
+    // println( "SUCCESS" )
     // other.
     // counts.increment( other.counts )
     // denomCounts.increment( other.denomCounts )
   }
 
-  def decrement( other:CPT[E] ) {
+  def decrement( other:CPT[E], integerDec:Boolean = false ) {
     assert( counts.logSpace == other.counts.logSpace )
     assert( denomCounts.logSpace == other.denomCounts.logSpace )
-    // other.counts.foreach{ case( k, v) =>
-    //   decrement( k, v )
-    // }
-    counts.decrement( other.counts )
-    denomCounts.decrement( other.denomCounts )
+      // other.counts.foreach{ case( k, v) =>
+      //   decrement( k, v )
+      // }
+
+      // other.denoms.foreach{ case (n, otherEvents ) =>
+      //   val eventsSum = other.denoms(n).map( counts(_) ).sum
+      //   if( ! ( abs( other.denomCounts(n) - eventsSum ) < 0.00001 ) ) {
+      //     println( s"$n" )
+      //     println( s"  count: ${other.denoms(n).size}" )
+      //     println( s"  sum: $eventsSum" )
+      //     println( s"  denom: ${other.denomCounts(n)}" )
+      //   }
+      //   assert( abs( other.denomCounts(n) - eventsSum ) < 0.00001 )
+      // }
+      // other.denoms.foreach{ case (n, otherEvents ) =>
+      //   val eventsSum = denoms(n).map( counts(_) ).sum
+      //   if( ! ( abs( denomCounts(n) - eventsSum ) < 0.00001 ) ) {
+      //     println( s"$n" )
+      //     println( s"  count: ${denoms(n).size}" )
+      //     println( s"  sum: $eventsSum" )
+      //     println( s"  denom: ${denomCounts(n)}" )
+      //   }
+      //   assert( abs( denomCounts(n) - eventsSum ) < 0.00001 )
+      // }
+
+    counts.decrement( other.counts, integerDec )
+    denomCounts.decrement( other.denomCounts, integerDec )
+
+      // other.denoms.foreach{ case (n, otherEvents ) =>
+      //   val eventsSum = denoms(n).map( counts(_) ).sum
+      //   if( ! ( abs( denomCounts(n) - eventsSum ) < 0.00001 ) ) {
+      //     println( s"$n" )
+      //     println( s"  count: ${denoms(n).size}" )
+      //     println( s"  sum: $eventsSum" )
+      //     println( s"  denom: ${denomCounts(n)}" )
+      //   }
+      //   assert( abs( denomCounts(n) - eventsSum ) < 0.00001 )
+      // }
+
+    // validateCPT
+
   }
 
   def divideBy( x:Double ) {
@@ -225,13 +370,13 @@ class CPT[E<:Event with Product](
     denomCounts.divideBy( x )
   }
 
-  def decrement( event:E, dec:Double ) = {
+  def decrement( event:E, dec:Double, integerDec:Boolean ) = {
     // counts( event ) -= dec
-    counts.decrement( event , dec )
+    counts.decrement( event , dec, integerDec )
 
     val n = event.normKey
     // denomCounts( n ) -= dec
-    denomCounts.decrement( n , dec )
+    denomCounts.decrement( n , dec, integerDec )
   }
 
   def clear {

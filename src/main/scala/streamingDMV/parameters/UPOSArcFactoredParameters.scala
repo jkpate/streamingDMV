@@ -76,10 +76,10 @@ abstract class UPOSArcFactoredParameters(
   }
 
 
-  def decrementCounts( counts:MatrixDMVCounts ) {
-    p_root.decrement( counts.rootCounts )
-    p_stop.decrement( counts.stopCounts )
-    p_choose.decrement( counts.chooseCounts )
+  def decrementCounts( counts:MatrixDMVCounts, integerDec:Boolean ) {
+    p_root.decrement( counts.rootCounts, integerDec )
+    p_stop.decrement( counts.stopCounts, integerDec )
+    p_choose.decrement( counts.chooseCounts, integerDec )
   }
 
   // def printOut( logSpace:Boolean = false ) {

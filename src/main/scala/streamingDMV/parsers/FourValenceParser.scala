@@ -20,7 +20,7 @@ class FourValenceParser(
   // maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed, reservoirSize
   parserSpec
 ) {
-  println( "INITIALIZING FOURVALENCEPARSER" )
+  // println( "INITIALIZING FOURVALENCEPARSER" )
 
   val theta = new FourValenceParameters( parserSpec.toParameterSpec )
 
@@ -177,7 +177,7 @@ class FourValenceParser(
     // if( !( score > Double.NegativeInfinity && score <= 0D ) ) {
       // println( "TopDownDMVParser.lexCellFactor: " + (index,pDec,score) )
     // }
-    assert( ( score > myZero && score <= myOne ) )
+    assert( ( score > myZero && score <= myOne + 0.00001 ) )
     score
   }
 

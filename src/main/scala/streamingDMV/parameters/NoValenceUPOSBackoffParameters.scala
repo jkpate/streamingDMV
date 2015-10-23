@@ -145,10 +145,10 @@ class NoValenceUPOSBackoffParameters(
     }
   }
 
-  override def decrementCounts( counts:MatrixDMVCounts ) {
-    p_root.decrement( counts.rootCounts )
-    p_stop.decrement( counts.stopCounts )
-    p_choose.decrement( counts.chooseCounts )
+  override def decrementCounts( counts:MatrixDMVCounts, integerDec:Boolean ) {
+    p_root.decrement( counts.rootCounts, integerDec )
+    p_stop.decrement( counts.stopCounts, integerDec )
+    p_choose.decrement( counts.chooseCounts, integerDec )
     if( notBackoffAlpha > 0 ) {
       counts.chooseCounts.counts.foreach{ case (event, count) =>
         val h = event.head
@@ -156,7 +156,8 @@ class NoValenceUPOSBackoffParameters(
         if( h >= 0 ) {
           lambda_choose.decrement(
             LambdaChooseEvent( h, event.dir, NotBackoff ),
-            totalCount
+            totalCount,
+            integerDec
           )
         }
       }

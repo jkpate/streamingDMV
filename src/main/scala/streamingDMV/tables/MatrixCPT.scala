@@ -100,7 +100,9 @@ class MatrixCPT[E<:Event]( alpha:Double, rows:Int, cols:Int ) {
     counts = other.counts.clone
   }
 
-  def decrement( other:MatrixCPT[E] ) {
+  def decrement( other:MatrixCPT[E], integerDec:Boolean ) {
+    // TODO implement integer decrements
+    assert( !integerDec )
     other.counts.foreach{ case( k, v) =>
       decrement( k, v )
     }
