@@ -36,6 +36,7 @@ my @fields = (
   "backoffAlpha",
   "notBackoffAlpha",
   "squarelyNormalized",
+  "harmonicMiniBatchInit",
   "uposCount",
   "batchVB",
   "incIters",
@@ -121,6 +122,7 @@ foreach my $fPath (@ARGV) {
     $fields{chooseAlpha} = $fields{alpha} if not defined $fields{chooseAlpha};
     $fields{convergeInitialMiniBatch} = "false" if not defined $fields{convergeInitialMiniBatch};
     $fields{largeMiniBatchEvery} = "0" if not defined $fields{largeMiniBatchEvery};
+    $fields{harmonicMiniBatchInit} = "false" if not defined $fields{harmonicMiniBatchInit};
     # $fields{possiblyResampleEvery} = $fields{miniBatchSize} if not defined $fields{possiblyResampleEvery};
 
     die "$trainingStrings $testingStrings $trainingWords $testingWords $vocabSize" unless 

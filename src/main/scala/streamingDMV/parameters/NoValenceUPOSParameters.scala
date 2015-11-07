@@ -48,6 +48,11 @@ class NoValenceUPOSParameters(
     // p_choose.setEvents( chooseEvents.toSet )
   }
 
+  def harmonicCounts( corpus:List[Utt] ) = {
+    println( "\n\n\n\nHARMONIC COUNTS NOT IMPLEMENTED YET FOR NoValenceUPOSParameters!!!\n\n\n\n" )
+    MatrixDMVCounts( uposCount, rootAlpha, stopAlpha, chooseAlpha )
+  }
+
   def possibleStopEvents( h:Int ) = {
     Seq(
       StopEvent( h, LeftAtt, NoValence, Stop ),

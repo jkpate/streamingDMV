@@ -52,6 +52,9 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
         //   new CPT[ChooseEvent]( chooseAlpha )
         // )
 
+        // lastFHat.printTotalCountsByType
+
+        // println( s"incrementing theta by lastFHat" )
     theta.incrementCounts( lastFHat, updateEvents = false )
 
     var lastMiniBatchScores = 1D
@@ -69,6 +72,9 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
       var i = 0
       // val fHat = miniBatch.map{ s =>
       val fHat = emptyCounts
+      // println( s"initial fHat:" )
+      // fHat.printTotalCountsByType
+
       while( i < miniBatch.size ) {
         val s = miniBatch( i )
         // println( s"    $i" )
@@ -117,7 +123,9 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
 
 
 
+      // println( s"decrementing by lastFHat" )
       theta.decrementCounts( lastFHat )
+      // println( s"incrementing by fHat" )
       theta.incrementCounts( fHat, updateEvents = false )
 
       deltaScores = ( lastMiniBatchScores - thisMiniBatchScores ) / lastMiniBatchScores

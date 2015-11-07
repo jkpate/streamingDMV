@@ -20,6 +20,7 @@ case class ParserSpec(
   backoffAlpha:Double,
   notBackoffAlpha:Double,
   squarelyNormalized:Int,
+  harmonicMiniBatchInit:Boolean,
   approximate:Boolean,
   reservoirSize:Int,
   logSpace:Boolean
@@ -48,6 +49,7 @@ object ParserSpec {
       backoffAlpha = parserSpec.backoffAlpha,
       notBackoffAlpha = parserSpec.notBackoffAlpha,
       squarelyNormalized = parserSpec.squarelyNormalized,
+      harmonicMiniBatchInit = parserSpec.harmonicMiniBatchInit,
       approximate = parserSpec.approximate,
       reservoirSize = parserSpec.reservoirSize,
       logSpace = parserSpec.logSpace

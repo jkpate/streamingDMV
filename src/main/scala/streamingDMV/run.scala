@@ -60,6 +60,7 @@ object run {
     optsParser.accepts( "squarelyNormalized" )
     optsParser.accepts( "uposCount" ).withRequiredArg
     optsParser.accepts( "randomSeed" ).withRequiredArg
+    optsParser.accepts( "harmonicMiniBatchInit" )
     optsParser.accepts( "miniBatchSize" ).withRequiredArg
     optsParser.accepts( "initialMiniBatchSize" ).withRequiredArg
     optsParser.accepts( "largeMiniBatchEvery" ).withRequiredArg
@@ -139,6 +140,7 @@ object run {
         opts.valueOf( "randomSeed" ).toString.toInt
       else
         15
+    val harmonicMiniBatchInit = opts.has( "harmonicMiniBatchInit" )
     val miniBatchSize =
       if( opts.has( "miniBatchSize" ) )
         opts.valueOf( "miniBatchSize" ).toString.toInt
@@ -207,6 +209,7 @@ object run {
     println( s"incIters: ${incIters}" )
     println( s"miniBatchSize: ${miniBatchSize}" )
     println( s"initialMiniBatchSize: ${initialMiniBatchSize}" )
+    println( s"harmonicMiniBatchInit: ${harmonicMiniBatchInit}" )
     println( s"printItersReached: ${printItersReached}" )
     println( s"batchVB: ${batchVB}" )
     println( s"logSpace: ${logSpace}" )
@@ -264,6 +267,7 @@ object run {
       backoffAlpha = backoffAlpha,
       notBackoffAlpha = notBackoffAlpha,
       squarelyNormalized = squareNorm,
+      harmonicMiniBatchInit = harmonicMiniBatchInit,
       approximate = false,
       reservoirSize = reservoirSize,
       logSpace = logSpace
@@ -647,7 +651,10 @@ object run {
 
     // println( miniBatches.map{ _.size }.mkString("\n") )
 
-    assert( miniBatches.map{_.size}.sum == shuffledTrainSet.size )
+    // if( !(miniBatches.map{_.size}.sum == shuffledTrainSet.size) ) {
+    //   println( miniBatches.map{_.size}.sum + " != " + shuffledTrainSet.size )
+    // }
+    assert( batchVB || miniBatches.map{_.size}.sum == shuffledTrainSet.size )
 
     var i = 0
     var sentencesSinceLastEval = 0
@@ -771,12 +778,12 @@ object run {
         logEvalRate &&
         scala.math.log10( sentencesProcessed )%1 == 0 &&
         sentencesProcessed > evalEvery &&
-        ( sentencesProcessed > initialMiniBatchSize || incIters != 1 )
+        ( sentencesProcessed > initialMiniBatchSize /* || incIters != 1 */ )
       ) {
         evalEvery *= 10
         println( s"after processing $sentencesProcessed we eval every $evalEvery" )
       } else if(
-        ( sentencesProcessed >= evalEvery*10 ) && incIters == 1
+        ( sentencesProcessed >= evalEvery*10 )// && incIters == 1
       ) {
         // evalEvery = initialMiniBatchSize
           // evalEvery should be nearest power of ten below sentencesProcessed
@@ -790,24 +797,26 @@ object run {
 
     val trainingSentCount = miniBatches.map{_.size}.sum
       // ( firstMiniBatch :: subsequentMiniBatches ).map{ _.size }.sum
-    var heldOutLogProb = 0D
-    val parseStartTime = System.currentTimeMillis
-    testSet.foreach{ s =>
-      if( constituencyEval ) {
-        val Parse( id, conParse, depParse ) = p.viterbiParse( s )
-        println( s"it${trainingSentCount}:constituency:${id} ${conParse}" )
-        println( s"it${trainingSentCount}:dependency:${id} ${printDependencyParse(depParse)}" )
-      } else {
-        val Parse( id, _, depParse ) = p.viterbiDepParse( s )
-        println( s"it${trainingSentCount}:dependency:${id} ${printDependencyParse(depParse)}" )
+    if( !( trainingSentCount % evalEvery == 0 ) ) {
+      var heldOutLogProb = 0D
+      val parseStartTime = System.currentTimeMillis
+      testSet.foreach{ s =>
+        if( constituencyEval ) {
+          val Parse( id, conParse, depParse ) = p.viterbiParse( s )
+          println( s"it${trainingSentCount}:constituency:${id} ${conParse}" )
+          println( s"it${trainingSentCount}:dependency:${id} ${printDependencyParse(depParse)}" )
+        } else {
+          val Parse( id, _, depParse ) = p.viterbiDepParse( s )
+          println( s"it${trainingSentCount}:dependency:${id} ${printDependencyParse(depParse)}" )
+        }
+        heldOutLogProb += p.logProb( s.string )
       }
-      heldOutLogProb += p.logProb( s.string )
+      val parseEndTime = System.currentTimeMillis
+      println( s"it${trainingSentCount}:logProb:${heldOutLogProb}" )
+      println( s"it${trainingSentCount}:testTimePerSentence:${ (parseEndTime - parseStartTime ) / testSet.size}ms/sentence" )
+      println( s"it${trainingSentCount}:particlePerplexity:${p.particlePerplexity}" )
+      println( s"it${sentencesProcessed}:ess:${p.ess}" )
     }
-    val parseEndTime = System.currentTimeMillis
-    println( s"it${trainingSentCount}:logProb:${heldOutLogProb}" )
-    println( s"it${trainingSentCount}:testTimePerSentence:${ (parseEndTime - parseStartTime ) / testSet.size}ms/sentence" )
-    println( s"it${trainingSentCount}:particlePerplexity:${p.particlePerplexity}" )
-    println( s"it${sentencesProcessed}:ess:${p.ess}" )
 
     // if( particleFilter ) {
     //   println( s"resampled ${resamplingEventCounts} times" )

@@ -24,6 +24,7 @@ abstract class ArcFactoredParameters[C<:DependencyCounts](
 
   var fullyNormalized:Boolean = false
   def zerosInit( corpus:List[Utt] ):Unit
+  def harmonicCounts( corpus:List[Utt] ):C
 
   def toCounts:C
 

@@ -298,8 +298,8 @@ class CPT[E<:Event with Product](
 
   // Counts are initially zero, so initial sumLGammas (i.e. numerator of generalized Beta function)
   // is the sum of lgamma(alpha) for every rule
-  // var cachedSumLGammas = Map[NormKey,Double]().withDefault( n => denoms(n).size * fastLogGamma( alpha ) )
-  var cachedSumLGammas = Map[NormKey,Double]().withDefault( n => denoms(n).size * G.logGamma( alpha ) )
+  var cachedSumLGammas = Map[NormKey,Double]().withDefault( n => denoms(n).size * fastLogGamma( alpha ) )
+  // var cachedSumLGammas = Map[NormKey,Double]().withDefault( n => denoms(n).size * G.logGamma( alpha ) )
   // def fastTrueLogProb( other:CPT[E] ) = {
   def trueLogProb( other:CPT[E] ) = {
     // Let's avoid using lgamma in expensive cases and use the identity
@@ -308,8 +308,8 @@ class CPT[E<:Event with Product](
       val totalEvents = denoms( denom ).toVector
 
       val myNumerator = cachedSumLGammas( denom )
-      // val myDenom = fastLogGamma( denomCounts( denom ) + (alpha*totalEvents.size ) )
-      val myDenom = G.logGamma( denomCounts( denom ) + (alpha*totalEvents.size ) )
+      val myDenom = fastLogGamma( denomCounts( denom ) + (alpha*totalEvents.size ) )
+      // val myDenom = G.logGamma( denomCounts( denom ) + (alpha*totalEvents.size ) )
 
       // Go through and, for only those events that differ, subtract out from myNumerator the
       // current cached value, and then increment by the updated lgamma
@@ -319,8 +319,8 @@ class CPT[E<:Event with Product](
         withOtherNumerator += cachedLGamma( e, other(e) )
       }
       val withOtherDenom =
-        // fastLogGamma( denomCounts( denom ) + other.denomCounts( denom ) + (alpha*totalEvents.size ) )
-        G.logGamma( denomCounts( denom ) + other.denomCounts( denom ) + (alpha*totalEvents.size ) )
+        fastLogGamma( denomCounts( denom ) + other.denomCounts( denom ) + (alpha*totalEvents.size ) )
+        // G.logGamma( denomCounts( denom ) + other.denomCounts( denom ) + (alpha*totalEvents.size ) )
 
       val trueLogProbFactor = (withOtherNumerator - withOtherDenom ) - (myNumerator - myDenom )
 
