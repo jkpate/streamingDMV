@@ -41,6 +41,8 @@ class CPT[E<:Event with Product](
   var denoms = Map[NormKey,Set[E]]().withDefaultValue(Set())
   // var denoms = MMap[NormKey,TableWrapper[Event]]()
 
+  def totalCounts = denomCounts.values.sum
+
   def apply( event:E ) =
     counts( event )
 
@@ -283,6 +285,7 @@ class CPT[E<:Event with Product](
   // var cachedEventLGammas = Map[E,Double]().withDefaultValue(fastLogGamma(alpha))
   var cachedEventLGammas = Map[E,Double]().withDefaultValue(G.logGamma(alpha))
   def cachedLGamma( event:E, otherCount:Double ) = {
+    // println( event, otherCount )
     cachedEventLGammas( event ) + // Pochhammer symbol in log space
       ( ( counts(event) + alpha ) until (counts(event) + otherCount + alpha ) by 1 ).map{log(_)}.sum
   }
@@ -358,22 +361,17 @@ class CPT[E<:Event with Product](
     events.foreach{ increment( _, inc ) }
   }
 
+  // TODO implement for logspace = true
+  var totalCount = 0D
   def increment( other:CPT[E], updateEvents:Boolean ) {
-    // println( other.counts.approximate )
     other.denoms.flatMap{_._2}.foreach{ event =>
-      // val inc = other(event)
-      // val beforeIncCount = counts( event )
-      // val beforeIncDenomCount = denomCounts( event.normKey )
-      increment( event, other(event), updateEvents )
+      val inc = other(event)
+      if( inc > 0 ) {
+        increment( event, inc, updateEvents )
+        totalCount += inc
+      }
 
-      // assert( counts( event ) - inc == beforeIncCount )
-      // assert( denomCounts( event.normKey ) - inc == beforeIncDenomCount )
     }
-    // validateCPT
-    // println( "SUCCESS" )
-    // other.
-    // counts.increment( other.counts )
-    // denomCounts.increment( other.denomCounts )
   }
 
   def decrement( other:CPT[E], integerDec:Boolean = false ) {
@@ -407,6 +405,9 @@ class CPT[E<:Event with Product](
     counts.decrement( other.counts, integerDec )
     denomCounts.decrement( other.denomCounts, integerDec )
 
+    totalCount -= other.denomCounts.values.sum
+
+
       // other.denoms.foreach{ case (n, otherEvents ) =>
       //   val eventsSum = denoms(n).map( counts(_) ).sum
       //   if( ! ( abs( denomCounts(n) - eventsSum ) < 0.00001 ) ) {
@@ -420,6 +421,13 @@ class CPT[E<:Event with Product](
 
     // validateCPT
 
+  }
+
+  def multiplyBy( x:Double ) {
+    // counts.keys.foreach{ counts(_) /= x }
+    counts.multiplyBy( x )
+    denomCounts.multiplyBy( x )
+    totalCount *= x
   }
 
   def divideBy( x:Double ) {

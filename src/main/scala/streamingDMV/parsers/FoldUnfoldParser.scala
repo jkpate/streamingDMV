@@ -26,6 +26,7 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
   val chooseAlpha = parserSpec.chooseAlpha
   val approximate = parserSpec.approximate
   val squarelyNormalized = parserSpec.squarelyNormalized
+  val scaleInitMiniBatchCounts = parserSpec.scaleInitMiniBatchCounts
   val logSpace = parserSpec.logSpace
 
   val myZero = if( parserSpec.logSpace ) Double.NegativeInfinity else 0D
@@ -140,6 +141,12 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
   def logProb( string:Array[Int] ):Double
 
   def emptyCounts:C
+
+  var constantInitialCounts = emptyCounts
+  def setConstantHarmonicCounts( utts:List[Utt] ) {
+    constantInitialCounts = theta.harmonicCounts( utts )
+  }
+
   def initialCounts( utts:List[Utt] ):C
 
   def initializeParticles = {}

@@ -178,7 +178,7 @@ abstract class FirstOrderArcFactoredParameters(
             if( logSpace ) 
               LogSum( 0D, -1 *math.log( j - t ) )
             else
-              1D + 1D / ( j - t )
+              1D + ( 1D / ( j - t ) )
 
           chooseCounts.increment( ChooseEvent( h, RightAtt, s(j) ), harmonicCount )
         }

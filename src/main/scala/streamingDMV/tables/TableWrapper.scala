@@ -171,6 +171,29 @@ class TableWrapper[E<:FastHashable](
     }
   }
 
+  def multiplyBy( x:Double ) {
+    if( approximate && x != 1 ) {
+      throw new UnsupportedOperationException( "cannot multiplyBy approximate counts" )
+    } else {
+      if( logSpace ) {
+        assert( x > Double.NegativeInfinity && x <= 0D )
+        exactCounts.keys.foreach{ event =>
+          exactCounts = exactCounts.updated(
+            event,
+            exactCounts(event) + x
+          )
+        }
+      } else {
+        exactCounts.keys.foreach{ event =>
+          exactCounts = exactCounts.updated(
+            event,
+            exactCounts(event) * x
+          )
+        }
+      }
+    }
+  }
+
   def size = {
     if( approximate ) {
       throw new UnsupportedOperationException( "cannot get approximate size" )

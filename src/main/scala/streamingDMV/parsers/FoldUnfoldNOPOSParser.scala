@@ -825,11 +825,14 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
   }
 
 
+
   def initialCounts( utts:List[Utt] ) =
     if( parserSpec.harmonicMiniBatchInit )
       theta.harmonicCounts( utts )
+    // else if( )
     else
-      emptyCounts
+      constantInitialCounts
+      // emptyCounts
 
   def logProb( string:Array[Int] ) = {
     // val s = string.flatMap{ w => Seq(w,w) }

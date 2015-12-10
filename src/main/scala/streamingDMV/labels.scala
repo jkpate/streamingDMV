@@ -21,6 +21,7 @@ case class ParserSpec(
   notBackoffAlpha:Double,
   squarelyNormalized:Int,
   harmonicMiniBatchInit:Boolean,
+  scaleInitMiniBatchCounts:Boolean,
   approximate:Boolean,
   reservoirSize:Int,
   logSpace:Boolean
@@ -50,6 +51,7 @@ object ParserSpec {
       notBackoffAlpha = parserSpec.notBackoffAlpha,
       squarelyNormalized = parserSpec.squarelyNormalized,
       harmonicMiniBatchInit = parserSpec.harmonicMiniBatchInit,
+      scaleInitMiniBatchCounts = parserSpec.scaleInitMiniBatchCounts,
       approximate = parserSpec.approximate,
       reservoirSize = parserSpec.reservoirSize,
       logSpace = parserSpec.logSpace
@@ -529,6 +531,12 @@ abstract class DependencyCounts {
 
   def increment( event:Event, count:Double ):Unit
   def divideBy( x:Double ):Unit
+  def multiplyBy( scale:Double )
+
+  def scaleToMatch[C<:DependencyCounts]( other:C ):Unit
+
+  def scaleToMatch( sentenceCount:Int, wordCount:Int ):Unit
+
 
   def printRootEvents:Unit
   def printStopEvents:Unit
@@ -559,6 +567,23 @@ case class BackoffChooseDMVCounts(
     }
   }
 
+  def scaleToMatch[C<:DependencyCounts]( other:C ) {
+    other match {
+      case c:BackoffChooseDMVCounts => {
+        rootCounts.multiplyBy( c.rootCounts.totalCounts / rootCounts.totalCounts )
+        stopCounts.multiplyBy( c.stopCounts.totalCounts / stopCounts.totalCounts )
+        chooseCounts.multiplyBy( c.chooseCounts.totalCounts / chooseCounts.totalCounts )
+        lambdaChooseCounts.multiplyBy( c.lambdaChooseCounts.totalCounts / lambdaChooseCounts.totalCounts )
+      }
+    }
+  }
+
+  def scaleToMatch( sentenceCount:Int, wordCount:Int ) {
+    rootCounts.multiplyBy( sentenceCount  )
+    stopCounts.multiplyBy( ( 2 * wordCount ) / stopCounts.totalCount )
+    chooseCounts.multiplyBy( ( wordCount - sentenceCount ) / chooseCounts.totalCount )
+  }
+
   override def logSpace = {
     rootCounts.counts.logSpace && chooseCounts.counts.logSpace && stopCounts.counts.logSpace
   }
@@ -568,6 +593,13 @@ case class BackoffChooseDMVCounts(
     chooseCounts.divideBy( x )
     rootCounts.divideBy( x )
     lambdaChooseCounts.divideBy( x )
+  }
+
+  def multiplyBy( x:Double ) {
+    stopCounts.multiplyBy( x )
+    chooseCounts.multiplyBy( x )
+    rootCounts.multiplyBy( x )
+    lambdaChooseCounts.multiplyBy( x )
   }
 
   def increment( event:Event, count:Double ) {
@@ -667,6 +699,22 @@ case class DMVCounts(
     }
   }
 
+  def scaleToMatch[C<:DependencyCounts]( other:C ) {
+    other match {
+      case c:DMVCounts => {
+        rootCounts.multiplyBy( c.rootCounts.totalCount / rootCounts.totalCount )
+        stopCounts.multiplyBy( c.stopCounts.totalCount / stopCounts.totalCount )
+        chooseCounts.multiplyBy( c.chooseCounts.totalCount / chooseCounts.totalCount )
+      }
+    }
+  }
+
+  def scaleToMatch( sentenceCount:Int, wordCount:Int ) {
+    rootCounts.multiplyBy( sentenceCount  )
+    stopCounts.multiplyBy( ( 2 * wordCount ) / stopCounts.totalCount )
+    chooseCounts.multiplyBy( ( wordCount - sentenceCount ) / chooseCounts.totalCount )
+  }
+
   override def logSpace = {
     rootCounts.counts.logSpace && chooseCounts.counts.logSpace && stopCounts.counts.logSpace
   }
@@ -675,6 +723,12 @@ case class DMVCounts(
     stopCounts.divideBy( x )
     chooseCounts.divideBy( x )
     rootCounts.divideBy( x )
+  }
+
+  def multiplyBy( x:Double ) {
+    stopCounts.multiplyBy( x )
+    chooseCounts.multiplyBy( x )
+    rootCounts.multiplyBy( x )
   }
 
   def increment( event:Event, count:Double ) {
@@ -695,6 +749,10 @@ case class DMVCounts(
     chooseCounts.counts.keys.foreach{ e =>
       println( "\t" + e )
     }
+
+  // TODO implement for logSpace = true
+  def cachedTotalCounts =
+    rootCounts.totalCount + stopCounts.totalCount + chooseCounts.totalCount
 
   def totalCounts =
     if( chooseCounts.counts.logSpace )
@@ -758,6 +816,19 @@ case class MatrixDMVCounts(
       }
     }
   }
+
+  def scaleToMatch[C<:DependencyCounts]( other:C ) {
+    other match {
+      case c:MatrixDMVCounts => {
+        rootCounts.multiplyBy( c.rootCounts.totalCounts / rootCounts.totalCounts )
+        stopCounts.multiplyBy( c.stopCounts.totalCounts / stopCounts.totalCounts )
+        chooseCounts.multiplyBy( c.chooseCounts.totalCounts / chooseCounts.totalCounts )
+      }
+    }
+  }
+
+  def scaleToMatch( sentenceCount:Int, wordCount:Int ) { /* TODO: IMPLEMENT ME */ }
+
   def totalCounts =
     sum( rootCounts.counts.values.reduce(_ :+ _) ) +
     sum( stopCounts.counts.values.reduce(_ :+ _) ) +
@@ -771,6 +842,12 @@ case class MatrixDMVCounts(
     stopCounts.divideBy( x )
     chooseCounts.divideBy( x )
     rootCounts.divideBy( x )
+  }
+
+  def multiplyBy( x:Double ) {
+    stopCounts.multiplyBy( x )
+    chooseCounts.multiplyBy( x )
+    rootCounts.multiplyBy( x )
   }
 
   def printRootEvents =

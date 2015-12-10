@@ -19,6 +19,8 @@ class BackoffCPT[E<:Event with BackingOffEvent with Product](
   var denomCounts = new TableWrapper[NormKey with Product]( approximate, eps, delta, 37*randomSeed )
   var denoms = MMap[NormKey,MSet[E]]()
 
+  def totalCounts = denomCounts.values.sum
+
   var fullyNormalized:Boolean = false
 
   def apply( event:E ) =
@@ -130,6 +132,12 @@ class BackoffCPT[E<:Event with BackingOffEvent with Product](
     // counts.keys.foreach{ counts(_) /= x }
     counts.divideBy( x )
     denomCounts.divideBy( x )
+  }
+
+  def multiplyBy( x:Double ) {
+    // counts.keys.foreach{ counts(_) /= x }
+    counts.multiplyBy( x )
+    denomCounts.multiplyBy( x )
   }
 
   def decrement( event:E, dec:Double, integerDec:Boolean ) = {

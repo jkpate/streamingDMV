@@ -12,16 +12,18 @@ my $gold;
 my $minLength = 4;
 my @maxLengths = ( 10, 15, 20, 40 );
 my $noCache = 0;
+my $cacheDir = "cachedLines";
 
 GetOptions(
   "gold=s" => \$gold,
   "minLength=i" => \$minLength,
   "noCache" => \$noCache,
+  "cacheDir=s" => \$cacheDir,
 );
 
 
 unless( $gold ne "" ) {
-  print STDERR "Usage: trainingTrajectory.pl [-minLength minLength] [-maxLength maxLength] -gold gold outputfiles";
+  print STDERR "Usage: trainingTrajectory.pl [-minLength minLength] [-maxLength maxLength] [-cacheDir cacheDir] -gold gold outputfiles";
   exit;
 }
 
@@ -36,7 +38,9 @@ my @fields = (
   "backoffAlpha",
   "notBackoffAlpha",
   "squarelyNormalized",
+  "scaleInitMiniBatchCounts",
   "harmonicMiniBatchInit",
+  "harmonicCorpusInit",
   "uposCount",
   "batchVB",
   "incIters",
@@ -70,7 +74,8 @@ print join ",",
 foreach my $fPath (@ARGV) {
   print STDERR $fPath;
 
-  my $cacheName = "cachedLines/".(basename( $fPath ))."-".(basename($gold)).".lines";
+  # my $cacheName = "cachedLines/".(basename( $fPath ))."-".(basename($gold)).".lines";
+  my $cacheName = "$cacheDir/".(basename( $fPath ))."-".(basename($gold)).".lines";
 
   my %fields = ();
   my $trainingStrings = 0;
@@ -123,6 +128,8 @@ foreach my $fPath (@ARGV) {
     $fields{convergeInitialMiniBatch} = "false" if not defined $fields{convergeInitialMiniBatch};
     $fields{largeMiniBatchEvery} = "0" if not defined $fields{largeMiniBatchEvery};
     $fields{harmonicMiniBatchInit} = "false" if not defined $fields{harmonicMiniBatchInit};
+    $fields{harmonicCorpusInit} = "false" if not defined $fields{harmonicCorpusInit};
+    $fields{scaleInitMiniBatchCounts} = "false" if not defined $fields{scaleInitMiniBatchCounts};
     # $fields{possiblyResampleEvery} = $fields{miniBatchSize} if not defined $fields{possiblyResampleEvery};
 
     die "$trainingStrings $testingStrings $trainingWords $testingWords $vocabSize" unless 

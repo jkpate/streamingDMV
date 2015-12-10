@@ -13,6 +13,8 @@ class MatrixCPT[E<:Event]( alpha:Double, rows:Int, cols:Int ) {
   var denomCounts = MMap[NormKey,DenseVector[Double]]()
   var denoms = MMap[NormKey,MSet[E]]()
 
+  def totalCounts = sum( denomCounts.values.reduce( _:+_ ) )
+
   def zeroMatrix = DenseMatrix.zeros[Double]( rows, cols )
   def zeroVector = DenseVector.zeros[Double]( cols )
 
@@ -110,6 +112,10 @@ class MatrixCPT[E<:Event]( alpha:Double, rows:Int, cols:Int ) {
 
   def divideBy( x:Double ) {
     counts.keys.foreach{ counts(_) /= x }
+  }
+
+  def multiplyBy( x:Double ) {
+    counts.keys.foreach{ counts(_) *= x }
   }
 
   def decrement( event:E, dec:Double ) = {

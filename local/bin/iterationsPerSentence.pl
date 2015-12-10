@@ -52,7 +52,8 @@ print join ",",
   "testWordsCount",
   "vocabSize",
   "totalIters",
-  "avIters";
+  "avIters",
+  "itersPerMiniBatch";
 
 foreach my $fPath (@ARGV) {
   print STDERR $fPath;
@@ -109,6 +110,9 @@ foreach my $fPath (@ARGV) {
   $tail =~ /it(\d+):logProb:/;
   my $sentencesSeen = $1;
 
+  $tail =~ /([0-9.]+) iters per miniBatch/;
+  my $itersPerMiniBatch = $1;
+
   print join ",",
     ( map { $fields{$_ } } @fields ),
     $trainingStrings,
@@ -117,7 +121,8 @@ foreach my $fPath (@ARGV) {
     $testingWords,
     $vocabSize,
     $totalIters,
-    ($totalIters/$sentencesSeen);
+    ($totalIters/$sentencesSeen),
+    $itersPerMiniBatch;
 
     # print $totalIters;
     # print $sentencesSeen;

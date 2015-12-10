@@ -61,6 +61,8 @@ object run {
     optsParser.accepts( "uposCount" ).withRequiredArg
     optsParser.accepts( "randomSeed" ).withRequiredArg
     optsParser.accepts( "harmonicMiniBatchInit" )
+    optsParser.accepts( "harmonicCorpusInit" )
+    optsParser.accepts( "scaleInitMiniBatchCounts" )
     optsParser.accepts( "miniBatchSize" ).withRequiredArg
     optsParser.accepts( "initialMiniBatchSize" ).withRequiredArg
     optsParser.accepts( "largeMiniBatchEvery" ).withRequiredArg
@@ -140,7 +142,9 @@ object run {
         opts.valueOf( "randomSeed" ).toString.toInt
       else
         15
+    val scaleInitMiniBatchCounts = opts.has( "scaleInitMiniBatchCounts" )
     val harmonicMiniBatchInit = opts.has( "harmonicMiniBatchInit" )
+    val harmonicCorpusInit = opts.has( "harmonicCorpusInit" )
     val miniBatchSize =
       if( opts.has( "miniBatchSize" ) )
         opts.valueOf( "miniBatchSize" ).toString.toInt
@@ -209,7 +213,9 @@ object run {
     println( s"incIters: ${incIters}" )
     println( s"miniBatchSize: ${miniBatchSize}" )
     println( s"initialMiniBatchSize: ${initialMiniBatchSize}" )
+    println( s"scaleInitMiniBatchCounts: ${scaleInitMiniBatchCounts}" )
     println( s"harmonicMiniBatchInit: ${harmonicMiniBatchInit}" )
+    println( s"harmonicCorpusInit: ${harmonicCorpusInit}" )
     println( s"printItersReached: ${printItersReached}" )
     println( s"batchVB: ${batchVB}" )
     println( s"logSpace: ${logSpace}" )
@@ -267,6 +273,7 @@ object run {
       backoffAlpha = backoffAlpha,
       notBackoffAlpha = notBackoffAlpha,
       squarelyNormalized = squareNorm,
+      scaleInitMiniBatchCounts = scaleInitMiniBatchCounts,
       harmonicMiniBatchInit = harmonicMiniBatchInit,
       approximate = false,
       reservoirSize = reservoirSize,
@@ -620,6 +627,9 @@ object run {
     if( particleFilter ) { p.initializeParticles }
 
     p.zerosInit( trainSet ++ testSet )
+    if( harmonicCorpusInit ) {
+      p.setConstantHarmonicCounts( trainSet )
+    }
 
     if( printInitialGrammar ) {
       println( "INITIAL GRAMMAR" )

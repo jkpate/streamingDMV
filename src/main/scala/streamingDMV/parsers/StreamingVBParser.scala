@@ -24,6 +24,7 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
 
   val reservoirSize = parserSpec.reservoirSize
 
+  var wordsSeen = 0
   def streamingBayesUpdate(
     miniBatch:List[Utt],
     sentenceNum:Int,
@@ -44,7 +45,17 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
 
     // println( s"\n\n\n-----\nevalEvery: $evalEvery\n\n-----\n\n\n" )
 
+    // println( miniBatch.map{ _.string.mkString(" ") }.mkString("\n") )
     var lastFHat = initialCounts( miniBatch )
+    // lastFHat.printTotalCountsByType
+    if( scaleInitMiniBatchCounts ) {
+      val currentCounts = theta.toCounts
+      if( wordsSeen > 0 )
+        // lastFHat.scaleToMatch( currentCounts )
+        lastFHat.scaleToMatch( sentenceNum, wordsSeen )
+        lastFHat.multiplyBy( 10D )
+    }
+
       // emptyCounts
         // DMVCounts(
         //   new CPT[RootEvent]( rootAlpha ),
@@ -52,7 +63,7 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
         //   new CPT[ChooseEvent]( chooseAlpha )
         // )
 
-        // lastFHat.printTotalCountsByType
+    // lastFHat.printTotalCountsByType
 
         // println( s"incrementing theta by lastFHat" )
     theta.incrementCounts( lastFHat, updateEvents = false )
@@ -92,7 +103,7 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
 
         val sentencesProcessed = sentenceNum + i
             // Not sure what to do if we're doing more than one max iter?
-        if( maxIter == 1 & sentencesProcessed%evalEvery == 0 ) {
+        if( maxIter == 1 & sentencesProcessed < miniBatch.size & sentencesProcessed%evalEvery == 0 ) {
           // println( s"\n\n  ---  STREAMING BAYES UPDATE EVAL $i $evalEvery---\n\n" )
           theta.incrementCounts( fHat )
           if( constituencyEval )
@@ -138,11 +149,15 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
 
       iter += 1
     }
+
+    wordsSeen += miniBatch.map{ _.string.size }.sum
+
     if( printItersReached )
       println( s"iters\t$iter" )
 
     iter
   }
+
 
 
   var caching = false
