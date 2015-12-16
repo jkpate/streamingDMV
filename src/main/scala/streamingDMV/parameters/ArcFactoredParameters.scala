@@ -17,6 +17,7 @@ abstract class ArcFactoredParameters[C<:DependencyCounts](
   val squarelyNormalized = parameterSpec.squarelyNormalized
   val approximate = parameterSpec.approximate
   val randomSeed = parameterSpec.randomSeed
+  val alphabetSize = parameterSpec.alphabetSize
   val logSpace = parameterSpec.logSpace
 
   val myZero = if( parameterSpec.logSpace ) Double.NegativeInfinity else 0D

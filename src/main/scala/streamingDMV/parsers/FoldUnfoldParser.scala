@@ -7,7 +7,10 @@ import streamingDMV.parameters.ArcFactoredParameters
 import streamingDMV.math.LogSum
 import scala.collection.mutable.{Map=>MMap}
 
+
 import math.log
+
+import scala.reflect.ClassTag
 
 
 abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]](
@@ -37,6 +40,10 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
   def logTimes( nums:Double* ) = { nums.sum }
   def realTimes( nums:Double* ) = { nums.reduce(_*_) }
 
+  def logDiv( a:Double, b:Double ) = { a - b }
+  def realDiv( a:Double, b:Double ) = { a / b }
+  def myDiv = if( logSpace ) logDiv _ else realDiv _
+
   // in scala 2.10+ partially applied varargs functions take Seq[_]...
   val myPlusSeq = if( logSpace ) logPlus _ else realPlus _
   def myPlus( nums:Double* ) = myPlusSeq( nums )
@@ -53,6 +60,7 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
   var stringProb = 0D
 
   var intString:Array[Int] = Array()
+  var lexString:Array[String] = Array()
 
   def particlePerplexity:Double
   def ess:Double
@@ -61,6 +69,10 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
   def viterbiParse( utt:Utt ):Parse
 
   def viterbiDepParse( utt:Utt ):Parse
+
+  def doubleString[A:ClassTag]( string:Array[A] ) = {
+    string.toSeq.flatMap{ w => List(w,w) }.toArray
+  }
 
   def printViterbiParses(
     testSet:List[Utt],
@@ -75,12 +87,13 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
     // theta.incrementCounts( counts )
 
     val parseStartTime = System.currentTimeMillis
-    testSet.foreach{ s =>
-      if( evalMaxLength == 0 || s.string.length <= evalMaxLength ) {
-        val Parse( id, conParse, depParse ) = viterbiParse( s )
+    testSet.foreach{ utt =>
+      if( evalMaxLength == 0 || utt.string.length <= evalMaxLength ) {
+        val Parse( id, conParse, depParse ) = viterbiParse( utt )
         println( s"${prefix}:constituency:${id} ${conParse}" )
         println( s"${prefix}:dependency:${id} ${printDependencyParse(depParse)}" )
-        heldOutLogProb += logProb( s.string )
+        // heldOutLogProb += logProb( s.string )
+        heldOutLogProb += logProb( utt )
       }
     }
 
@@ -108,11 +121,12 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
     prepareForParses()
 
     val parseStartTime = System.currentTimeMillis
-    testSet.foreach{ s =>
-      if( evalMaxLength == 0 || s.string.length <= evalMaxLength ) {
-        val Parse( id, conParse, depParse ) = viterbiParse( s )
+    testSet.foreach{ utt =>
+      if( evalMaxLength == 0 || utt.string.length <= evalMaxLength ) {
+        val Parse( id, conParse, depParse ) = viterbiParse( utt )
         println( s"${prefix}:dependency:${id} ${printDependencyParse(depParse)}" )
-        heldOutLogProb += logProb( s.string )
+        // heldOutLogProb += logProb( s.string )
+        heldOutLogProb += logProb( utt )
       }
     }
 
@@ -138,7 +152,8 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
     theta.randomizeCounts( seed, scale )
   }
 
-  def logProb( string:Array[Int] ):Double
+  // def logProb( string:Array[Int] ):Double
+  def logProb( utt:Utt ):Double
 
   def emptyCounts:C
 
@@ -151,9 +166,10 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
 
   def initializeParticles = {}
 
-  def extractPartialCounts( string:Array[Int] ):C
-  def sampleTreeCounts( originalString:Array[Int] ):Tuple2[C,Double]
-  def sampleTreeCounts( utt:Utt ):Tuple2[C,Double] = sampleTreeCounts( utt.string )
+  // def extractPartialCounts( string:Array[Int] ):C
+  def extractPartialCounts( utt:Utt ):C
+  def sampleTreeCounts( utt:Utt ):Tuple2[C,Double]
+  // def sampleTreeCounts( utt:Utt ):Tuple2[C,Double] = sampleTreeCounts( utt.string )
 
 
   def streamingBayesUpdate(

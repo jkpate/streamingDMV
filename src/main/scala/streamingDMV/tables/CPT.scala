@@ -21,7 +21,6 @@ class CPT[E<:Event with Product](
   val approximate:Boolean = false,
   randomSeed:Int = 15
 ) {
-  // var counts = MMap[E,Double]().withDefaultValue(0D)
   var counts = new TableWrapper[E](
     approximate = approximate,
     eps = eps,
@@ -29,7 +28,6 @@ class CPT[E<:Event with Product](
     randomSeed = randomSeed,
     logSpace = false
   )
-  // var denomCounts = MMap[NormKey,Double]()
   var denomCounts =
     new TableWrapper[NormKey with Product](
       approximate,
@@ -39,7 +37,6 @@ class CPT[E<:Event with Product](
       logSpace = false
     )
   var denoms = Map[NormKey,Set[E]]().withDefaultValue(Set())
-  // var denoms = MMap[NormKey,TableWrapper[Event]]()
 
   def totalCounts = denomCounts.values.sum
 
@@ -47,8 +44,6 @@ class CPT[E<:Event with Product](
     counts( event )
 
   def normalized( event:E ) = {
-    // println( s"  I am approximate: $approximate" )
-    // println( s"  my counts are approximate: ${counts.approximate}" )
     val n = event.normKey
     if( squarelyNormalized  > 0  )
       ( counts( event ) + alpha/squarelyNormalized ) / (
@@ -73,6 +68,7 @@ class CPT[E<:Event with Product](
   def expDigammaNormalized( event:E ) = {
     val n = event.normKey
 
+
     val score = 
       if( squarelyNormalized > 0 )
         // taylorExpDigamma( 
@@ -94,10 +90,8 @@ class CPT[E<:Event with Product](
 
     if( !( score > 0 ) ) {
       println( s"$event\t$score" )
-      // println( "  " + taylorExpDigamma( ( counts( event ) + alpha  ) ) )
       println( "  " + ( counts( event ) + alpha  ) )
       println( "  " + exp( G.digamma( ( counts( event ) + alpha  ) ) ) )
-      // println( "    " + taylorExpDigamma( denomCounts( n ) + (alpha *
       println( "    " + ( denomCounts( n ) + (alpha * denoms(n).size)) )
       println( "    " + G.digamma( denomCounts( n ) + (alpha * denoms(n).size)) )
     }
@@ -120,25 +114,6 @@ class CPT[E<:Event with Product](
     }
   }
 
-      // def validateCPT = {
-      //   val result = denoms.forall{ case ( n, events ) =>
-      //     if( !( 
-      //         abs(
-      //           denomCounts(n) - events.map(counts(_)).sum
-      //         ) < 0.0001
-      //       )
-      //     ) {
-      //       println( events.map{e => s"$e: ${counts(e)}" }.mkString("[\n\t","\n\t","\n]\n") )
-      //       println( events.map{counts(_)}.sum )
-      //       println( n )
-      //       println( denomCounts(n) )
-      //     }
-
-      //     abs( denomCounts(n) - events.map(counts(_)).sum ) < 0.0001
-      //   }
-
-      //   assert( result )
-      // }
 
   // FIX ME BEFORE USING SQUARELYSAMPLING WITH PARTICLE FILTER
   def slowTrueLogProb( other:CPT[E] ) = {
@@ -150,111 +125,30 @@ class CPT[E<:Event with Product](
 
     // other.denoms *should* be empty for CPT[ChooseEvent] if there is only one word
     if( !other.denoms.isEmpty ) {
-          // val withOther = other.denoms.map{ case (denom,otherEvents) =>
-          //   val totalEvents = denoms( denom )
-          //   // otherEvents.foreach{ e => assert( totalEvents.contains( e ) ) }
-
-          //   // val eventsUnion = ( otherEvents ++ myEvents )
-          //   val withOtherNumerator = 
-          //     totalEvents.map{ e =>
-          //       assert( other(e) >= 0 )
-          //       G.logGamma( counts( e ) + other( e ) + alpha )
-          //       // fastLogGamma( counts( e ) + other( e ) + alpha )
-          //     }.reduce(_+_)
-
-          //   val withOtherDenom =
-          //     G.logGamma(
-          //     // fastLogGamma(
-          //       totalEvents.map{ e =>
-          //         val n = e.normKey
-          //         denomCounts( n ) + other.denomCounts( n ) + (alpha * totalEvents.size )
-          //       // }.reduce(LogSum(_,_))
-          //       }.sum
-          //     )
-
-          //   // println(
-          //   //   s"($withOtherNumerator}/$withOtherDenom) / ($myNumerator/$myDenom)"
-          //   // )
-
-          //   // math.exp(
-
-          //   withOtherNumerator - withOtherDenom
-
-          // }.reduce(_+_)
-
-          // val withoutOther = other.denoms.map{ case (denom,otherEvents) =>
-          //   val totalEvents = denoms( denom )
-
-          //   val myNumerator = 
-          //     totalEvents.map{ e =>
-          //       G.logGamma( counts( e ) + alpha )
-          //       // fastLogGamma( counts( e ) + alpha )
-          //     }.reduce(_+_)
-
-          //   val myDenom =
-          //     G.logGamma(
-          //     // fastLogGamma(
-          //       totalEvents.map{ e =>
-          //         val n = e.normKey
-          //         assert( other.denomCounts(n) >= 0 )
-          //         denomCounts( n ) + (alpha * totalEvents.size )
-          //       // }.reduce(LogSum(_,_))
-          //       }.sum
-          //     )
-
-          //   myNumerator - myDenom
-
-          // }.reduce(_+_)
-
-          // withOther - withoutOther
-
-
-
 
       other.denoms.keys.toVector.map{ denom =>
         val totalEvents = denoms( denom ).toVector
 
-        // var withOtherSum = 0D
         val withOtherNumerator = totalEvents.map{ e =>
-          // withOtherSum += counts( e ) + other( e ) + alpha
           G.logGamma( counts( e ) + other( e ) + alpha )
-          // fastLogGamma( counts( e ) + other( e ) + alpha )
         }.sum
 
-        // var withOtherDenomSum = 0D
         val withOtherDenom =
           G.logGamma(
-          // fastLogGamma(
-            // totalEvents.map{ e =>
-            //   val n = e.normKey
-            //   assert( n == denom )
-            //   // withOtherDenomSum += denomCounts( n ) + other.denomCounts(n) + (alpha * totalEvents.size )
             denomCounts( denom ) + other.denomCounts(denom)  + (alpha * totalEvents.size )
-            // }.sum
           )
 
         // var withoutOtherSum = 0D
         val myNumerator = totalEvents.map{ e =>
-          // withoutOtherSum += counts( e ) + alpha
           G.logGamma( counts( e ) + alpha )
-          // fastLogGamma( counts( e ) + alpha )
         }.sum
 
         var withoutOtherDenomSum = 0D
         val myDenom =
           G.logGamma(
-          // fastLogGamma(
             denomCounts( denom ) + ( alpha * totalEvents.size )
-            // totalEvents.map{ e =>
-            //   val n = e.normKey
-            //   // withoutOtherDenomSum += denomCounts( n ) + ( alpha * totalEvents.size )
-            //   denomCounts( n ) + ( alpha * totalEvents.size )
-            // }.sum
           )
 
-
-        // val trueLogProbFactor = 
-        //   ( withOtherNumerator + myDenom ) - ( myNumerator + withOtherDenom )
         val trueLogProbFactor = 
           ( withOtherNumerator - withOtherDenom ) - ( myNumerator - myDenom )
 
@@ -267,10 +161,6 @@ class CPT[E<:Event with Product](
           println( s"  withOtherDenom: $withOtherDenom" )
           println( s"  myNumerator: $myNumerator" )
           println( s"  myDenom: $myDenom" )
-          // println( s"  withOtherSum: $withOtherSum" )
-          // println( s"  withOtherDenomSum: $withOtherDenomSum" )
-          // println( s"  withoutOtherSum: $withoutOtherSum" )
-          // println( s"  withoutOtherDenomSum: $withoutOtherDenomSum" )
           println( trueLogProbFactor )
 
         }
@@ -306,7 +196,7 @@ class CPT[E<:Event with Product](
   // def fastTrueLogProb( other:CPT[E] ) = {
   def trueLogProb( other:CPT[E] ) = {
     // Let's avoid using lgamma in expensive cases and use the identity
-    // lgamma(n+1) = lgamma(n) + log( n + 1 ) lgamma( n+m ) = 
+    // lgamma(n+1) = lgamma(n) + log( n + 1 )
     other.denoms.toVector.map{ case ( denom, otherEvents ) =>
       val totalEvents = denoms( denom ).toVector
 
@@ -335,6 +225,7 @@ class CPT[E<:Event with Product](
   def increment( event:E, inc:Double, updateEvents:Boolean = true ) = {
     // println( " === NON-LOG SPACE INCREMENT ===" )
     val n = event.normKey
+    // println( "\n\nCPT.increment!!!\n\n" )
     if( inc > 0 ) {
       if( floor( inc ) == inc ) {
         val newEventLGamma = cachedLGamma( event, inc )
@@ -364,12 +255,14 @@ class CPT[E<:Event with Product](
   // TODO implement for logspace = true
   var totalCount = 0D
   def increment( other:CPT[E], updateEvents:Boolean ) {
+    // println( s"incrementing counts..." )
+    // println( s"  there are ${other.denoms.flatMap{_._2}} event types" )
+    // println( other.counts.exactCounts )
     other.denoms.flatMap{_._2}.foreach{ event =>
       val inc = other(event)
-      if( inc > 0 ) {
-        increment( event, inc, updateEvents )
-        totalCount += inc
-      }
+
+      increment( event, inc, updateEvents )
+      totalCount += inc
 
     }
   }

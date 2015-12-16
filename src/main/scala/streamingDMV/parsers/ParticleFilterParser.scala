@@ -28,7 +28,7 @@ abstract class ParticleFilterParser[
   val reservoirSize = parserSpec.reservoirSize
 
   val emptyReservoir = Array.fill( reservoirSize )(
-    SampledCounts( Array(), emptyCounts, myZero, myZero )
+    SampledCounts( Utt( "", Array() ), emptyCounts, myZero, myZero )
   )
 
   val particles = Array.tabulate( numParticles )( l => createParticle(emptyCounts,emptyReservoir,l) )
@@ -109,10 +109,10 @@ abstract class ParticleFilterParser[
       (0 until particles(l).reservoirSize)/*.par*/.foreach{ reservoirIndex =>
         val prev = particles(l).sampleReservoir( reservoirIndex )
 
-        if( prev.string.length > 0 ) {
+        if( prev.utt.string.length > 0 ) {
           sentenceCount += 1
           particles(l).theta.decrementCounts( prev.counts, integerDec = true )
-          val (newCounts, newProposalScore) = particles( l ).sampleTreeCounts( prev.string )
+          val (newCounts, newProposalScore) = particles( l ).sampleTreeCounts( prev.utt )
 
           val newTrueScore = particles(l).trueLogProb( newCounts )
           // println( newTrueScore + "  <=>  " + particles(l).fastTrueLogProb( newCounts ) )
@@ -133,7 +133,7 @@ abstract class ParticleFilterParser[
             acceptanceCount += 1
             particles(l).theta.incrementCounts( newCounts )
             particles(l).sampleReservoir( reservoirIndex ) = SampledCounts(
-              prev.string, newCounts, newSamplingScore, newTrueScore
+              prev.utt, newCounts, newSamplingScore, newTrueScore
             )
           } else {
             rejectionCount += 1
@@ -264,7 +264,7 @@ abstract class ParticleFilterParser[
         val reservoirIndex = rand.nextInt( sentenceNum + i + 1 )
         if( reservoirIndex < particles(l).reservoirSize ) {
           particles(l).sampleReservoir( reservoirIndex ) =
-            SampledCounts( s.string, sentCounts, samplingScore, trueScore )
+            SampledCounts( s, sentCounts, samplingScore, trueScore )
         }
 
         (sentCounts, sentProposalScore)

@@ -309,9 +309,10 @@ class TopDownDMVParser(
     cDec:Decoration, marginal:Double ) = {
     val head = intString( j )
     val dep = intString( k )
-    // println( ( ChooseEvent( head, LeftAtt, dep ), marginal ) )
 
-    // if( head == 6 && dep == 3 ) { println( marginal ) }
+    // if( head == 5 ) {
+    //   print( "  " + math.exp( marginal ) + " + " )
+    // }
 
     Seq(
       ( ChooseEvent( head, LeftAtt, dep ), marginal ),

@@ -2,6 +2,7 @@ package streamingDMV.math
 
 
 import scala.math.{log,exp}
+import org.apache.commons.math3.special.{Gamma=>G}
 
 object LogSpaceExpDigamma {
   def apply( input:Double ) = {
@@ -16,5 +17,9 @@ object LogSpaceExpDigamma {
         + f*(691/32760.0 + f*(-1/12.0 + f*3617/8160.0)))))));
     r + log(x) - 0.5/x + t;
   }
+
+  // def apply( input:Double ) = {
+  //   G.digamma( exp( input ) )
+  // }
 }
 

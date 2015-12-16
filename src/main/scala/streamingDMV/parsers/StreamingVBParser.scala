@@ -47,7 +47,8 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
 
     // println( miniBatch.map{ _.string.mkString(" ") }.mkString("\n") )
     var lastFHat = initialCounts( miniBatch )
-    // lastFHat.printTotalCountsByType
+      // println( s"initial lastFHat" )
+      // lastFHat.printTotalCountsByType
     if( scaleInitMiniBatchCounts ) {
       val currentCounts = theta.toCounts
       if( wordsSeen > 0 )
@@ -67,6 +68,7 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
 
         // println( s"incrementing theta by lastFHat" )
     theta.incrementCounts( lastFHat, updateEvents = false )
+    // theta.incrementCounts( lastFHat )
 
     var lastMiniBatchScores = 1D
     var insideScores = 0D
@@ -89,8 +91,7 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
       while( i < miniBatch.size ) {
         val s = miniBatch( i )
         // println( s"    $i" )
-        // println( s.id + " " + s.string.mkString(" ") )
-        val counts = extractPartialCounts( s.string )
+        val counts = extractPartialCounts( s )
         // val counts = extractPartialCounts( s.string, fHat )
         if( !( stringProb > myZero && stringProb <= myOne ) ) {
           println( stringProb )
@@ -137,7 +138,13 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
       // println( s"decrementing by lastFHat" )
       theta.decrementCounts( lastFHat )
       // println( s"incrementing by fHat" )
-      theta.incrementCounts( fHat, updateEvents = false )
+      // theta.incrementCounts( fHat, updateEvents = false )
+      theta.incrementCounts( fHat, updateEvents = true )
+          // println( "fHat counts" )
+          // fHat.printTotalCountsByType
+          // // fHat.printStopEvents
+          // println( "\n\n---\n\nAccumulated counts:" )
+          // theta.toCounts.printTotalCountsByType
 
       deltaScores = ( lastMiniBatchScores - thisMiniBatchScores ) / lastMiniBatchScores
       if( printIterScores )
@@ -163,7 +170,7 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
   var caching = false
 
   var sampleReservoir = Array.fill( reservoirSize )(
-    SampledCounts( Array(), emptyCounts, Double.NegativeInfinity, Double.NegativeInfinity )
+    SampledCounts( Utt( "", Array() ), emptyCounts, Double.NegativeInfinity, Double.NegativeInfinity )
   )
 
   def particlePerplexity = 1D

@@ -24,6 +24,8 @@ class LogCPT[E<:Event with Product](
   approximate,
   randomSeed
 ) {
+  
+  // println( "USING LogCPT" )
 
   // println( s"TableWrappers become LogSpace" )
   counts = new TableWrapper[E]( approximate, eps, delta, randomSeed, true )
@@ -62,23 +64,41 @@ class LogCPT[E<:Event with Product](
           LogSum( denomCounts( n ) , log(alpha * denoms(n).size) )
         )
 
-    if( !( score > Double.NegativeInfinity && score <= 0D) ) {
+
+    if( !( score > Double.NegativeInfinity && score <= 0D + 1E-20) ) {
       println( s"$event\t$score" )
-      println( "  " + LogSum( counts( event ) , log( alpha )  ) )
-      println( "  " + LogSpaceExpDigamma( LogSum( counts( event ) , log( alpha ) ) ) )
-      println( "    " + LogSum( denomCounts( n ) , log(alpha * denoms(n).size)) )
-      println( "    " + LogSpaceExpDigamma( LogSum( denomCounts( n ) , log(alpha * denoms(n).size ) ) ) )
+      println( "  counts(event): " + counts(event) )
+      println( "  log(alpha): " + log(alpha) )
+      println( "  numerator: " + LogSum( counts( event ) , log( alpha )  ) )
+      println( "  digamma(numerator): " + LogSpaceExpDigamma( LogSum( counts( event ) , log( alpha ) ) ) )
+      println( "    denomCounts(n): " + denomCounts(n) )
+      println( "    denominator: " + LogSum( denomCounts( n ) , log(alpha * denoms(n).size)) )
+      println( "    digamma(denominator): " + LogSpaceExpDigamma( LogSum( denomCounts( n ) , log(alpha * denoms(n).size ) ) ) )
     }
-    assert( score > Double.NegativeInfinity && score <= 0D )
+    assert( score > Double.NegativeInfinity && score <= 0D + 1E-20 )
 
     score
 
   }
 
   override def increment( event:E, inc:Double, updateEvents:Boolean = true ) = {
+    // println( s"LogCPT.increment( $event, $inc, $updateEvents )" )
     // to have a faster zerosInit
     // if( inc > 0 ) counts += event -> { counts.getOrElse( event, 0D ) + inc }
+    // println( s" } incrementing event $event by $inc with updateEvents $updateEvents..." )
     val n = event.normKey
+
+    // println( "\n\nLogCPT.increment!!!\n\n" )
+
+    // event match {
+    //   case RootEvent( rInt, rObs ) => {
+    //     println( "  LogCPT.increment for Root: " + ( rInt, rObs, inc, math.exp( inc ) ) )
+    //   }
+    //   case StopEvent( head, dir, v, dec ) => {
+    //     println( "  LogCPT.increment for Stop: " + ( head, dir, v, dec, inc, math.exp( inc ) ) )
+    //   }
+    //   case _ =>
+    // }
 
     if( updateEvents ) {
         // if( ! denoms.keySet.contains(n) ) {
@@ -90,12 +110,26 @@ class LogCPT[E<:Event with Product](
       denoms += n -> { denoms( n ) + event }
     }
 
+
     if( inc > Double.NegativeInfinity ) {
       counts.increment( event, inc )
       denomCounts.increment( n, inc )
 
     }
 
+  }
+
+  override def increment( other:CPT[E], updateEvents:Boolean ) {
+    // println( s"incrementing counts..." )
+    // println( s"  there are ${other.denoms.flatMap{_._2}} event types" )
+    // println( other.counts.exactCounts )
+    other.denoms.flatMap{_._2}.foreach{ event =>
+      val inc = other(event)
+      increment( event, inc, updateEvents )
+
+      totalCount = LogSum( totalCount, inc )
+
+    }
   }
 
 

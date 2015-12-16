@@ -13,14 +13,18 @@ object readStrings {
 object stringsToUtts {
   val dictionary = collection.mutable.HashMap[String,Int]()
 
-  def apply( datasets:List[Array[String]]* ):Seq[List[Utt]] = {
+  def apply( lexString:Boolean, datasets:List[Array[String]]* ):Seq[List[Utt]] = {
     datasets.map{ strings =>
       strings.map{ str =>
         Utt(
           str.head,
           str.tail.map{ w =>
             dictionary.getOrElseUpdate( w, dictionary.size )
-          }
+          },
+          if( lexString )
+            str.tail
+          else
+            Array()
         )
       }
     }

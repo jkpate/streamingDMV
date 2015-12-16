@@ -32,8 +32,11 @@ abstract class FoldUnfoldUPOSParser[P<:UPOSArcFactoredParameters](
   val outsideM:Array[Array[MMap[MDecoration,DenseMatrix[Double]]]]
 
   def lexFill( index:Int ):Unit
-  def insidePass( s:Array[Int] ) = {
-    intString = s
+  // def insidePass( s:Array[Int] ) = {
+  def insidePass( utt:Utt ) = {
+    // intString = s
+    intString = doubleString( utt.string )
+    lexString = doubleString( utt.lexes )
     (1 to ( intString.length )).foreach{ j =>
       lexFill( j-1 )
 
@@ -446,11 +449,12 @@ abstract class FoldUnfoldUPOSParser[P<:UPOSArcFactoredParameters](
     )
   }
 
-  def logProb( string:Array[Int] ) = {
-    val s = string.flatMap{ w=> Seq(w,w) }
+  // def logProb( string:Array[Int] ) = {
+  def logProb( utt:Utt ) = {
+    // val s = string.flatMap{ w=> Seq(w,w) }
     clearCharts
     theta.fullyNormalized = true
-    insidePass( s )
+    insidePass( utt )
     theta.fullyNormalized = false
     math.log(stringProb)
   }
@@ -472,15 +476,16 @@ abstract class FoldUnfoldUPOSParser[P<:UPOSArcFactoredParameters](
   def mSplits( i:Int, j:Int ):Iterable[Int]
 
 
-  def outsidePassWithCounts( s:Array[Int] ):MatrixDMVCounts = {
+  // def outsidePassWithCounts( s:Array[Int] ):MatrixDMVCounts = {
+  def outsidePassWithCounts( ):MatrixDMVCounts = {
     val c = MatrixDMVCounts( uposCount, rootAlpha, stopAlpha, chooseAlpha )
 
-    ( 1 to s.length ).reverse.foreach{ length =>
-      ( 0 to ( s.length - length ) ).foreach{ i =>
+    ( 1 to intString.length ).reverse.foreach{ length =>
+      ( 0 to ( intString.length - length ) ).foreach{ i =>
         val j = i + length
         if( i%2 == 0 && j%2 == 0 ) { // Root
-          if( i == 0 && j == s.length ) {
-            ( 1 to (s.length-1) by 2 ).foreach{ k =>
+          if( i == 0 && j == intString.length ) {
+            ( 1 to (intString.length-1) by 2 ).foreach{ k =>
               outsideRootWithMarginals( k ).foreach{ case ( event, count ) =>
                 event match {
                   case e:StopEvent => c.stopCounts.increment( e, count )
@@ -545,22 +550,24 @@ abstract class FoldUnfoldUPOSParser[P<:UPOSArcFactoredParameters](
 
     c
   }
-  def populateChart( string:Array[Int] ) {
-    val s = string.flatMap{ w=> Seq(w,w) }
+  // def populateChart( string:Array[Int] ) {
+  def populateChart( utt:Utt ) {
+    // val s = string.flatMap{ w=> Seq(w,w) }
     clearCharts
-    insidePass( s )
+    insidePass( utt )
     outsidePass
   }
 
-  def extractPartialCounts( string:Array[Int] ) = {
-    val s = string.flatMap{ w=> Seq(w,w) }
+  // def extractPartialCounts( string:Array[Int] ) = {
+  def extractPartialCounts( utt:Utt ) = {
+    // val s = string.flatMap{ w=> Seq(w,w) }
     clearCharts
-    insidePass( s )
-    outsidePassWithCounts( s )
+    insidePass( utt )
+    outsidePassWithCounts()
   }
 
   // TODO implement me!
-  def sampleTreeCounts( originalString:Array[Int] ) = (emptyCounts, Double.NaN)
+  def sampleTreeCounts( utt:Utt ) = (emptyCounts, Double.NaN)
   def trueLogProb( counts:MatrixDMVCounts ) = Double.NaN
 
 

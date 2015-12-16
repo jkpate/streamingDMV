@@ -52,7 +52,7 @@ object run {
     optsParser.accepts( "evalEvery" ).withRequiredArg
     optsParser.accepts( "evalMaxLength" ).withRequiredArg
     optsParser.accepts( "alpha" ).withRequiredArg
-    optsParser.accepts( "root" ).withRequiredArg
+    optsParser.accepts( "rootAlpha" ).withRequiredArg
     optsParser.accepts( "stopAlpha" ).withRequiredArg
     optsParser.accepts( "chooseAlpha" ).withRequiredArg
     optsParser.accepts( "backoffAlpha" ).withRequiredArg
@@ -70,6 +70,8 @@ object run {
     optsParser.accepts( "printItersReached" )
     optsParser.accepts( "printIterScores" )
     optsParser.accepts( "batchVB" )
+    optsParser.accepts( "infiniteModels" )
+    optsParser.accepts( "baseDistribution" ).withRequiredArg
     optsParser.accepts( "logSpace" )
     optsParser.accepts( "particleFilter" )
     optsParser.accepts( "numParticles" ).withRequiredArg
@@ -162,6 +164,12 @@ object run {
         0
     val convergeInitialMiniBatch = opts.has( "convergeInitialMiniBatch" )
     val batchVB = opts.has( "batchVB" )
+    val infiniteModels = opts.has( "infiniteModels" )
+    val baseDistribution =
+      if( opts.has( "baseDistribution" ) )
+        opts.valueOf( "baseDistribution" ).toString
+      else
+        "monkeyModel"
     val logSpace = opts.has( "logSpace" )
     val particleFilter = opts.has( "particleFilter" )
     val numParticles =
@@ -218,6 +226,8 @@ object run {
     println( s"harmonicCorpusInit: ${harmonicCorpusInit}" )
     println( s"printItersReached: ${printItersReached}" )
     println( s"batchVB: ${batchVB}" )
+    println( s"infiniteModels: ${infiniteModels}" )
+    println( s"baseDistribution: ${baseDistribution}" )
     println( s"logSpace: ${logSpace}" )
     println( s"particleFilter: ${particleFilter}" )
     println( s"numParticles: ${numParticles}" )
@@ -249,9 +259,10 @@ object run {
     val testWordStrings = readStrings( testStrings )
 
     val Seq( trainSet, testSet ) =
-      stringsToUtts( trainWordStrings, testWordStrings )
+      stringsToUtts( infiniteModels, trainWordStrings, testWordStrings )
 
-    lazy val totalVocabSize = (trainSet ++ testSet).flatMap{_.string}.toSet.size
+    // lazy val totalVocabSize = (trainSet ++ testSet).flatMap{_.string}.toSet.size
+    lazy val totalVocabSize = stringsToUtts.dictionary.size
     println( s"${trainSet.size} training strings" )
     println( s"${testSet.size} testing strings" )
     println( s"${trainSet.map{_.string.size}.sum} training words" )
@@ -266,6 +277,7 @@ object run {
 
     val parserSpec = ParserSpec(
       maxLength = maxLength,
+      alphabetSize = if( baseDistribution == "monkeyModel" ) 27 else totalVocabSize,
       randomSeed = randomSeed,
       rootAlpha = rootAlpha,
       stopAlpha = stopAlpha,
@@ -281,6 +293,7 @@ object run {
     )
 
     // val p:FoldUnfoldParser[_<:ArcFactoredParameters] =
+    // TODO: come up with a better way of picking the parser type...
     val p:FoldUnfoldParser[_<:DependencyCounts,_<:ArcFactoredParameters[_]] =
       if( particleFilter ) {
         if( parserType == "TopDownDMVParser" ) {
@@ -540,13 +553,17 @@ object run {
         }
       } else {
         if( parserType == "TopDownDMVParser" ) {
-          println( "Using TopDownDMVParser" )
-          new TopDownDMVParser(
-            // maxLength,
-            // randomSeed = randomSeed,
-            // squarelyNormalized = squareNorm
-            parserSpec
-          )
+          if( infiniteModels ) {
+            println( "Using Infinite TopDownDMVParser" )
+            new InfiniteTopDownDMVParser(
+              parserSpec
+            )
+          } else {
+            println( "Using TopDownDMVParser" )
+            new TopDownDMVParser(
+              parserSpec
+            )
+          }
         } else if( parserType == "OriginalDMVParser" ) {
           println( "Using OriginalDMVParser" )
           new OriginalDMVParser(
@@ -572,13 +589,17 @@ object run {
             parserSpec
           )
         } else if( parserType == "FiveValenceParser" ) {
-          println( "Using FiveValenceParser" )
-          new FiveValenceParser(
-              // maxLength,
-              // randomSeed = randomSeed,
-              // squarelyNormalized = squareNorm
-            parserSpec
-          )
+          if( infiniteModels ) {
+            println( "Using Infinite FiveValenceParser" )
+            new InfiniteFiveValenceParser(
+              parserSpec
+            )
+          } else {
+            println( "Using FiveValenceParser" )
+            new FiveValenceParser(
+              parserSpec
+            )
+          }
         } else if( parserType == "FourValenceParser" ) {
           println( "Using FourValenceParser" )
           new FourValenceParser(
@@ -626,10 +647,9 @@ object run {
 
     if( particleFilter ) { p.initializeParticles }
 
-    p.zerosInit( trainSet ++ testSet )
-    if( harmonicCorpusInit ) {
-      p.setConstantHarmonicCounts( trainSet )
-    }
+    if( !infiniteModels ) p.zerosInit( trainSet ++ testSet )
+
+    if( harmonicCorpusInit ) p.setConstantHarmonicCounts( trainSet )
 
     if( printInitialGrammar ) {
       println( "INITIAL GRAMMAR" )
@@ -747,6 +767,8 @@ object run {
           else
             p.printViterbiDepParses( testSet, s"it${sentencesProcessed}", evalMaxLength )
 
+        // p.theta.printTotalCountsByType
+
             // var heldOutLogProb = 0D
             // val parseStartTime = System.currentTimeMillis
             // testSet.foreach{ s =>
@@ -810,16 +832,16 @@ object run {
     if( !( trainingSentCount % evalEvery == 0 ) ) {
       var heldOutLogProb = 0D
       val parseStartTime = System.currentTimeMillis
-      testSet.foreach{ s =>
+      testSet.foreach{ utt =>
         if( constituencyEval ) {
-          val Parse( id, conParse, depParse ) = p.viterbiParse( s )
+          val Parse( id, conParse, depParse ) = p.viterbiParse( utt )
           println( s"it${trainingSentCount}:constituency:${id} ${conParse}" )
           println( s"it${trainingSentCount}:dependency:${id} ${printDependencyParse(depParse)}" )
         } else {
-          val Parse( id, _, depParse ) = p.viterbiDepParse( s )
+          val Parse( id, _, depParse ) = p.viterbiDepParse( utt )
           println( s"it${trainingSentCount}:dependency:${id} ${printDependencyParse(depParse)}" )
         }
-        heldOutLogProb += p.logProb( s.string )
+        heldOutLogProb += p.logProb( utt )
       }
       val parseEndTime = System.currentTimeMillis
       println( s"it${trainingSentCount}:logProb:${heldOutLogProb}" )
@@ -832,6 +854,8 @@ object run {
     //   println( s"resampled ${resamplingEventCounts} times" )
     //   println( s"${resamplingDur/sentencesProcessed}ms resampling per training sentence")
     // }
+
+    p.theta.printTotalCountsByType
 
     if( printFinalGrammar ) {
       println( "FINAL GRAMMAR" )

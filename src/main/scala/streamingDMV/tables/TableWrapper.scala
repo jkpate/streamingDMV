@@ -154,11 +154,14 @@ class TableWrapper[E<:FastHashable](
     } else {
       if( logSpace ) {
         assert( x > Double.NegativeInfinity && x <= 0D )
+        // println( s"\ndividing by $x" )
         exactCounts.keys.foreach{ event =>
+          // println( s"  $event before: ${exactCounts( event )}" )
           exactCounts = exactCounts.updated(
             event,
             exactCounts(event) - x
           )
+          // println( s"  $event after: ${exactCounts( event )}" )
         }
       } else {
         exactCounts.keys.foreach{ event =>

@@ -67,8 +67,11 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
       assert( insideChart( index )( index+1 )(pDec) <= myOne +0.000001 )
     }
   }
-  def insidePass( s:Array[Int] ) = {
-    intString = s
+  // def insidePass( s:Array[Int] ) = {
+  def insidePass( utt:Utt ) = {
+    intString = doubleString( utt.string )
+    lexString = doubleString( utt.lexes )
+
     if( intString.length > insideChart.length )
       buildCharts( intString.length )
 
@@ -121,7 +124,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
         )
       }
 
-    if( !( score > myZero && score <= myOne ) ) {
+    if( !( score > myZero && score <= myOne + 1E-10 ) ) {
       println( s"mCellScore: ${(i,k,j,mDecoration,score)}" )
       if( k%2 == 0 ) {
         println( "  left:" + insideChart( i )( k )( mDecoration.evenLeft ) )
@@ -200,7 +203,10 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
             //   }
             // }
 
-        assert( insideChart( i )( j )( mDecoration ) <= myOne )
+        if( !( insideChart( i )( j )( mDecoration ) <= myOne + 1E-20 ) ) {
+          println( insideChart( i )( j )( mDecoration ) )
+        }
+        assert( insideChart( i )( j )( mDecoration ) <= myOne + 1E-20 )
 
       }
     }
@@ -218,12 +224,18 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
         println( stringProb )
       }
       assert( stringProb > myZero )
-      assert( stringProb <= myOne )
+      assert( stringProb <= myOne + 1E-10 )
     }
   }
   def computeInsideRightwardScore( i:Int, j:Int ) {
     rightwardSplitSpecs( i, j ).foreach{ case ( pDec, splits ) =>
       splits.foreach{ case ( k, mDec, cDec ) =>
+
+        // println( (i,k,j,mDec,cDec) )
+        // println( insideChart( i )( j )( pDec ) )
+        // println(
+        //   rightwardCellScore( i, k, j, pDec, mDec, cDec )
+        // )
 
         insideChart( i )( j )( pDec ) = myPlus(
             insideChart( i )( j )( pDec ),
@@ -231,10 +243,10 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
           )
 
         if( !( insideChart( i )( j )( pDec ) > myZero ) ) {
-          println( (i,j,pDec, insideChart( i )( j )( pDec ) ) )
+          println( "inside rightward cell: " + (i,j,pDec, insideChart( i )( j )( pDec ) ) )
         }
         assert( insideChart( i )( j )( pDec ) > myZero )
-        assert( insideChart( i )( j )( pDec ) <= myOne )
+        assert( insideChart( i )( j )( pDec ) <= myOne + 1E-10 )
 
       }
     }
@@ -242,19 +254,23 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
   def computeInsideLeftwardScore( i:Int, j:Int ) {
     leftwardSplitSpecs( i, j ).foreach{ case ( pDec, splits ) =>
       splits.foreach{ case ( k, mDec, cDec ) =>
-        // println( (i,k,j,mDec,cDec) )
+            // println( (i,k,j,mDec,cDec) )
+            // println( insideChart( i )( j )( pDec ) )
+            // println(
+            //   leftwardCellScore( i, k, j, pDec, mDec, cDec )
+            // )
         insideChart( i )( j )( pDec ) = myPlus(
             insideChart( i )( j )( pDec ),
             leftwardCellScore( i, k, j, pDec, mDec, cDec )
           )
 
         if( !( insideChart( i )( j )( pDec ) > myZero &&
-                insideChart( i )( j )( pDec ) <= myOne ) ) {
+                insideChart( i )( j )( pDec ) <= myOne + 1E-10 ) ) {
           println( "! " + (i,j,pDec, insideChart( i )( j )( pDec ) ) )
           println( "! " + leftwardCellScore( i, k, j, pDec, mDec, cDec ) )
         }
         assert( insideChart( i )( j )( pDec ) > myZero )
-        assert( insideChart( i )( j )( pDec ) <= myOne )
+        assert( insideChart( i )( j )( pDec ) <= myOne + 1E-10 )
       }
     }
   }
@@ -641,6 +657,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
     clearVitCharts
     // intString = utt.string.flatMap{ w => Seq(w,w) }
     intString = doubleString( utt.string )
+    lexString = doubleString( utt.lexes )
     if( intString.length > headTrace.length ) {
       buildVitCharts( intString.length )
     }
@@ -663,6 +680,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
     clearVitCharts
     // intString = utt.string.flatMap{ w => Seq(w,w) }
     intString = doubleString( utt.string )
+    lexString = doubleString( utt.lexes )
     if( intString.length > headTrace.length ) {
       buildVitCharts( intString.length )
     }
@@ -801,12 +819,13 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
 
   var sampleScore = myOne
 
-  def sampleTreeCounts( originalString:Array[Int] ):Tuple2[C,Double] = {
-    val s = doubleString( originalString )
+  // def sampleTreeCounts( originalString:Array[Int] ):Tuple2[C,Double] = {
+  def sampleTreeCounts( utt:Utt ):Tuple2[C,Double] = {
+    // val s = doubleString( originalString )
     clearCharts
     val normalized = theta.fullyNormalized
     theta.fullyNormalized = true
-    insidePass( s )
+    insidePass( utt )
     val c = emptyCounts
     sampleScore = myOne
     // println( "incrementing counts for sample" )
@@ -834,12 +853,11 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
       constantInitialCounts
       // emptyCounts
 
-  def logProb( string:Array[Int] ) = {
+  def logProb( utt:Utt ) = {
     // val s = string.flatMap{ w => Seq(w,w) }
-    val s = doubleString( string )
     clearCharts
     theta.fullyNormalized = true
-    insidePass( s )
+    insidePass( utt )
     theta.fullyNormalized = false
     // math.log(stringProb)
     if( logSpace )
@@ -861,21 +879,16 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
   def mEventCounts( i:Int, k:Int, j:Int, mDecoration:MDecoration, marginal:Double ):Seq[Tuple2[Event,Double]]
   def lexEventCounts( index:Int, pDec:Decoration, marginal:Double ):Seq[Tuple2[Event,Double]]
 
-  def outsidePassWithCounts( s:Array[Int] ):C = {
-    // println( s"creating counts in outsidePassWithCounts" )
-    // val c = DMVCounts(
-    //   new LogCPT[RootEvent]( rootAlpha ),
-    //   new LogCPT[StopEvent]( stopAlpha ),
-    //   new LogCPT[ChooseEvent]( chooseAlpha )
-    // )
+  // def outsidePassWithCounts( s:Array[Int] ):C = {
+  def outsidePassWithCounts():C = {
 
     val c = emptyCounts
 
-    ( 1 to s.length ).reverse.foreach{ length =>
-      ( 0 to ( s.length - length ) ).foreach{ i =>
+    ( 1 to intString.length ).reverse.foreach{ length =>
+      ( 0 to ( intString.length - length ) ).foreach{ i =>
         val j = i + length
         if( i%2 == 0 && j%2 == 0 ) { // Root
-          if( i == 0 && j == s.length ) {
+          if( i == 0 && j == intString.length ) {
             rootSplitSpecs().foreach{ case ( k, decorationPair ) =>
               val r = intString( k )
               val factorAndOutside = rootCellFactor( k )
@@ -897,7 +910,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
               )
 
               val marginal = myTimes(
-                insideChart( 0 )( k )( decorationPair.evenLeft ),
+                myDiv( insideChart( 0 )( k )( decorationPair.evenLeft ), stringProb ),
                   insideChart( k )( intString.length )( decorationPair.evenRight ),
                     factorAndOutside
               )
@@ -935,13 +948,25 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
                   )
 
                 val marginal = myTimes(
-                  insideChart( i )( k )( cDec ),
+                  myDiv( insideChart( i )( k )( cDec ), stringProb ),
                     insideChart( k )( j )( mDec ),
                       factorAndOutside
                 )
 
                 leftwardEventCounts( i, k, j, pDec, mDec, cDec, marginal ).foreach{ case (event, count) =>
+                  if( !( count <= myOne + 1E-10 ) ) {
+                    println( s"  $event: $count" )
+                    println( insideChart( i )( k )( cDec ) )
+                    println( stringProb )
+                    println( insideChart( k )( j )( mDec ) )
+                    println( factorAndOutside )
+                  }
+                  assert( count > myZero )
+                  assert( count <= myOne + 1E-10 )
                   c.increment( event, count )
+                  // val totalCount = c.totalCounts
+                  // assert( totalCount > myZero )
+                  // assert( totalCount < Double.PositiveInfinity )
                   // event match {
                   //   case e:StopEvent => c.stopCounts.increment( e, count )
                   //   case e:ChooseEvent => c.chooseCounts.increment( e, count )
@@ -955,7 +980,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
               // *real* inside score for each terminal is 1)
               val marginal = myTimes(
                 insideChart(i)(i+1)(pDec),
-                outsideChart(i)(i+1)(pDec)
+                myDiv( outsideChart(i)(i+1)(pDec), stringProb )
               )
 
               lexEventCounts( i, pDec, marginal ).foreach{ case (event, count) =>
@@ -991,12 +1016,20 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
                   )
 
                 val marginal = myTimes(
-                  insideChart( i )( k )( mDec ),
+                  myDiv(
+                    insideChart( i )( k )( mDec ),
+                    stringProb
+                  ),
                     insideChart( k )( j )( cDec ),
                       factorAndOutside
                 )
 
                 rightwardEventCounts( i, k, j, pDec, mDec, cDec, marginal ).foreach{ case (event, count) =>
+                  // assert( count > myZero )
+                  // assert( count < Double.PositiveInfinity )
+                  // val totalCount = c.totalCounts
+                  // assert( totalCount > myZero )
+                  // assert( totalCount < Double.PositiveInfinity )
                   c.increment( event, count )
                 }
               }
@@ -1007,7 +1040,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
               // *real* inside score for each terminal is 1)
               val marginal = myTimes(
                 insideChart(i)(i+1)(pDec),
-                outsideChart(i)(i+1)(pDec)
+                myDiv( outsideChart(i)(i+1)(pDec), stringProb )
               )
 
               lexEventCounts( i, pDec, marginal ).foreach{ case (event, count) =>
@@ -1065,13 +1098,19 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
               val marginal = 
                 if( k%2 == 0 ) {
                   myTimes(
-                    insideChart( i )( k )( mDecoration.evenLeft ),
+                    myDiv(
+                      insideChart( i )( k )( mDecoration.evenLeft ),
+                      stringProb
+                    ),
                       insideChart( k )( j )( mDecoration.evenRight ),
                         factorAndOutside
                   )
                 } else {
                   myTimes(
-                    insideChart( i )( k )( mDecoration.oddLeft ),
+                    myDiv(
+                      insideChart( i )( k )( mDecoration.oddLeft ),
+                      stringProb
+                    ),
                       insideChart( k )( j )( mDecoration.oddRight ),
                         factorAndOutside
                   )
@@ -1087,26 +1126,29 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
       }
     }
 
-    c.divideBy( stringProb )
+    // c.divideBy( stringProb )
+
+        // println( s"inside outsidePassWithCounts" )
+        // c.printTotalCountsByType
 
     c
   }
-  def populateChart( string:Array[Int] ) {
+  def populateChart( utt:Utt ) {
     // val s = string.flatMap{ w=> Seq(w,w) }
-    val s = doubleString( string )
+    // val s = doubleString( string )
     clearCharts
-    insidePass( s )
+    insidePass( utt )
     outsidePass
   }
 
-  def doubleString( string:Array[Int] ) = {
-    string.toSeq.flatMap{ w => List(w,w) }.toArray
-  }
-  def extractPartialCounts( string:Array[Int] ) = {
-    val s = doubleString( string )
+  // def extractPartialCounts( string:Array[Int] ) = {
+  def extractPartialCounts( utt:Utt ) = {
+    // val s = doubleString( string )
+    // println( utt.id + " " + utt.string.mkString(" ") )
+    // println( utt.id + " " + utt.lexes.mkString(" ") )
     clearCharts
-    insidePass( s )
-    outsidePassWithCounts( s )
+    insidePass( utt )
+    outsidePassWithCounts()
   }
 
 

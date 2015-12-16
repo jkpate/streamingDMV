@@ -4,6 +4,7 @@ import streamingDMV.parsers._
 import streamingDMV.parameters._
 import streamingDMV.math.LogSum
 import streamingDMV.labels._
+import streamingDMV.io._
 
 import breeze.linalg._
 import breeze.numerics._
@@ -17,17 +18,32 @@ import org.junit.Before
 
 class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   val r = new util.Random( 16747 )
-  val dmvCorpus = List(
-    Array( 0, 5, 3, 1, 2, 4 ),
-    Array( 0, 5, 3, 1, 2, 4 ),
-    Array( 1, 2, 3, 1, 6, 4 )/*,
-    Array.fill( 9 )( r.nextInt( 15 ) ),
-    Array.fill( 15 )( r.nextInt( 15 ) )*/
-  )
 
-  val idDMVCorpus = dmvCorpus.zipWithIndex.map{ case (v,idx) => 
-    Utt( s"utt$idx", v )
-  }
+    // val dmvCorpus = List(
+    //   Array( 0, 5, 3, 1, 2, 4 ),
+    //   Array( 0, 5, 3, 1, 2, 4 ),
+    //   Array( 1, 2, 3, 1, 6, 4 )/*,
+    //   Array.fill( 9 )( r.nextInt( 15 ) ),
+    //   Array.fill( 15 )( r.nextInt( 15 ) )*/
+    // )
+
+    // val idDMVCorpus = dmvCorpus.zipWithIndex.map{ case (v,idx) => 
+    //   Utt( s"utt$idx", v )
+    // }
+
+
+  val dmvCorpus = List(
+    // "sent1: I am the eggman",
+    // "sent2: I am the eggman",
+    // "sent3: I am the walrus",
+    // "sent4: world in which we live in",
+    "dev.u977: and we go there uh once a year"
+  ).map{_.split(" ")}
+
+
+  val idDMVCorpus = stringsToUtts( lexString = true, dmvCorpus )(0)
+
+  println( idDMVCorpus.mkString( "\n" ) )
 
 
   val uposCount = 20
@@ -45,6 +61,7 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
 
   val parserSpec = ParserSpec(
     maxLength = maxLength,
+    alphabetSize = 27,
     randomSeed = randomSeed,
     rootAlpha = alpha,
     stopAlpha = alpha,
@@ -52,16 +69,20 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
     backoffAlpha = backoffAlpha,
     notBackoffAlpha = notBackoffAlpha,
     squarelyNormalized = squareNorm,
+    scaleInitMiniBatchCounts = false,
+    harmonicMiniBatchInit = false,
     approximate = false,
     reservoirSize = reservoirSize,
     logSpace = false
+    // logSpace = true
   )
 
   // val p = new FiveValenceParser( parserSpec )
   // val p = new FourValenceParser( parserSpec )
   // val p = new ThreeValenceParser( parserSpec )
   // val p = new TopDownDMVParser( parserSpec )
-  val p = new OriginalDMVParser( parserSpec )
+  val p = new InfiniteTopDownDMVParser( parserSpec )
+  // val p = new OriginalDMVParser( parserSpec )
   // val p = new NoValenceParser( parserSpec )
   // val p = new HeadOutAdjHeadNoValenceParser(
   //   parserSpec
@@ -75,7 +96,7 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   // )
 
 
-  p.zerosInit( idDMVCorpus )
+  // p.zerosInit( idDMVCorpus )
   // p.randomInit( idDMVCorpus, 15, 100 )
 
   val iters = 1//00//0
@@ -83,8 +104,8 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   @Test def testInsideOutside {
 
     var totalTime = 0D
-    dmvCorpus.foreach{ s =>
-      println( s.mkString(" " ) )
+    idDMVCorpus.foreach{ s =>
+      println( s.string.mkString(" " ) )
       var i = 0
       // var c = DMVCounts()
       // var c = MatrixDMVCounts( uposCount = uposCount )
@@ -95,10 +116,22 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
         c = p.extractPartialCounts( s )
         i += 1
       }
-      p.theta.incrementCounts( c )
-      p.theta.decrementCounts( c )
-      p.theta.incrementCounts( c )
+      println( "INCREMENTING THETA... " )
+      p.theta.incrementCounts( c, updateEvents = true )
+      println( "DONE INCREMENTING THETA... " )
+      // p.theta.decrementCounts( c )
+      // p.theta.incrementCounts( c, updateEvents = true )
       val endTime = System.currentTimeMillis
+
+      println( s"\n\n---===---\nSENTENCE COUNTS" )
+      println( c.rootCounts.counts.exactCounts.mkString("[\n\t> ", "\n\t> ","\n]") )
+      c.printTotalCountsByType
+      c.printStopEvents
+
+      println( s"\n\n---===---\nACCUMULATED COUNTS" )
+      p.theta.toCounts.printTotalCountsByType
+
+      println( p.theta.p_root.counts.exactCounts.mkString("[\n\t> ", "\n\t> ","\n]") )
 
       // println(
       //   p.chartToString( "Inside", p.insideChart, logSpace = false )
@@ -115,7 +148,6 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
       // val pObs = chart.pObs
       val pObs = p.stringProb
 
-      c.printTotalCountsByType
       println( c.totalCounts + " total events seen" )
       println( StopEvent( 4,LeftAtt,Outermost,Stop) )
       println( Outermost + ": " + c.stopCounts( StopEvent( 4,LeftAtt,Outermost,Stop) ) )
@@ -138,7 +170,7 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
           // p.insideChart(0)(1).keys.map{ k => sum( p.insideChart(0)(1)(k) :* p.outsideChart(0)(1)(k)) }.sum
       )
       println( "all terminals:" )
-      (0 to ((2*s.length)-1)).foreach{ i =>
+      (0 to ((2*s.string.length)-1)).foreach{ i =>
         println(
           p.myPlus(
             p.insideChart(i)(i+1).keys.map{ k =>
@@ -148,13 +180,19 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
             // p.insideChart(0)(1).keys.map{ k => sum( p.insideChart(0)(1)(k) :* p.outsideChart(0)(1)(k)) }.sum
         )
       }
-      (0 to ((2*s.length)-1)).foreach{ i =>
+      (0 to ((2*s.string.length)-1)).foreach{ i =>
+          // println( p.myPlus(
+          //     p.insideChart(i)(i+1).keys.map{ k =>
+          //       p.myTimes( p.insideChart(i)(i+1)(k), p.outsideChart(i)(i+1)(k) )
+          //     }.toSeq:_*
+          //   ) - pObs
+          // )
         assertTrue(
           p.myPlus(
             p.insideChart(i)(i+1).keys.map{ k =>
               p.myTimes( p.insideChart(i)(i+1)(k), p.outsideChart(i)(i+1)(k) )
             }.toSeq:_*
-          ) - pObs < 0.000001
+          ) - pObs < 0.0001
             // p.insideChart(i)(i+1).keys.map{ k => sum( p.insideChart(i)(i+1)(k) :* p.outsideChart(i)(i+1)(k)) }.sum
         )
       }
@@ -224,74 +262,74 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
       //   println( (endTime-startTime) / (idDMVCorpus.size) + "ms per sampled sentence" )
       // }
 
-      @Test def testParticleFilter {
-        val numParticles = 10
+   //    @Test def testParticleFilter {
+   //      val numParticles = 10
 
-        val startTime = System.currentTimeMillis
+   //      val startTime = System.currentTimeMillis
 
-        val pf =
-          new ParticleFilterNOPOSParser[DMVCounts,TopDownDMVParameters,TopDownDMVParser](
-            parserSpec = parserSpec,
-            numParticles = numParticles,
-            createParticle = (counts:DMVCounts,reservoir:Array[SampledCounts[DMVCounts]],l:Int) => {
-              // val p_l = new TopDownDMVParser( maxLength, randomSeed = 15 + 32*l, reservoirSize = 3 )
-              val p_l = new TopDownDMVParser( ParserSpec.withRandomSeed( parserSpec, l ) )
-              p_l.zerosInit( idDMVCorpus )
-              p_l.theta.incrementCounts( counts )
-              p_l.sampleReservoir = reservoir
-              p_l
-            },
-            emptyCounts = DMVCounts( 1D, 1D, 1D, true )
-          )
+   //      val pf =
+   //        new ParticleFilterNOPOSParser[DMVCounts,TopDownDMVParameters,TopDownDMVParser](
+   //          parserSpec = parserSpec,
+   //          numParticles = numParticles,
+   //          createParticle = (counts:DMVCounts,reservoir:Array[SampledCounts[DMVCounts]],l:Int) => {
+   //            // val p_l = new TopDownDMVParser( maxLength, randomSeed = 15 + 32*l, reservoirSize = 3 )
+   //            val p_l = new TopDownDMVParser( ParserSpec.withRandomSeed( parserSpec, l ) )
+   //            p_l.zerosInit( idDMVCorpus )
+   //            p_l.theta.incrementCounts( counts )
+   //            p_l.sampleReservoir = reservoir
+   //            p_l
+   //          },
+   //          emptyCounts = DMVCounts( 1D, 1D, 1D, true )
+   //        )
 
-        pf.zerosInit( idDMVCorpus )
-        pf.particles.head.theta.printOut()
+   //      pf.zerosInit( idDMVCorpus )
+   //      pf.particles.head.theta.printOut()
 
-        (0 until iters).foreach{ _ => pf.resampleParticles }
-        // println( "---" )
-        // pf.resampleParticles
-        // println( "---" )
-        // pf.resampleParticles
-        // println( "---" )
-        (0 until 4 ).foreach{ i =>
-          println( 
-            "particle ess before update: " + pf.ess
-          )
-          // pf.streamingBayesUpdate(
-          //   idDMVCorpus
-          // )
+   //      (0 until iters).foreach{ _ => pf.resampleParticles }
+   //      // println( "---" )
+   //      // pf.resampleParticles
+   //      // println( "---" )
+   //      // pf.resampleParticles
+   //      // println( "---" )
+   //      (0 until 4 ).foreach{ i =>
+   //        println( 
+   //          "particle ess before update: " + pf.ess
+   //        )
+   //        // pf.streamingBayesUpdate(
+   //        //   idDMVCorpus
+   //        // )
 
-          var i = 0 
-          idDMVCorpus.foreach{ s =>
-            println( s.string.mkString(" " ) )
+   //        var i = 0 
+   //        idDMVCorpus.foreach{ s =>
+   //          println( s.string.mkString(" " ) )
 
-            pf.streamingBayesUpdate(
-              miniBatch = s::Nil,
-              sentenceNum = i,
-              testSet = Nil
-            )
+   //          pf.streamingBayesUpdate(
+   //            miniBatch = s::Nil,
+   //            sentenceNum = i,
+   //            testSet = Nil
+   //          )
 
-            // println( 
-            //   pf.viterbiParse( s )
-            // )
-            println( 
-              "particle ess after update: " + pf.ess
-            )
-            pf.resampleParticles
-            println( "---" )
+   //          // println( 
+   //          //   pf.viterbiParse( s )
+   //          // )
+   //          println( 
+   //            "particle ess after update: " + pf.ess
+   //          )
+   //          pf.resampleParticles
+   //          println( "---" )
 
-            i += 1
+   //          i += 1
 
-            val pObs = pf.stringProb
+   //          val pObs = pf.stringProb
 
-          }
-        }
-        val endTime = System.currentTimeMillis
+   //        }
+   //      }
+   //      val endTime = System.currentTimeMillis
 
-        println( (endTime-startTime) / (iters*numParticles) + "ms per particle" )
+   //      println( (endTime-startTime) / (iters*numParticles) + "ms per particle" )
 
 
-      }
+   //    }
 
 
 }

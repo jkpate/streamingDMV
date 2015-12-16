@@ -13,6 +13,7 @@ import java.nio.ByteBuffer
 
 case class ParserSpec(
   maxLength:Int,
+  alphabetSize:Int,
   randomSeed:Int,
   rootAlpha:Double,
   stopAlpha:Double,
@@ -36,6 +37,7 @@ case class ParserSpec(
       squarelyNormalized = squarelyNormalized,
       approximate = approximate,
       randomSeed = randomSeed,
+      alphabetSize = alphabetSize,
       logSpace = logSpace
     )
 }
@@ -43,6 +45,7 @@ object ParserSpec {
   def withRandomSeed( parserSpec:ParserSpec, randomSeed:Int ) = {
     ParserSpec(
       maxLength = parserSpec.maxLength,
+      alphabetSize = parserSpec.alphabetSize,
       randomSeed = randomSeed,
       rootAlpha = parserSpec.rootAlpha,
       stopAlpha = parserSpec.stopAlpha,
@@ -68,6 +71,7 @@ case class ParameterSpec(
   squarelyNormalized:Int,
   approximate:Boolean,
   randomSeed:Int,
+  alphabetSize:Int,
   logSpace:Boolean
 )
 
@@ -84,9 +88,12 @@ case class WordLengths( annotations:Array[Int] ) extends AnnotationStream[Int]
 case class DirectedArc( hIdx:Int, dIdx:Int )
 
 case class Parse( id:String, conParse:String, depParse:Set[DirectedArc] )
-case class Utt( id:String, string:Array[Int] )
+case class Utt( id:String, string:Array[Int], lexes:Array[String] = Array() ) {
+  override def toString = "Utt( " + id + ", " + string.mkString("[ ",", "," ]") + ", " +
+    lexes.mkString( "< ", ", ", " >" ) + " )" 
+}
 
-case class SampledCounts[C]( string:Array[Int], counts:C, samplingScore:Double, trueScore:Double )
+case class SampledCounts[C]( utt:Utt, counts:C, samplingScore:Double, trueScore:Double )
 
 object FastHash {
   val prime_modulus = (1 << 31) - 1
@@ -260,6 +267,10 @@ abstract class Event /*[C]*/ extends FastHashable {
   def openSpec:Tuple3[Int,Int,Int]*/
 }
 
+trait GeneratingString {
+  val gen:String
+}
+
 // object SecondOrderChooseEvent {
 //   def apply( head:Int, context:Int, dir:AttDir, v:Decoration, dep:Int ):SecondOrderChooseEvent =
 //     new SecondOrderChooseEvent( head, context, dir, v, dep )
@@ -300,8 +311,14 @@ case class ChooseNorm( head:Int, context:Int, dir:AttDir ) extends NormKey {
       //   }
       // }
 }
-case class ChooseEvent( head:Int, context:Int, dir:AttDir, /*v:Decoration,*/ dep:Int ) extends
-Event /*[AttDir]*/ {
+case class ChooseEvent(
+  head:Int,
+  context:Int,
+  dir:AttDir,
+  /*v:Decoration,*/
+  dep:Int,
+  gen:String = ""
+) extends Event with GeneratingString /*[AttDir]*/ {
   def normKey = ChooseNorm( head, context, dir )
   override lazy val byteBuffer = {
     val bytes = if( context > 0 ) ByteBuffer.allocate( 16 ) else ByteBuffer.allocate( 12 )
@@ -342,6 +359,9 @@ object ChooseEvent {
 
   def apply( head:Int, dir:AttDir, dep:Int ):ChooseEvent =
     new ChooseEvent( head, -1, dir, /*NoValence,*/ dep )
+
+  def apply( head:Int, dir:AttDir, dep:Int, gen:String ):ChooseEvent =
+    new ChooseEvent( head, -1, dir, /*NoValence,*/ dep, gen )
 
   // def apply( head:Int, context:Int, dir:AttDir, dep:Int ):ChooseEvent =
   //   new ChooseEvent( head, context, dir, /*NoValence,*/ dep )
@@ -496,7 +516,7 @@ case class StopNorm( head:Int, dir:AttDir, v:Decoration ) extends NormKey {
 object RootEvent {
   def apply():RootEvent = RootEvent( -1 )
 }
-case class RootEvent( root:Int ) extends Event /*[RootNorm.type]*/ {
+case class RootEvent( root:Int, gen:String = "" ) extends Event with GeneratingString {
   override lazy val byteBuffer = {
     val bytes = ByteBuffer.allocate( 8 )
     bytes.putInt( root )
@@ -743,7 +763,7 @@ case class DMVCounts(
     println( rootCounts.counts.keys.mkString("\t","\n\t","\n\n" ) )
   def printStopEvents =
     stopCounts.counts.keys.foreach{ e =>
-      println( "\t" + e )
+      println( "\t" + e + ": " + stopCounts( e ) )
     }
   def printChooseEvents =
     chooseCounts.counts.keys.foreach{ e =>
@@ -755,7 +775,7 @@ case class DMVCounts(
     rootCounts.totalCount + stopCounts.totalCount + chooseCounts.totalCount
 
   def totalCounts =
-    if( chooseCounts.counts.logSpace )
+    if( logSpace )
       math.exp(
         rootCounts.counts.values.reduceOption(LogSum(_,_)).getOrElse( Double.NegativeInfinity ) ) +
       math.exp( stopCounts.counts.values.reduceOption(LogSum(_,_)).getOrElse( Double.NegativeInfinity ) ) +

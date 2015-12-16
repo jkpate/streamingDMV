@@ -43,7 +43,8 @@ class ParticleFilterNOPOSParser[
   // def emptyCounts = DMVCounts( rootAlpha, stopAlpha, chooseAlpha, true )
   // def emptyCounts = particles.head.emptyCounts
 
-  def extractPartialCounts(string: Array[Int]) = particles.head.extractPartialCounts( string )
+  // def extractPartialCounts(string: Array[Int]) = particles.head.extractPartialCounts( string )
+  def extractPartialCounts( utt:Utt ) = particles.head.extractPartialCounts( utt )
   def initialCounts(utts: List[streamingDMV.labels.Utt]) = particles.head.initialCounts( utts )
 
   // val insideChart = particles.head.insideChart.map{ _.clone }.clone
@@ -131,10 +132,15 @@ class ParticleFilterNOPOSParser[
     }
   }
 
-  def insidePass( s:Array[Int] ) = {
-    intString = s
+  // def insidePass( s:Array[Int] ) = {
+  def insidePass( utt:Utt ) = {
+    intString = doubleString( utt.string )
+    lexString = doubleString( utt.lexes )
     // println( s.mkString( " " ) )
-    particles.foreach( _.intString = intString )
+    particles.foreach{ p =>
+        p.intString = intString
+        p.lexString = lexString
+    }
     if( intString.length > particles.head.insideChart.length ) {
       particles.head.buildCharts( intString.length )
     }
@@ -156,21 +162,23 @@ class ParticleFilterNOPOSParser[
     }
   }
 
-  def logProb( string:Array[Int] ) = {
+  def logProb( utt:Utt ) = {
     // val s = string.flatMap{ w => Seq(w,w) }
-    val s = doubleString( string )
+    val ints = doubleString( utt.string )
+    val lexes = doubleString( utt.lexes )
     clearCharts
     (0 until numParticles).foreach{ l =>
-      particles(l).intString = intString
+      particles(l).intString = ints
+      particles(l).lexString = lexes
       particles(l).theta.fullyNormalized = true
     }
 
     if( !( math.abs( myPlus( particleWeights.toSeq:_* ) - myOne ) < 0.000001 ) ) {
-      println( string.mkString( " " ) )
+      println( utt.string.mkString( " " ) )
       println( particleWeights.mkString("\n[\n\t", "\n\t", "\n]\n" ) )
       assert( math.abs( myPlus( particleWeights.toSeq:_* ) - myOne ) < 0.000001 )
     }
-    insidePass( s )
+    insidePass( utt )
     (0 until numParticles).foreach{ l =>
       particles(l).theta.fullyNormalized = false
     }
@@ -198,9 +206,9 @@ class ParticleFilterNOPOSParser[
       //   particles.head.stringProb = 0D
       // }
 
-  def doubleString( string:Array[Int] ) = {
-    string.toSeq.flatMap{ w => List(w,w) }.toArray
-  }
+  // def doubleString( string:Array[Int] ) = {
+  //   string.toSeq.flatMap{ w => List(w,w) }.toArray
+  // }
 
   def clearVitCharts {
     (0 until particles.head.headTrace.length ).foreach{ i =>
@@ -654,13 +662,12 @@ class ParticleFilterNOPOSParser[
   }
 
   var sampleScore = 0D
-  // TODO implement me?
-  def sampleTreeCounts( originalString:Array[Int] ):Tuple2[C,Double] = {
+  // def sampleTreeCounts( originalString:Array[Int] ):Tuple2[C,Double] = {
+  def sampleTreeCounts( utt:Utt ):Tuple2[C,Double] = {
     if( particles.head.stringProb == 0D ) {
       // Only compute inside scores once per sentence -- we'll be drawing one set of counts for each
       // particle.
-      val s = doubleString( originalString )
-      insidePass( s )
+      insidePass( utt )
     }
     sampleScore = 0D
 
