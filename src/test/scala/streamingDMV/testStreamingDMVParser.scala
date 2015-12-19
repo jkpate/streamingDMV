@@ -46,8 +46,8 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   println( idDMVCorpus.mkString( "\n" ) )
 
 
-  val uposCount = 20
-  // val uposCount = 3
+  // val uposCount = 20
+  val uposCount = 3
 
   val maxLength = dmvCorpus.map{_.length}.max
   println( s"maxLength: $maxLength" )
@@ -81,7 +81,7 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   // val p = new FourValenceParser( parserSpec )
   // val p = new ThreeValenceParser( parserSpec )
   // val p = new TopDownDMVParser( parserSpec )
-  val p = new InfiniteTopDownDMVParser( parserSpec )
+  // val p = new InfiniteTopDownDMVParser( parserSpec )
   // val p = new OriginalDMVParser( parserSpec )
   // val p = new NoValenceParser( parserSpec )
   // val p = new HeadOutAdjHeadNoValenceParser(
@@ -90,10 +90,10 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   // val p = new HeadOutInterpolatedAdjHeadNoValenceParser(
   //   parserSpec
   // )
-  // val p = new NoValenceUPOSParser(
-  //   parserSpec,
-  //   uposCount = uposCount
-  // )
+  val p = new NoValenceUPOSParser(
+    parserSpec,
+    uposCount = uposCount
+  )
 
 
   // p.zerosInit( idDMVCorpus )
@@ -123,15 +123,15 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
       // p.theta.incrementCounts( c, updateEvents = true )
       val endTime = System.currentTimeMillis
 
-      println( s"\n\n---===---\nSENTENCE COUNTS" )
-      println( c.rootCounts.counts.exactCounts.mkString("[\n\t> ", "\n\t> ","\n]") )
+      // println( s"\n\n---===---\nSENTENCE COUNTS" )
+      // println( c.rootCounts.counts.exactCounts.mkString("[\n\t> ", "\n\t> ","\n]") )
       c.printTotalCountsByType
       c.printStopEvents
 
       println( s"\n\n---===---\nACCUMULATED COUNTS" )
       p.theta.toCounts.printTotalCountsByType
 
-      println( p.theta.p_root.counts.exactCounts.mkString("[\n\t> ", "\n\t> ","\n]") )
+      // println( p.theta.p_root.counts.exactCounts.mkString("[\n\t> ", "\n\t> ","\n]") )
 
       // println(
       //   p.chartToString( "Inside", p.insideChart, logSpace = false )
@@ -162,22 +162,24 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
 
 
       println(
-        p.myPlus(
-            p.insideChart(0)(1).keys.map{ k =>
-              p.myTimes( p.insideChart(0)(1)(k), p.outsideChart(0)(1)(k) )
-          }.toSeq:_*
-        ) + " <=> " + pObs
-          // p.insideChart(0)(1).keys.map{ k => sum( p.insideChart(0)(1)(k) :* p.outsideChart(0)(1)(k)) }.sum
+        // p.myPlus(
+        //     p.insideChart(0)(1).keys.map{ k =>
+        //       p.myTimes( p.insideChart(0)(1)(k), p.outsideChart(0)(1)(k) )
+        //   }.toSeq:_*
+        // ) + " <=> " + pObs
+        p.insideChart(0)(1).keys.map{ k => sum( p.insideChart(0)(1)(k) :* p.outsideChart(0)(1)(k)) }.sum
       )
       println( "all terminals:" )
       (0 to ((2*s.string.length)-1)).foreach{ i =>
         println(
-          p.myPlus(
-            p.insideChart(i)(i+1).keys.map{ k =>
-              p.myTimes( p.insideChart(i)(i+1)(k) , p.outsideChart(i)(i+1)(k) )
-            }.toSeq:_*
-          ) + " <=> " + pObs
-            // p.insideChart(0)(1).keys.map{ k => sum( p.insideChart(0)(1)(k) :* p.outsideChart(0)(1)(k)) }.sum
+          // p.myPlus(
+          //   p.insideChart(i)(i+1).keys.map{ k =>
+          //     p.myTimes( p.insideChart(i)(i+1)(k) , p.outsideChart(i)(i+1)(k) )
+          //   }.toSeq:_*
+          // ) + " <=> " + pObs
+          p.insideChart(0)(1).keys.map{ k =>
+            sum( p.insideChart(0)(1)(k) :* p.outsideChart(0)(1)(k))
+          }.sum + " <=> " + pObs
         )
       }
       (0 to ((2*s.string.length)-1)).foreach{ i =>
@@ -188,12 +190,13 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
           //   ) - pObs
           // )
         assertTrue(
-          p.myPlus(
-            p.insideChart(i)(i+1).keys.map{ k =>
-              p.myTimes( p.insideChart(i)(i+1)(k), p.outsideChart(i)(i+1)(k) )
-            }.toSeq:_*
-          ) - pObs < 0.0001
-            // p.insideChart(i)(i+1).keys.map{ k => sum( p.insideChart(i)(i+1)(k) :* p.outsideChart(i)(i+1)(k)) }.sum
+          // p.myPlus(
+          //   p.insideChart(i)(i+1).keys.map{ k =>
+          //     p.myTimes( p.insideChart(i)(i+1)(k), p.outsideChart(i)(i+1)(k) )
+          //   }.toSeq:_*
+          // ) - pObs < 0.0001
+          p.insideChart(i)(i+1).keys.map{ k => sum( p.insideChart(i)(i+1)(k) :*
+          p.outsideChart(i)(i+1)(k)) }.sum - pObs < 1E-5
         )
       }
       // p.theta.p_stop.printOut()

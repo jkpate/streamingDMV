@@ -25,6 +25,7 @@ case class ParserSpec(
   scaleInitMiniBatchCounts:Boolean,
   approximate:Boolean,
   reservoirSize:Int,
+  uposCount:Int,
   logSpace:Boolean
 ) {
   def toParameterSpec =
@@ -57,6 +58,7 @@ object ParserSpec {
       scaleInitMiniBatchCounts = parserSpec.scaleInitMiniBatchCounts,
       approximate = parserSpec.approximate,
       reservoirSize = parserSpec.reservoirSize,
+      uposCount = parserSpec.uposCount,
       logSpace = parserSpec.logSpace
     )
   }

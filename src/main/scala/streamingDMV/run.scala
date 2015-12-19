@@ -289,6 +289,7 @@ object run {
       harmonicMiniBatchInit = harmonicMiniBatchInit,
       approximate = false,
       reservoirSize = reservoirSize,
+      uposCount = uposCount,
       logSpace = logSpace
     )
 
