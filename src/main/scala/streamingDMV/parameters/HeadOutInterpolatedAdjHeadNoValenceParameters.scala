@@ -5,6 +5,8 @@ import streamingDMV.tables._
 
 import collection.mutable.{Set=>MSet}
 
+import math.exp
+
 class HeadOutInterpolatedAdjHeadNoValenceParameters(
   // rootAlpha:Double,
   // stopAlpha:Double,
@@ -355,6 +357,31 @@ class HeadOutInterpolatedAdjHeadNoValenceParameters(
     lambda_choose.setEventsAndCounts( counts.lambdaChooseCounts )
   }
 
+  def printTotalCountsByType {
+    if( logSpace ) {
+      println( s"  > ${p_root.counts.values.map{exp(_)}.sum} root events" )
+      println( s"  > ${p_root.denomCounts.values.map{exp(_)}.sum} root denom events" )
+      println( s"  > ${p_stop.counts.values.map{exp(_)}.sum} stop events" )
+      println( s"  > ${p_stop.denomCounts.values.map{exp(_)}.sum} stop denom events" )
+      println( s"  > ${p_choose.counts.values.map{exp(_)}.sum} choose events" )
+      println( s"  > ${p_choose.denomCounts.values.map{exp(_)}.sum} choose denom events" )
+      println( s"  > ${p_choose.denoms.size} choose LHS" )
+      println( s"  > ${lambda_choose.counts.values.map{exp(_)}.sum} choose events" )
+      println( s"  > ${lambda_choose.denomCounts.values.map{exp(_)}.sum} choose denom events" )
+      println( s"  > ${lambda_choose.denoms.size} choose LHS" )
+    } else {
+      println( s"  > ${p_root.counts.values.sum} root events" )
+      println( s"  > ${p_root.denomCounts.values.sum} root denom events" )
+      println( s"  > ${p_stop.counts.values.sum} stop events" )
+      println( s"  > ${p_stop.denomCounts.values.sum} stop denom events" )
+      println( s"  > ${p_choose.counts.values.sum} choose events" )
+      println( s"  > ${p_choose.denomCounts.values.sum} choose denom events" )
+      println( s"  > ${p_choose.denoms.size} choose LHS" )
+      println( s"  > ${lambda_choose.counts.values.sum} choose events" )
+      println( s"  > ${lambda_choose.denomCounts.values.sum} choose denom events" )
+      println( s"  > ${lambda_choose.denoms.size} choose LHS" )
+    }
+  }
 
   def printOut( logSpace:Boolean = false ) {
     println( "p_root:" )

@@ -39,7 +39,7 @@ abstract class ArcFactoredParameters[C<:DependencyCounts](
 
   def printOut( logSpace:Boolean = false ):Unit
 
-  def printTotalCountsByType { }
+  def printTotalCountsByType:Unit
 
 
 }

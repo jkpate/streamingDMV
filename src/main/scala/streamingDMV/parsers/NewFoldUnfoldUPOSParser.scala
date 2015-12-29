@@ -97,32 +97,18 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
   def leftwardSplitSpecs(i:Int,j:Int):Seq[Tuple2[Decoration,Seq[Tuple3[Int,MDecoration,Decoration]]]]
 
   def rightwardCellScore( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = {
-    // myTimes(
-    //   insideChart( i )( k )( mDec ) ,
-    //     insideChart( k )( j )( cDec ) ,
-    //       rightwardCellFactor( i, k, j, pDec, mDec, cDec )
-    // )
-    insideChart( i )( j )( pDec ) :+= (
+    (
       insideChart( k )( j )( cDec ).t * (
         insideChart( i )( k )( mDec ).t :* rightwardCellFactor( i, k, j, pDec, mDec, cDec )
-      ).t
-    )
+      )
+    ).t
   }
   def leftwardCellScore( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = {
-    // println( s"} ${(i,k,j,pDec,mDec,cDec)}" )
-    // println( s" ]${(i,k,cDec)}} " + insideChart( i )( k )( cDec ) )
-    // println( s" ]${(k,j,mDec)}} " + insideChart( k )( j )( mDec ) )
-    // println( " ]} " + leftwardCellFactor( i, k, j, pDec, mDec, cDec ) )
-    // myTimes(
-    //   insideChart( i )( k )( cDec ) ,
-    //     insideChart( k )( j )( mDec ) ,
-    //       leftwardCellFactor( i, k, j, pDec, mDec, cDec )
-    // )
-    insideChart( i )( j )( pDec ) :+= (
+    (
       insideChart( i )( k )( cDec ).t * (
-        insideChart( k )( j )( mDec ).t :* rightwardCellFactor( i, k, j, pDec, mDec, cDec )
-      ).t
-    )
+        insideChart( k )( j )( mDec ) :* leftwardCellFactor( i, k, j, pDec, mDec, cDec )
+      )
+    ).t
   }
 
   // TODO double-check this is right if using second-order grammar
@@ -135,7 +121,7 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
         //       mCellFactor( i, k, j, mDecoration )
         // )
         insideChart( i )( k )( mDecoration.evenLeft ) *
-          insideChart( k )( j )( mDecoration.evenRight)
+          insideChart( k )( j )( mDecoration.evenRight).t
       } else {
         // myTimes(
         //   insideChart( i )( k )( mDecoration.oddLeft ),
@@ -144,7 +130,7 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
         // )
         (
           insideChart( i )( k )( mDecoration.evenLeft ) *
-            insideChart( k )( j )( mDecoration.evenRight) 
+            insideChart( k )( j )( mDecoration.evenRight).t
         ) :* (
           mCellFactor( i, k, j, mDecoration )
         )
@@ -233,8 +219,16 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
 
         if( !( insideChart( i )( j )( pDec ).forall{ _ > myZero } &&
                 insideChart( i )( j )( pDec ).forall{ _ <= myOne + 1E-10 } ) ) {
-          println( "! " + (i,j,pDec, insideChart( i )( j )( pDec ) ) )
+          println( "! " + (i,k,j,pDec, insideChart( i )( j )( pDec ) ) )
           println( "! " + leftwardCellScore( i, k, j, pDec, mDec, cDec ) )
+          println( "factor:" )
+          println( leftwardCellFactor( i, k, j, pDec, mDec, cDec ) )
+          println( "summed across rows: " )
+          println( sum( leftwardCellFactor( i, k, j, pDec, mDec, cDec )(::,*) ) )
+          println( "left child:" )
+          println( insideChart( i )( k )( cDec ) )
+          println( "right child:" )
+          println( insideChart( k )( j )( mDec ) )
         }
         assert( insideChart( i )( j )( pDec ).forall{ _ > myZero } )
         assert( insideChart( i )( j )( pDec ).forall{ _ <= myOne + 1E-10 } )
@@ -261,8 +255,13 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
         pDec,
         splits.view.map{ case ( k, mDec, cDec ) =>
           (
-            (k,mDec, cDec),
-            rightwardCellScore( i, k, j, pDec, mDec, cDec )
+            (k,mDec, cDec), {
+              val scores =
+                insideChart( i )( k )( mDec ).t :* rightwardCellFactor( i, k, j, pDec, mDec, cDec )
+              scores( *, :: ) :*= insideChart( k )( j )( cDec ).toDenseVector
+              scores
+            }
+            // rightwardCellScore( i, k, j, pDec, mDec, cDec )
           )
         }
       )
@@ -274,8 +273,13 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
         pDec,
         splits.view.map{ case ( k, mDec, cDec ) =>
           (
-            (k,mDec, cDec),
-            leftwardCellScore( i, k, j, pDec, mDec, cDec )
+            (k,mDec, cDec), {
+              val scores =
+                insideChart( k )( j )( mDec ) :* leftwardCellFactor( i, k, j, pDec, mDec, cDec )
+              scores( *, :: ) :*= insideChart( i )( k )( cDec ).toDenseVector
+              scores
+            }
+            // leftwardCellScore( i, k, j, pDec, mDec, cDec )
           )
         }
       )
@@ -546,9 +550,9 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
   def findRightRootChild( k:Int, rPos:Int ):Entry
 
   def findLeftLeftwardChild( i:Int, k:Int, dPos:Int ):Entry
-  def findRightLeftwardChild( k:Int, j:Int, hV:Decoration, mDV:Decoration, dPos:Int ):Entry
+  def findRightLeftwardChild( k:Int, j:Int, hV:Decoration, mDV:Decoration, hPos:Int, dPos:Int ):Entry
 
-  def findLeftRightwardChild( i:Int, k:Int, hV:Decoration, mDV:Decoration, dPos:Int ):Entry
+  def findLeftRightwardChild( i:Int, k:Int, hV:Decoration, mDV:Decoration, hPos:Int, dPos:Int ):Entry
   def findRightRightwardChild( k:Int, j:Int, dPos:Int ):Entry
 
   def findLeftMChild( i:Int, k:Int, decoration:MDecoration, lPos:Int ):Entry
@@ -559,9 +563,9 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
   def insertMEntry( i:Int, k:Int, j:Int, decoration:MDecoration, lPos:Int, rPos:Int ) =
     mTrace( i )( j )( ( decoration, lPos, rPos ) ) = MEntry( i , k, j, decoration, lPos, rPos )
   def insertLeftwardEntry( i:Int, k:Int, j:Int, pDec:Decoration, hV:Decoration, mDV:Decoration, hPos:Int, dPos:Int ) =
-    headTrace( i )( j )( ( pDec, hPos ) ) = LeftwardEntry( i, k, j, hV, mDV, dPos )
+    headTrace( i )( j )( ( pDec, hPos ) ) = LeftwardEntry( i, k, j, hV, mDV, hPos, dPos )
   def insertRightwardEntry( i:Int, k:Int, j:Int, pDec:Decoration, hV:Decoration, mDV:Decoration, hPos:Int, dPos:Int ) =
-    headTrace( i )( j )( ( pDec, hPos ) ) = RightwardEntry( i, k, j, hV, mDV, dPos )
+    headTrace( i )( j )( ( pDec, hPos ) ) = RightwardEntry( i, k, j, hV, mDV, hPos, dPos )
 
   def insertLexEntry( index:Int, pDec:Decoration, hPos:Int ) =
     headTrace( index )( index+1 )( ( pDec, hPos ) ) = LexEntry( index )
@@ -593,18 +597,18 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
 
   }
 
-  case class LeftwardEntry( i:Int, k:Int, j:Int, hV:Decoration, mDV:Decoration, dPos:Int ) extends BinaryEntry( i, k, j ) {
+  case class LeftwardEntry( i:Int, k:Int, j:Int, hV:Decoration, mDV:Decoration, hPos:Int, dPos:Int ) extends BinaryEntry( i, k, j ) {
     // println( (i,k,j,hV,mDV) )
     val leftChild = findLeftLeftwardChild( i, k, dPos )
-    val rightChild = findRightLeftwardChild( k, j, hV, mDV, dPos )
+    val rightChild = findRightLeftwardChild( k, j, hV, mDV, hPos, dPos )
 
     def toDepParse =
       Set( DirectedArc( (j-1)/2, (k-1)/2 ) ) ++ leftChild.toDepParse ++ rightChild.toDepParse
     def toConParse = s"(L.${intString(j)} ${leftChild.toConParse} ${rightChild.toConParse})"
   }
 
-  case class RightwardEntry( i:Int, k:Int, j:Int, hV:Decoration, mDV:Decoration, dPos:Int ) extends BinaryEntry( i, k, j ) {
-    val leftChild = findLeftRightwardChild( i , k, hV, mDV, dPos )
+  case class RightwardEntry( i:Int, k:Int, j:Int, hV:Decoration, mDV:Decoration, hPos:Int, dPos:Int ) extends BinaryEntry( i, k, j ) {
+    val leftChild = findLeftRightwardChild( i , k, hV, mDV, hPos, dPos )
     val rightChild = findRightRightwardChild( k, j, dPos )
 
     def toDepParse =
@@ -653,6 +657,46 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
     }
   }
 
+  def argSample[K](
+                          // dPos by hPos
+    seq:Iterable[Tuple2[K,DenseMatrix[Double]]],
+    hPos:Int
+  ):Tuple3[K,Int,Double] = {
+    // max over splits and dPos
+
+    var dPos = -1
+    var score = Double.NegativeInfinity
+
+    val total = seq.map{ pair => sum( pair._2( ::, hPos ) ) }.sum
+    val r = rand.nextDouble() * total
+
+    var runningTotal = 0D
+
+    // first find split randomly
+    val ( k, dPoses ) = seq.takeWhile( pair => {
+        val keepGoing = runningTotal < r
+        if( keepGoing ) runningTotal += sum( pair._2(::,hPos) )
+        keepGoing
+      }
+    ).last
+
+    // then find dPos randomly
+    (0 until uposCount).takeWhile{ itDPos =>
+      val keepGoing = runningTotal < r
+      if( keepGoing ) {
+        runningTotal += dPoses( hPos, itDPos )
+      } else {
+        dPos = itDPos
+        score = dPoses( hPos, itDPos )
+      }
+      keepGoing
+    }
+
+    assert( dPos >= 0 && score >= 0 )
+
+    ( k, dPos, score )
+  }
+
   def viterbiLexFill( index:Int ) {
     lexSpecs( index ).foreach{ pDec =>
       insideChart( index )( index+1 )(pDec) = lexCellFactor( index, pDec )
@@ -671,7 +715,7 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
           val ( (k,mDec,cDec), dPos, bestScore ) = argMax( splitsAndScores, hPos )
           insideChart( i )( j )( pDec )( hPos, 0 ) = bestScore
           headTrace( i )( j )( ( pDec, hPos ) ) =
-            RightwardEntry( i, k, j, mDec.evenLeft, mDec.evenRight, dPos )
+            RightwardEntry( i, k, j, mDec.evenLeft, mDec.evenRight, hPos, dPos )
         }
       }
     } else if( i%2 == 0 && j%2 == 1 ) {
@@ -682,7 +726,7 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
           val ( (k,mDec,cDec), dPos, bestScore ) = argMax( splitsAndScores, hPos )
           insideChart( i )( j )( pDec )( hPos, 0 ) = bestScore
           headTrace( i )( j )( ( pDec, hPos ) ) =
-            LeftwardEntry( i, k, j, mDec.evenRight, mDec.evenLeft, dPos )
+            LeftwardEntry( i, k, j, mDec.evenRight, mDec.evenLeft, hPos, dPos )
         }
       }
     } else if( i%2 == 1 && j%2 == 1 ) {
@@ -787,24 +831,37 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
     stringProb = myZero
   }
 
-  def sampleTreeCounts( i:Int, j:Int, pDec:Decoration ):Seq[Tuple2[Event,Double]] = {
+          // for M-node, otherPos is the POS of the right child -- for all others it's irrelevant,
+          // There oughta be a better way to do this...
+  def sampleTreeCounts(
+    i:Int,
+    j:Int,
+    hPos:Int,
+    otherPos:Int = -1,
+    pDec:Decoration
+  ):Seq[Tuple2[Event,DenseMatrix[Double]]] = {
     if( i%2 == 1 && j%2 == 1 ) { // M
 
       // val splitsAndScores =
       mCellScores(i,j).filter(_._1 == pDec).flatMap{ case (parent, splitsAndScores ) =>
         assert( parent == pDec )
-        val ( k, score ) = argSample( splitsAndScores, logSpace = logSpace )
+
+                          // POS of children of M-node is deterministic
+        val ( k, score ) = argSample( splitsAndScores.map{ p=> (p._1, p._2(hPos, otherPos) ) } )
 
         sampleScore = myTimes( sampleScore, score )
 
+        val count = DenseMatrix.zeros[Double]( uposCount, uposCount )
+        count( hPos, otherPos ) = 1D
+
         if( k%2 == 0 )
-          mEventCounts( i, k, j, parent, myOne ) ++
-            sampleTreeCounts( i, k, parent.evenLeft ) ++
-              sampleTreeCounts( k, j, parent.evenRight )
+          mEventCounts( i, k, j, parent, count ) ++
+            sampleTreeCounts( i, k, hPos, -1, parent.evenLeft ) ++
+              sampleTreeCounts( k, j, otherPos, -1, parent.evenRight )
         else
-          mEventCounts( i, k, j, parent, myOne ) ++
-            sampleTreeCounts( i, k, parent.oddLeft ) ++
-              sampleTreeCounts( k, j, parent.oddRight )
+          mEventCounts( i, k, j, parent, count ) ++
+            sampleTreeCounts( i, k, hPos, -1, parent.oddLeft ) ++
+              sampleTreeCounts( k, j, otherPos, -1, parent.oddRight )
       }
 
     } else if( i%2 == 1 ) { // Rightward
@@ -813,13 +870,16 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
       if( j-i > 1 ) {
         rightwardCellScores(i,j).filter(_._1 == pDec).flatMap{ case (parent, splitsAndScores ) =>
           assert( parent == pDec )
-          val ( (k, mDec, cDec) , score ) = argSample( splitsAndScores, logSpace = logSpace )
+          val ( (k, mDec, cDec), dPos , score ) = argSample( splitsAndScores, hPos )
 
           sampleScore = myTimes( sampleScore, score )
 
-          rightwardEventCounts( i, k, j, pDec, mDec, cDec, myOne ) ++
-            sampleTreeCounts( i, k, mDec ) ++
-              sampleTreeCounts( k, j, cDec )
+          val count = DenseMatrix.zeros[Double]( uposCount, uposCount )
+          count( hPos, dPos ) = 1D
+
+          rightwardEventCounts( i, k, j, pDec, mDec, cDec, count  ) ++
+            sampleTreeCounts( i, k, hPos, dPos, mDec ) ++
+              sampleTreeCounts( k, j, dPos, -1, cDec )
         }
       } else {
         // lexMarginals( j )
@@ -827,9 +887,13 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
           assert( parent == pDec )
           assert( scores.length == 1 )
 
-          sampleScore = myTimes( sampleScore, scores.head )
-          // Seq()
-          lexEventCounts( i, pDec, myOne )
+          sampleScore = myTimes( sampleScore, scores.head( 0, hPos ) )
+
+          val count = DenseMatrix.zeros[Double]( uposCount, 1 )
+          count( hPos, 0 ) = 1D
+
+
+          lexEventCounts( i, pDec, count )
         }
       }
 
@@ -839,13 +903,15 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
       if( j-i > 1 ) {
         leftwardCellScores(i,j).filter(_._1 == pDec).flatMap{ case ( parent, splitsAndScores ) =>
           assert( parent == pDec )
-          val ( (k, mDec, cDec) , score ) = argSample( splitsAndScores, logSpace = logSpace )
+          val ( (k, mDec, cDec) , dPos, score ) = argSample( splitsAndScores, hPos )
 
           sampleScore = myTimes( sampleScore, score )
+          val count = DenseMatrix.zeros[Double]( uposCount, uposCount )
+          count( hPos, dPos ) = 1D
 
-          leftwardEventCounts( i, k, j, pDec, mDec, cDec, myOne ) ++
-            sampleTreeCounts( i, k, cDec ) ++
-              sampleTreeCounts( k, j, mDec )
+          leftwardEventCounts( i, k, j, pDec, mDec, cDec, count ) ++
+            sampleTreeCounts( i, k, dPos, -1, cDec ) ++
+              sampleTreeCounts( k, j, dPos, hPos, mDec )
         }
       } else {
         // lexMarginals( i )
@@ -853,21 +919,26 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
           assert( parent == pDec )
           assert( scores.length == 1 )
 
-          sampleScore = myTimes( sampleScore, scores.head )
-          lexEventCounts( i, pDec, myOne )
+          val count = DenseMatrix.zeros[Double]( uposCount, 1 )
+          count( hPos, 0 ) = 1D
+
+          sampleScore = myTimes( sampleScore, scores.head( 0, hPos) )
+          lexEventCounts( i, pDec, count )
         }
       }
 
     } else if( i == 0 && j == intString.length ) { // Root
       assert( pDec == RootDecoration )
 
-      val ((k,cDecs), score) = argSample( rootCellScores(), logSpace = logSpace )
+      val ((k,cDecs), rPos, score) = argSample( rootCellScores(), 0 )
 
       sampleScore = myTimes( sampleScore, score )
+      val count = DenseMatrix.zeros[Double]( uposCount, 1 )
+      count( rPos, 0 ) = 1D
 
-      rootEventCounts( k, myOne ) ++
-        sampleTreeCounts( i , k, cDecs.evenLeft ) ++
-        sampleTreeCounts( k, intString.length, cDecs.evenRight )
+      rootEventCounts( k, count ) ++
+        sampleTreeCounts( i , k, rPos, -1, cDecs.evenLeft ) ++
+        sampleTreeCounts( k, intString.length, rPos, -1, cDecs.evenRight )
 
     } else {
       Seq()
@@ -881,7 +952,7 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
   var sampleScore = myOne
 
   // def sampleTreeCounts( originalString:Array[Int] ):Tuple2[C,Double] = {
-  def sampleTreeCounts( utt:Utt ):Tuple2[C,Double] = {
+  def sampleTreeCounts( utt:Utt ):Tuple2[MatrixDMVCounts,Double] = {
     // val s = doubleString( originalString )
     clearCharts
     val normalized = theta.fullyNormalized
@@ -890,7 +961,7 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
     val c = emptyCounts
     sampleScore = myOne
     // println( "incrementing counts for sample" )
-    sampleTreeCounts( 0, intString.length, RootDecoration ).foreach{ case (event, count) =>
+    sampleTreeCounts( 0, intString.length, 0, -1, RootDecoration ).foreach{ case (event, count) =>
       // println( s"increment $event by $count (${math.exp(count)})" )
       // event match {
       //   case e:StopEvent => c.stopCounts.increment( e, count )
@@ -941,7 +1012,7 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
   def lexEventCounts( index:Int, pDec:Decoration, marginal:DenseMatrix[Double] ):Seq[Tuple2[Event,DenseMatrix[Double]]]
 
   // def outsidePassWithCounts( s:Array[Int] ):C = {
-  def outsidePassWithCounts():C = {
+  def outsidePassWithCounts():MatrixDMVCounts = {
 
     val c = emptyCounts
 
@@ -955,9 +1026,9 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
               val factorAndOutside = rootCellFactor( k )
 
               outsideChart( 0 )( k )( decorationPair.evenLeft ) :+=
-                insideChart( k )( intString.length )( decorationPair.evenRight ) :* factorAndOutside
+                insideChart( k )( j )( decorationPair.evenRight ) :* factorAndOutside
 
-              outsideChart( k )( intString.length )( decorationPair.evenRight ) :+=
+              outsideChart( k )( j )( decorationPair.evenRight ) :+=
                 insideChart( 0 )( k )( decorationPair.evenLeft ) :* factorAndOutside
 
                 // val marginal = myTimes(
@@ -980,44 +1051,44 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
             leftwardSplitSpecs( i, j ).foreach{ case ( pDec, splits ) =>
               splits.foreach{ case ( k, mDec, cDec ) =>
 
-                val factorAndOutside =
-                  leftwardCellFactor( i, k, j, pDec, mDec, cDec )(*,::) :*
-                    outsideChart( i )( j )( pDec )
+                val factor = leftwardCellFactor( i, k, j, pDec, mDec, cDec )
+
+                val factorAndOutside = factor(*,::) :* outsideChart( i )( j )( pDec ).toDenseVector
 
                 val leftwardMessage = factorAndOutside :* insideChart( k )( j )( mDec )
-                outsideChart( i )( k )( cDec ) :+= sum( leftwardMessage(*,::) )
+                outsideChart( i )( k )( cDec ) :+= sum( leftwardMessage(*,::) ).toDenseMatrix.t
 
-                val rightwardMessage = factorAndOutside
-                rightwardMessage( ::, * ) :*= insideChart( i )( k )( cDec )
+                val rightwardMessage =
+                  factorAndOutside( ::, * ) :* insideChart( i )( k )( cDec ).toDenseVector
                 outsideChart( k )( j )( mDec ) :+= rightwardMessage
 
-                    // val marginal = myTimes(
-                    //   myDiv( insideChart( i )( k )( cDec ), stringProb ),
-                    //     insideChart( k )( j )( mDec ),
-                    //       factorAndOutside
-                    // )
-                val marginal =
-                  factorAndOutside :* insideChart( k )( j )( mDec )
-                marginal( *, :: ) :*= insideChart( i )( k )( cDec )
+                // val marginal =
+                //   factorAndOutside :* ( insideChart( k )( j )( mDec ).t :/ stringProb )
+                // marginal( ::, * ) :*= insideChart( i )( k )( cDec ).toDenseVector
+
+                val marginal = (
+                  insideChart( i )( k )( cDec ) *
+                    outsideChart( i )( j )( pDec ).t
+                ) :* factor :* ( insideChart( k )( j )( mDec ) :/ stringProb )
+
+
 
                 leftwardEventCounts( i, k, j, pDec, mDec, cDec, marginal ).foreach{ case (event, count) =>
-                  if( !( count.any{ _ <= myOne + 1E-10 } ) ) {
-                    println( s"  $event: $count" )
-                    println( insideChart( i )( k )( cDec ) )
-                    println( stringProb )
-                    println( insideChart( k )( j )( mDec ) )
-                    println( factorAndOutside )
-                  }
+                      // if( !( count.forall{ _ <= myOne + 1E-10 } ) ) {
+                      //   println( s"probability greater than one for $event ${(i,k,j)}" )
+                      //   println( insideChart( i )( k )( cDec ) )
+                      //   println( "--" )
+                      //   println( stringProb )
+                      //   println( "--" )
+                      //   println( insideChart( k )( j )( mDec ) )
+                      //   println( "--" )
+                      //   println( factorAndOutside )
+                      //   println( "--" )
+                      //   println( count )
+                      // }
                   assert( count.forall{ _ > myZero } )
                   assert( count.forall{ _ <= myOne + 1E-10 } )
                   c.increment( event, count )
-                  // val totalCount = c.totalCounts
-                  // assert( totalCount > myZero )
-                  // assert( totalCount < Double.PositiveInfinity )
-                  // event match {
-                  //   case e:StopEvent => c.stopCounts.increment( e, count )
-                  //   case e:ChooseEvent => c.chooseCounts.increment( e, count )
-                  // }
                 }
               }
             }
@@ -1030,7 +1101,7 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
                   //   myDiv( outsideChart(i)(i+1)(pDec), stringProb )
                   // )
               val marginal =
-                insideChart( i )( i+1 )( pDec ) :* ( outsideChart( i )( i+1 ) :/ stringProb )
+                insideChart( i )( i+1 )( pDec ) :* ( outsideChart( i )( i+1 )( pDec ) :/ stringProb )
 
               lexEventCounts( i, pDec, marginal ).foreach{ case (event, count) =>
                 c.increment( event, count )
@@ -1042,36 +1113,30 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
             rightwardSplitSpecs( i, j ).foreach{ case ( pDec, splits ) =>
               splits.foreach{ case ( k, mDec, cDec ) =>
 
-                val factorAndOutside =
-                  rightwardCellFactor( i, k, j, pDec, mDec, cDec )(*,::) :*
-                    outsideChart( i )( j )( pDec )
+                val factor = rightwardCellFactor( i, k, j, pDec, mDec, cDec )
+                val factorAndOutside = factor(*,::) :* outsideChart( i )( j )( pDec ).toDenseVector
 
-                val leftwardMessage = factorAndOutside :* insideChart( k )( j )( mDec ).t
-                leftwardMessage( ::, * ) :*= insideChart( k )( j )( cDec )
-                outsideChart( i )( k )( mDec ) :+= insideChart( k )( j )( cDec )
+                val rightwardMessage = factorAndOutside :* ( insideChart( i )( k )( mDec ).t  )
+                outsideChart( k )( j )( cDec ) :+= sum( rightwardMessage( *,:: ) ).toDenseMatrix.t
 
-                val rightwardMessage = factorAndOutside :*
-                  ( insideChart( i )( k )( mDec ).t :/ stringProb )
-                outsideChart( k )( j )( cDec ) :+= sum( rightwardMessage( *,:: ) )
+                val leftwardMessage = factorAndOutside( ::, * ) :* insideChart( k )( j )( cDec ).toDenseVector
+                outsideChart( i )( k )( mDec ) :+= leftwardMessage.t
 
-                  // val marginal = myTimes(
-                  //   myDiv(
-                  //     insideChart( i )( k )( mDec ),
-                  //     stringProb
-                  //   ),
-                  //     insideChart( k )( j )( cDec ),
-                  //       factorAndOutside
-                  // )
-                val marginal =
-                  factorAndOutside :* ( insideChart( i )( k )( mDec ).t :/ stringProb )
-                marginal( *, :: ) :*= insideChart( k )( j )( cDec )
+                    // val marginal =
+                    //   factorAndOutside :* ( insideChart( i )( k )( mDec ) :/ stringProb )
+                    //     // val cVec = insideChart( k )( j )( cDec )
+                    //     // println( (i,k,j) )
+                    //     // println( (cVec.rows, cVec.cols) )
+                    //     // println( cVec )
+                    //     // println( "\n" )
+                    // marginal( ::, * ) :*= insideChart( k )( j )( cDec ).toDenseVector
+
+                val marginal = (
+                  insideChart( k )( j )( cDec ) *
+                    outsideChart( i )( j )( pDec ).t
+                ) :* factor :* ( insideChart( i )( k )( mDec ).t :/ stringProb )
 
                 rightwardEventCounts( i, k, j, pDec, mDec, cDec, marginal ).foreach{ case (event, count) =>
-                  // assert( count > myZero )
-                  // assert( count < Double.PositiveInfinity )
-                  // val totalCount = c.totalCounts
-                  // assert( totalCount > myZero )
-                  // assert( totalCount < Double.PositiveInfinity )
                   c.increment( event, count )
                 }
               }
@@ -1085,7 +1150,7 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
                   //   myDiv( outsideChart(i)(i+1)(pDec), stringProb )
                   // )
               val marginal =
-                insideChart( i )( i+1 )( pDec ) :* ( outsideChart( i )( i+1 ) :/ stringProb )
+                insideChart( i )( i+1 )( pDec ) :* ( outsideChart( i )( i+1 )( pDec ) :/ stringProb )
 
               lexEventCounts( i, pDec, marginal ).foreach{ case (event, count) =>
                 c.increment( event, count )
@@ -1096,23 +1161,32 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
           mSplitSpecs( i, j ).foreach{ case (mDecoration, splits) =>
             splits.foreach{ k =>
 
-              val factorAndOutside = outsideChart( i )( j )( mDecoration ) :*
-                mCellFactor( i, k, j, mDecoration )
 
               if( k%2 == 0 ) {
-                // to left child
-                outsideChart( i )( k )( mDecoration.evenLeft ) :+= (
-                    insideChart( k )( j )( mDecoration.evenRight ) *
-                      factorAndOutside
-                  )
+                    // // to left child
+                    // outsideChart( i )( k )( mDecoration.evenLeft ) :+= (
+                    //     factorAndOutside *
+                    //       insideChart( k )( j )( mDecoration.evenRight )
+                    //   )
 
-                // to right child
+                    // // to right child
+                    // outsideChart( k )( j )( mDecoration.evenRight ) :+= (
+                    //     factorAndOutside.t *
+                    //       insideChart( i )( k )( mDecoration.evenLeft )
+                    //   )
+                outsideChart( i )( k )( mDecoration.evenLeft ) :+= (
+                  insideChart( k )( j )( mDecoration.evenRight ).t *
+                    outsideChart( i )( j )( mDecoration ).t
+                ).t
+
                 outsideChart( k )( j )( mDecoration.evenRight ) :+= (
-                    insideChart( i )( k )( mDecoration.evenLeft ) *
-                      factorAndOutside.t
-                  )
+                  insideChart( i )( k )( mDecoration.evenLeft ).t *
+                    outsideChart( i )( j )( mDecoration )
+                ).t
 
               } else {
+                val factorAndOutside = outsideChart( i )( j )( mDecoration ) :*
+                  mCellFactor( i, k, j, mDecoration )
                 // to left child
                 outsideChart( i )( k )( mDecoration.oddLeft ) :+= (
                     insideChart( k )( j )( mDecoration.oddRight ) *

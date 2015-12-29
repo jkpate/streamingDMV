@@ -420,9 +420,19 @@ abstract class FoldUnfoldUPOSParser[P<:UPOSArcFactoredParameters](
   }
 
   def initialCounts( utts:List[Utt] ) = {
-    val rootCounts = new MatrixCPT[RootEvent]( rootAlpha, uposCount, 1 )
-    val stopCounts = new MatrixCPT[StopEvent]( stopAlpha, 1, uposCount )
-    val chooseCounts = new MatrixCPT[ChooseEvent]( chooseAlpha, uposCount, uposCount )
+    // val rootCounts = new MatrixCPT[RootEvent]( rootAlpha, uposCount, 1 )
+    // val stopCounts = new MatrixCPT[StopEvent]( stopAlpha, 1, uposCount )
+    // val chooseCounts = new MatrixCPT[ChooseEvent]( chooseAlpha, uposCount, uposCount )
+    val rootCounts =
+      new MatrixCPT[RootEvent]( DenseMatrix.tabulate(uposCount,1){ (r,_) => rootAlpha / (r+1) }, uposCount, 1 )
+    val stopCounts =
+      new MatrixCPT[StopEvent]( DenseMatrix.ones(1,uposCount), 1, uposCount )
+    val chooseCounts =
+      new MatrixCPT[ChooseEvent](
+        DenseMatrix.tabulate(uposCount,uposCount){ (r,c) => chooseAlpha / (1+ r*c) },
+        uposCount,
+        uposCount
+      )
 
     utts.map{_.string}.foreach{ s =>
       (0 until s.length).foreach{ t =>

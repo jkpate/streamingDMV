@@ -7,11 +7,13 @@ import breeze.linalg._
 import breeze.generic._
 import breeze.numerics._
 
-class MatrixCPT[E<:Event]( alpha:Double, rows:Int, cols:Int ) {
+class MatrixCPT[E<:Event]( alpha:DenseMatrix[Double], rows:Int, cols:Int ) {
   var events = MSet[E]()
   var counts = MMap[E,DenseMatrix[Double]]()
   var denomCounts = MMap[NormKey,DenseVector[Double]]()
   var denoms = MMap[NormKey,MSet[E]]()
+
+  val alphaDenom = sum( alpha(::,*) ).t
 
   def totalCounts = sum( denomCounts.values.reduce( _:+_ ) )
 
@@ -26,9 +28,31 @@ class MatrixCPT[E<:Event]( alpha:Double, rows:Int, cols:Int ) {
 
     val toReturn = counts( event ) :+ alpha
 
-    toReturn(*,::) :/= (
-      denomCounts( n ) :+ (alpha * denoms(n).size )
-    )
+      // val denominator = sum( (alpha :* denoms(n).size.toDouble )(::,*) ) :+ denomCounts
+      // // denominator(*,::) += denomCounts( n )
+    val denominator = alphaDenom :* denoms(n).size.toDouble
+    denominator :+= denomCounts(n)
+
+    toReturn(*,::) :/= denominator
+
+    val summed = sum( toReturn( ::, * ) )
+    if( ! summed.t.forall( _ < 1 + 1E-10 ) ) {
+      println( "[---------------" )
+      println( "ACK with " + summed )
+      println( event )
+      println( "alpha" )
+      println( alpha )
+      println( "toReturn:" )
+      println( toReturn )
+      println( "denominator:" )
+      println( denominator ) 
+
+      println( "counts" )
+      println( counts(event) )
+      println( "denomCounts" )
+      println( denomCounts(n) )
+    }
+
     toReturn
   }
 
@@ -54,14 +78,18 @@ class MatrixCPT[E<:Event]( alpha:Double, rows:Int, cols:Int ) {
 
     val toReturn = counts( event ) :+ alpha
 
-    val denominator = 
-      denomCounts( n ) :+ (alpha * denoms(n).size )
+        // val denominator = (alpha :* denoms(n).size.toDouble )
+        // denominator(*,::) :+= denomCounts( n )
+    // val denominator = sum( (alpha :* denoms(n).size.toDouble ) }(::,*) ) :+ denomCounts
+    val denominator = alphaDenom :* denoms(n).size.toDouble
+    denominator :+= denomCounts(n)
 
     fastExpDigamma.inPlace( toReturn )
     fastExpDigamma.inPlace( denominator )
 
     toReturn(*,::) :/= denominator
     toReturn
+    // toReturn :/ denominator
   }
 
   def increment( event:E, inc:DenseMatrix[Double] ) = {
@@ -142,7 +170,7 @@ class MatrixCPT[E<:Event]( alpha:Double, rows:Int, cols:Int ) {
       counts ++= events.toSeq.map{ e =>
         e -> zeroMatrix
       }
-      denomCounts += n -> zeroMatrix(0,::).t
+      denomCounts += n -> zeroVector // zeroMatrix(0,::).t
       denoms += n -> MSet( events.toSeq:_* )
     }
   }

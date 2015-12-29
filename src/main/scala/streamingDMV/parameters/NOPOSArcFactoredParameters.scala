@@ -165,7 +165,7 @@ abstract class NOPOSArcFactoredParameters(
     p_choose.decrement( counts.chooseCounts, integerDec )
   }
 
-  override def printTotalCountsByType {
+  def printTotalCountsByType {
     if( logSpace ) {
       println( s"  > ${p_root.counts.values.map{exp(_)}.sum} root events" )
       println( s"  > ${p_root.denomCounts.values.map{exp(_)}.sum} root denom events" )

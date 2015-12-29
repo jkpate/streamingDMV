@@ -33,7 +33,7 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
 
 
   val dmvCorpus = List(
-    // "sent1: I am the eggman",
+    "sent1: I am the eggman",
     // "sent2: I am the eggman",
     // "sent3: I am the walrus",
     // "sent4: world in which we live in",
@@ -73,6 +73,7 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
     harmonicMiniBatchInit = false,
     approximate = false,
     reservoirSize = reservoirSize,
+    uposCount = uposCount,
     logSpace = false
     // logSpace = true
   )
@@ -90,18 +91,21 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   // val p = new HeadOutInterpolatedAdjHeadNoValenceParser(
   //   parserSpec
   // )
-  val p = new NoValenceUPOSParser(
-    parserSpec,
-    uposCount = uposCount
-  )
+  // val p = new NoValenceUPOSParser(
+  //   parserSpec,
+  //   uposCount = uposCount
+  // )
+  val p = new NewNoValenceUPOSParser( parserSpec )
 
 
-  // p.zerosInit( idDMVCorpus )
+  p.zerosInit( idDMVCorpus )
   // p.randomInit( idDMVCorpus, 15, 100 )
 
-  val iters = 1//00//0
+  val iters = 100//0
 
   @Test def testInsideOutside {
+
+    p.theta.printTotalCountsByType
 
     var totalTime = 0D
     idDMVCorpus.foreach{ s =>
@@ -113,20 +117,25 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
       val startTime = System.currentTimeMillis
       while( i < iters ) {
         // p.populateChart( s )
+        p.theta.incrementCounts( c, updateEvents = true )
         c = p.extractPartialCounts( s )
         i += 1
       }
+      p.theta.printTotalCountsByType
       println( "INCREMENTING THETA... " )
       p.theta.incrementCounts( c, updateEvents = true )
       println( "DONE INCREMENTING THETA... " )
-      // p.theta.decrementCounts( c )
+      p.theta.printTotalCountsByType
+      p.theta.decrementCounts( c )
+      println( "DONE DECREMENTING THETA... " )
+      p.theta.printTotalCountsByType
       // p.theta.incrementCounts( c, updateEvents = true )
       val endTime = System.currentTimeMillis
 
       // println( s"\n\n---===---\nSENTENCE COUNTS" )
       // println( c.rootCounts.counts.exactCounts.mkString("[\n\t> ", "\n\t> ","\n]") )
       c.printTotalCountsByType
-      c.printStopEvents
+      // c.printStopEvents
 
       println( s"\n\n---===---\nACCUMULATED COUNTS" )
       p.theta.toCounts.printTotalCountsByType
@@ -149,16 +158,17 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
       val pObs = p.stringProb
 
       println( c.totalCounts + " total events seen" )
-      println( StopEvent( 4,LeftAtt,Outermost,Stop) )
-      println( Outermost + ": " + c.stopCounts( StopEvent( 4,LeftAtt,Outermost,Stop) ) )
-      println( Inner + ": " + c.stopCounts( StopEvent( 4,LeftAtt,Inner,Stop) ) )
-      println( Outer + ": " + c.stopCounts( StopEvent( 4,LeftAtt,Outer,Stop) ) )
-      println( Innermost + ": " + c.stopCounts( StopEvent( 4,LeftAtt,Innermost,Stop) ) )
-      println( NoDependentValence + ": " + c.stopCounts( StopEvent( 4,LeftAtt,NoDependentValence,Stop) ) )
-      println( OneDependentValence + ": " + c.stopCounts( StopEvent( 4,LeftAtt,OneDependentValence,Stop) ) )
-      println( TwoDependentValence + ": " + c.stopCounts( StopEvent( 4,LeftAtt,TwoDependentValence,Stop) ) )
-      println( ThreeDependentValence + ": " + c.stopCounts( StopEvent( 4,LeftAtt,ThreeDependentValence,Stop) ) )
-      println( FourDependentValence + ": " + c.stopCounts( StopEvent( 4,LeftAtt,FourDependentValence,Stop) ) )
+      // println( StopEvent( 4,LeftAtt,NoValence,Stop) )
+        // println( StopEvent( 4,LeftAtt,Outermost,Stop) )
+        // println( Outermost + ": " + c.stopCounts( StopEvent( 4,LeftAtt,Outermost,Stop) ) )
+        // println( Inner + ": " + c.stopCounts( StopEvent( 4,LeftAtt,Inner,Stop) ) )
+        // println( Outer + ": " + c.stopCounts( StopEvent( 4,LeftAtt,Outer,Stop) ) )
+        // println( Innermost + ": " + c.stopCounts( StopEvent( 4,LeftAtt,Innermost,Stop) ) )
+        // println( NoDependentValence + ": " + c.stopCounts( StopEvent( 4,LeftAtt,NoDependentValence,Stop) ) )
+        // println( OneDependentValence + ": " + c.stopCounts( StopEvent( 4,LeftAtt,OneDependentValence,Stop) ) )
+        // println( TwoDependentValence + ": " + c.stopCounts( StopEvent( 4,LeftAtt,TwoDependentValence,Stop) ) )
+        // println( ThreeDependentValence + ": " + c.stopCounts( StopEvent( 4,LeftAtt,ThreeDependentValence,Stop) ) )
+        // println( FourDependentValence + ": " + c.stopCounts( StopEvent( 4,LeftAtt,FourDependentValence,Stop) ) )
 
 
       println(
@@ -177,8 +187,8 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
           //     p.myTimes( p.insideChart(i)(i+1)(k) , p.outsideChart(i)(i+1)(k) )
           //   }.toSeq:_*
           // ) + " <=> " + pObs
-          p.insideChart(0)(1).keys.map{ k =>
-            sum( p.insideChart(0)(1)(k) :* p.outsideChart(0)(1)(k))
+          p.insideChart(i)(i+1).keys.map{ k =>
+            sum( p.insideChart(i)(i+1)(k) :* p.outsideChart(i)(i+1)(k))
           }.sum + " <=> " + pObs
         )
       }
@@ -195,8 +205,8 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
           //     p.myTimes( p.insideChart(i)(i+1)(k), p.outsideChart(i)(i+1)(k) )
           //   }.toSeq:_*
           // ) - pObs < 0.0001
-          p.insideChart(i)(i+1).keys.map{ k => sum( p.insideChart(i)(i+1)(k) :*
-          p.outsideChart(i)(i+1)(k)) }.sum - pObs < 1E-5
+          p.insideChart(i)(i+1).keys.map{ k =>
+            sum( p.insideChart(i)(i+1)(k) :* p.outsideChart(i)(i+1)(k)) }.sum - pObs < 1E-5
         )
       }
       // p.theta.p_stop.printOut()
@@ -204,6 +214,8 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
       // p.theta.p_stop.printOut()
       println( "\n" )
     }
+
+    p.theta.printTotalCountsByType
 
     println( totalTime / ( iters.toDouble * dmvCorpus.size )  + "ms per sentence" )
 
@@ -219,6 +231,22 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
       )
 
       val pObs = p.stringProb
+
+    }
+    val endTime = System.currentTimeMillis
+
+    println( (endTime-startTime) / (iters * 2D) + "ms per sentence" )
+  }
+
+  @Test def testLogProb {
+    val startTime = System.currentTimeMillis
+    idDMVCorpus.foreach{ s =>
+      println( s.string.mkString(" " ) )
+
+      println( 
+        "logProb: " + p.logProb( s )
+      )
+
 
     }
     val endTime = System.currentTimeMillis

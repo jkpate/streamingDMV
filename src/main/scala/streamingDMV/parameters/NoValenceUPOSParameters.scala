@@ -43,6 +43,8 @@ class NoValenceUPOSParameters(
       }
     }
 
+    // println( p_choose.counts.keys.mkString("\n") )
+
     // p_root.setEvents( rootEvents.toSet )
     // p_stop.setEvents( stopEvents.toSet )
     // p_choose.setEvents( chooseEvents.toSet )

@@ -5,6 +5,9 @@ import streamingDMV.tables.MatrixCPT
 
 import collection.mutable.{Set=>MSet}
 
+import breeze.linalg._
+import breeze.numerics._
+
 abstract class UPOSArcFactoredParameters(
   // rootAlpha:Double,
   // stopAlpha:Double,
@@ -14,9 +17,16 @@ abstract class UPOSArcFactoredParameters(
 // ) extends ArcFactoredParameters[MatrixDMVCounts]( rootAlpha, stopAlpha, chooseAlpha ) {
 ) extends ArcFactoredParameters[MatrixDMVCounts]( parameterSpec ) {
 
-  val p_root = new MatrixCPT[RootEvent]( rootAlpha, uposCount, 1 )
-  val p_stop = new MatrixCPT[StopEvent]( stopAlpha, 1, uposCount )
-  val p_choose = new MatrixCPT[ChooseEvent]( chooseAlpha, uposCount, uposCount )
+  val p_root =
+    new MatrixCPT[RootEvent]( DenseMatrix.tabulate(uposCount,1){ (r,_) => rootAlpha / (1+r) }, uposCount, 1 )
+  val p_stop =
+    new MatrixCPT[StopEvent]( DenseMatrix.ones(1,uposCount), 1, uposCount )
+  val p_choose =
+    new MatrixCPT[ChooseEvent](
+      DenseMatrix.tabulate(uposCount,uposCount){ (r,c) => chooseAlpha / (1+r*c) },
+      uposCount,
+      uposCount
+    )
 
   def toCounts =
     MatrixDMVCounts(
@@ -90,6 +100,16 @@ abstract class UPOSArcFactoredParameters(
   //   println( "p_choose:" )
   //   p_choose.printOut( logSpace )
   // }
+
+  override def printTotalCountsByType {
+    println( s"  > ${p_root.counts.values.map{sum(_)}.sum} root events" )
+    println( s"  > ${p_root.denomCounts.values.map{sum(_)}.sum} root denom events" )
+    println( s"  > ${p_stop.counts.values.map{sum(_)}.sum} stop events" )
+    println( s"  > ${p_stop.denomCounts.values.map{sum(_)}.sum} stop denom events" )
+    println( s"  > ${p_choose.counts.values.map{sum(_)}.sum} choose events" )
+    println( s"  > ${p_choose.denomCounts.values.map{sum(_)}.sum} choose denom events" )
+    println( s"  > ${p_choose.denoms.size} choose LHS" )
+  }
 
 }
 

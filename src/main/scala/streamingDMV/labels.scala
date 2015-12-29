@@ -860,6 +860,14 @@ case class MatrixDMVCounts(
     throw new UnsupportedOperationException( "increment not yet implemented for MatrixDMVCounts" )
   }
 
+  def increment( event:Event, count:DenseMatrix[Double] ) {
+    event match {
+      case e:StopEvent => stopCounts.increment( e, count )
+      case e:ChooseEvent => chooseCounts.increment( e, count )
+      case e:RootEvent => rootCounts.increment( e, count )
+    }
+  }
+
   def divideBy( x:Double ) {
     stopCounts.divideBy( x )
     chooseCounts.divideBy( x )
@@ -903,9 +911,17 @@ object MatrixDMVCounts {
     stopAlpha:Double = 1D,
     chooseAlpha:Double = 1D
   ):MatrixDMVCounts = MatrixDMVCounts(
-    new MatrixCPT[RootEvent]( rootAlpha, uposCount, 1 ),
-    new MatrixCPT[StopEvent]( stopAlpha, 1, uposCount ),
-    new MatrixCPT[ChooseEvent]( chooseAlpha, uposCount, uposCount )
+    // new MatrixCPT[RootEvent]( rootAlpha, uposCount, 1 ),
+    // new MatrixCPT[StopEvent]( stopAlpha, 1, uposCount ),
+    // new MatrixCPT[ChooseEvent]( chooseAlpha, uposCount, uposCount )
+    new MatrixCPT[RootEvent](
+      DenseMatrix.tabulate(uposCount,1){ (r,_) => rootAlpha / (1+r) }, uposCount, 1 ),
+    new MatrixCPT[StopEvent]( DenseMatrix.ones(1,uposCount), 1, uposCount ),
+    new MatrixCPT[ChooseEvent](
+      DenseMatrix.tabulate(uposCount,uposCount){ (r,c) => chooseAlpha / (1+r*c) },
+      uposCount,
+      uposCount
+    )
   )
 }
 

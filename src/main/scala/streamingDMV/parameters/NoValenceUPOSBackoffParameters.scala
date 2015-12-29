@@ -23,7 +23,13 @@ class NoValenceUPOSBackoffParameters(
   val p_rootLex = new CPT[RootEvent]( rootAlpha )
   // p_choose provides P_c( p_d | p_h, w_h, dir ) and P_c( p_d | p_h, dir )
   // p_chooseLex provides P_c( w_d | p_h, w_h, dir ) and P_c( w_d | p_h, dir )
-  val p_chooseLex = new MatrixCPT[ChooseEvent]( chooseAlpha, 1, uposCount )
+  // val p_chooseLex = new MatrixCPT[ChooseEvent]( chooseAlpha, 1, uposCount )
+  val p_chooseLex =
+    new MatrixCPT[ChooseEvent](
+      DenseMatrix.tabulate(1,uposCount){ (r,c) => chooseAlpha / (1 + r*c) },
+      uposCount,
+      uposCount
+    )
 
   val lambda_choose = new BackoffCPT[LambdaChooseEvent](
     Map( Backoff -> backoffAlpha, NotBackoff -> notBackoffAlpha )

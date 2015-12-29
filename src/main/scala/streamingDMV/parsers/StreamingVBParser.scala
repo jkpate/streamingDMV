@@ -90,6 +90,7 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
 
       while( i < miniBatch.size ) {
         val s = miniBatch( i )
+        println( s.string.mkString("[ ", ", ", " ]") )
         // println( s"    $i" )
         val counts = extractPartialCounts( s )
         // val counts = extractPartialCounts( s.string, fHat )
@@ -140,8 +141,8 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
       // println( s"incrementing by fHat" )
       // theta.incrementCounts( fHat, updateEvents = false )
       theta.incrementCounts( fHat, updateEvents = true )
-          // println( "fHat counts" )
-          // fHat.printTotalCountsByType
+      println( "fHat counts" )
+      fHat.printTotalCountsByType
           // // fHat.printStopEvents
           // println( "\n\n---\n\nAccumulated counts:" )
           // theta.toCounts.printTotalCountsByType
