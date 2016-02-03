@@ -28,6 +28,10 @@ abstract class NewFirstOrderFoldUnfoldUPOSParser[P<:UPOSArcFactoredParameters](
     DenseMatrix.eye[Double](uposCount)
   def mEventCounts( i:Int, k:Int, j:Int, mDecoration:MDecoration, marginal:DenseMatrix[Double] ) = Seq()
 
+  def trueLogProb(counts: streamingDMV.labels.MatrixDMVCounts): Double = {
+    throw new UnsupportedOperationException( "haven't implemented true Dirichlet probability yet." )
+  }
+
 }
 
 

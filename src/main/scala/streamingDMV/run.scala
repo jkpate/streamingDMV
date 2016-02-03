@@ -573,6 +573,14 @@ object run {
             // squarelyNormalized = squareNorm
             parserSpec
           )
+        } else if( parserType == "NewTwoValenceUPOSParser" ) {
+          println( "Using NewTwoValenceUPOSParser" )
+          new NewTwoValenceUPOSParser(
+            // maxLength,
+            // uposCount = uposCount,
+            parserSpec = parserSpec
+            // randomSeed = randomSeed
+          )
         } else if( parserType == "NewNoValenceUPOSParser" ) {
           println( "Using NewNoValenceUPOSParser" )
           new NewNoValenceUPOSParser(

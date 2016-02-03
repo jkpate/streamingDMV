@@ -24,9 +24,6 @@ class NewNoValenceUPOSParser(
   // val theta = new NoValenceUPOSParameters( rootAlpha, stopAlpha, chooseAlpha, uposCount )
   val theta = new NoValenceUPOSParameters( uposCount, parserSpec.toParameterSpec )
 
-  def trueLogProb(counts: streamingDMV.labels.MatrixDMVCounts): Double = {
-    throw new UnsupportedOperationException( "haven't implemented true Dirichlet probability yet." )
-  }
 
   def cellMap( i:Int, j:Int ) = {
     if( ( i%2 != j%2 ) ) {

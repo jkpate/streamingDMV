@@ -95,7 +95,8 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   //   parserSpec,
   //   uposCount = uposCount
   // )
-  val p = new NewNoValenceUPOSParser( parserSpec )
+  // val p = new NewNoValenceUPOSParser( parserSpec )
+  val p = new NewTwoValenceUPOSParser( parserSpec )
 
 
   p.zerosInit( idDMVCorpus )
