@@ -900,7 +900,7 @@ case class MatrixDMVCounts(
       "> " + sum( stopCounts.counts.values.reduce(_ :+ _) ) +
       " stop events" )
     println(
-      "> " + sum( chooseCounts.counts.values.reduce(_ :+ _) ) +
+      "> " + sum( chooseCounts.counts.values.reduceOption(_ :+ _).getOrElse( DenseMatrix( 0D ) ) ) +
       " choose events" )
   }
 }

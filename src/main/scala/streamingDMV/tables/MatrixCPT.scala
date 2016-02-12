@@ -9,8 +9,9 @@ import breeze.numerics._
 
 class MatrixCPT[E<:Event]( alpha:DenseMatrix[Double], rows:Int, cols:Int ) {
   var events = MSet[E]()
-  var counts = MMap[E,DenseMatrix[Double]]()
-  var denomCounts = MMap[NormKey,DenseVector[Double]]()
+  var counts =
+    MMap[E,DenseMatrix[Double]]().withDefaultValue( DenseMatrix.zeros[Double]( rows, cols ) )
+  var denomCounts = MMap[NormKey,DenseVector[Double]]().withDefaultValue( DenseVector.zeros[Double]( cols ) )
   var denoms = MMap[NormKey,MSet[E]]()
 
   val alphaDenom = sum( alpha(::,*) ).t
@@ -93,16 +94,18 @@ class MatrixCPT[E<:Event]( alpha:DenseMatrix[Double], rows:Int, cols:Int ) {
   }
 
   def increment( event:E, inc:DenseMatrix[Double] ) = {
-    counts += event -> { counts.getOrElse( event, zeroMatrix ) + inc }
-
-    // if( inc.rows != rows ) {
-    //   println( event )
-    //   println( (inc.rows,inc.cols) )
-    // }
-
     val n = event.normKey
-    denomCounts +=
-      n -> { denomCounts.getOrElse( n, zeroVector ) :+ sum( inc(::,*) ).t /*.toDenseVector*/ }
+    if( sum( inc ) > 0D ) {
+      counts += event -> { counts.getOrElse( event, zeroMatrix ) + inc }
+
+      // if( inc.rows != rows ) {
+      //   println( event )
+      //   println( (inc.rows,inc.cols) )
+      // }
+
+      denomCounts +=
+        n -> { denomCounts.getOrElse( n, zeroVector ) :+ sum( inc(::,*) ).t /*.toDenseVector*/ }
+    }
 
     denoms.getOrElseUpdate( n, MSet() ) += event
   }

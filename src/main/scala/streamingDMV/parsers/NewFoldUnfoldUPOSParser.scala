@@ -253,7 +253,8 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
     rightwardSplitSpecs( i, j ).map{ case ( pDec, splits ) =>
       (
         pDec,
-        splits.view.map{ case ( k, mDec, cDec ) =>
+        // splits.view.map{ case ( k, mDec, cDec ) =>
+        splits.map{ case ( k, mDec, cDec ) =>
           (
             (k,mDec, cDec), {
               val scores =
@@ -271,7 +272,8 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
     leftwardSplitSpecs( i, j ).map{ case ( pDec, splits ) =>
       (
         pDec,
-        splits.view.map{ case ( k, mDec, cDec ) =>
+        // splits.view.map{ case ( k, mDec, cDec ) =>
+        splits.map{ case ( k, mDec, cDec ) =>
           (
             (k,mDec, cDec), {
               val scores =
@@ -289,7 +291,8 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
     mSplitSpecs( i, j ).map{ case (mDecoration, splits) =>
       (
         mDecoration,
-        splits.view.map{ k => 
+        // splits.view.map{ k => 
+        splits.map{ k => 
           (k, mCellScore( i, k, j, mDecoration ) )
         }
       )

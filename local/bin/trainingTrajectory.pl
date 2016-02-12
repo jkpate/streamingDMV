@@ -22,7 +22,7 @@ GetOptions(
 );
 
 
-unless( $gold ne "" ) {
+unless( defined $gold and $gold ne "" ) {
   print STDERR "Usage: trainingTrajectory.pl [-minLength minLength] [-maxLength maxLength] [-cacheDir cacheDir] -gold gold outputfiles";
   exit;
 }
