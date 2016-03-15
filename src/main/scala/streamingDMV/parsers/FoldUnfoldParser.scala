@@ -162,6 +162,10 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
     constantInitialCounts = theta.harmonicCounts( utts )
   }
 
+  def harmonicInit( utts:List[Utt] ) {
+    theta.harmonicCounts( utts )
+  }
+
   def initialCounts( utts:List[Utt] ):C
 
   def initializeParticles = {}

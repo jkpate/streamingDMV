@@ -690,7 +690,12 @@ object run {
 
     if( !infiniteModels ) p.zerosInit( trainSet ++ testSet )
 
-    if( harmonicCorpusInit ) p.setConstantHarmonicCounts( trainSet )
+    if( harmonicCorpusInit ) {
+      if( stochasticVB )
+        p.harmonicInit( trainSet )
+      else
+        p.setConstantHarmonicCounts( trainSet )
+    }
 
     if( printInitialGrammar ) {
       println( "INITIAL GRAMMAR" )

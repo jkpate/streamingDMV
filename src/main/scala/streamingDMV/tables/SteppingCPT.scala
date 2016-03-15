@@ -40,30 +40,44 @@ class SteppingCPT[E<:Event with Product](
       }
 
       probs += event -> ( decayedP , currentStep )
+
+      decayedP
+    } else {
+      p
     }
 
-    probs( event )._1
   }
 
                                 // scale amplifies all counts to full training set size
-  def step( other:CPT[E], scale:Double ) {
+  def step( other:CPT[E], scale:Double, initial:Boolean = false ) {
 
-    other.multiplyBy( scale )
+    if( !initial ) {
+      other.multiplyBy( scale )
 
-    val rho = stepSize( currentStep )
+      val rho = stepSize( currentStep )
 
-    // println( s"rho: $rho" )
+      // println( s"rho: $rho" )
 
-    other.counts.exactCounts.keys.foreach{ event =>
-      probs += event -> ( (
-          rho * other.expDigammaNormalized( event ) +
-            (1 - rho ) * apply( event )
-        ),
-        currentStep
-      )
+      other.counts.exactCounts.keys.foreach{ event =>
+        probs += event -> ( (
+            rho * other.expDigammaNormalized( event ) +
+              (1 - rho ) * apply( event )
+          ),
+          currentStep
+        )
+      }
+
+      currentStep += 1
+    } else {
+      other.counts.exactCounts.keys.foreach{ event =>
+        // println( s"$event: ${other.expDigammaNormalized( event )}" )
+        probs += event -> ( (
+            other.expDigammaNormalized( event )
+          ),
+          0
+        )
+      }
     }
-
-    currentStep += 1
   }
 
   def makeUniform {
@@ -75,6 +89,18 @@ class SteppingCPT[E<:Event with Product](
       }.toMap
     }
 
+  }
+
+  override def printOut( logSpace:Boolean = false ) {
+    denoms.foreach{ case (n, events) =>
+      println( s"$n:" )
+      events.foreach{ e =>
+        if( logSpace )
+          println( s"  $e: ${math.log(probs(e)._1)}" )
+        else
+          println( s"  $e: ${probs(e)._1}" )
+      }
+    }
   }
 
 

@@ -90,11 +90,33 @@ trait SteppingParameters extends FirstOrderArcFactoredParameters {
     p_stop.makeUniform
   }
 
-  def step( counts:DMVCounts, rEvents:Double, cEvents:Double, sEvents:Double ) {
-    p_root.step( counts.rootCounts, totalRootEvents / rEvents )
-    p_choose.step( counts.chooseCounts, totalChooseEvents / rEvents )
-    p_stop.step( counts.stopCounts, totalStopEvents / rEvents )
+  def step( counts:DMVCounts, rEvents:Double, cEvents:Double, sEvents:Double, initial:Boolean =
+    false ) {
+    if( initial ) {
+      p_root.step( counts.rootCounts, totalRootEvents / rEvents, true )
+      p_choose.step( counts.chooseCounts, totalChooseEvents / cEvents, true )
+      p_stop.step( counts.stopCounts, totalStopEvents / sEvents, true )
+    } else {
+      p_root.step( counts.rootCounts, totalRootEvents / rEvents )
+      p_choose.step( counts.chooseCounts, totalChooseEvents / cEvents )
+      p_stop.step( counts.stopCounts, totalStopEvents / sEvents )
+    }
 
+  }
+
+  override def harmonicCounts( utts:List[Utt] ) = {
+    val harmonicCounts = super.harmonicCounts( utts )
+    step(
+      harmonicCounts,
+      totalRootEvents,
+      totalChooseEvents,
+      totalStopEvents,
+      initial = true
+    )
+
+    // printOut()
+
+    DMVCounts( rootAlpha, stopAlpha, chooseAlpha, logSpace = false)
   }
 
 
