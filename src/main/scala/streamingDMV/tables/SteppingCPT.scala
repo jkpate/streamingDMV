@@ -33,7 +33,7 @@ class SteppingCPT[E<:Event with Product](
     // println( s"(p, updatedStep): ($p, $updatedStep)" )
 
     // Fast-forward stepwise decay
-    if( updatedStep > currentStep ) {
+    if( updatedStep < currentStep ) {
       var decayedP = p * ( 1 - stepSize( updatedStep ) )
       ( updatedStep+2 to currentStep ).foreach{ s =>
         decayedP *= ( 1 - stepSize( s ) )
