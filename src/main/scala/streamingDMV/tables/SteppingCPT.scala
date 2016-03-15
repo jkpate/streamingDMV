@@ -34,14 +34,25 @@ class SteppingCPT[E<:Event with Product](
 
     // Fast-forward stepwise decay
     if( updatedStep < currentStep && false ) {
-      var decayedP = 1D
-      ( updatedStep+1 to currentStep ).foreach{ s =>
-        decayedP *= ( 1 - stepSize( s ) )
+      // Update entire multinomial
+
+      val n = event.normKey
+      val events = denoms(n)
+      events.foreach{ e =>
+        var ( decayedP, s ) = probs( e )
+        ( s + 1 to currentStep ).foreach{ stepNum =>
+          val rho = stepSize( stepNum )
+          decayedP = 
+            (1-rho) * decayedP +
+            rho * exp( G.digamma( alpha ) - G.digamma(alpha * events.size) )
+
+        }
+        probs += e -> (decayedP , currentStep )
       }
+      // probs += event -> ( decayedP , currentStep )
 
-      probs += event -> ( decayedP , currentStep )
-
-      decayedP
+      // decayedP
+      probs( event )._1
     } else {
       p
     }
@@ -58,13 +69,21 @@ class SteppingCPT[E<:Event with Product](
 
       // println( s"rho: $rho" )
 
-      other.counts.exactCounts.keys.foreach{ event =>
-        probs += event -> ( (
-            rho * other.expDigammaNormalized( event ) +
-              (1 - rho ) * apply( event )
-          ),
-          currentStep+1
-        )
+      other.denomCounts.keys.foreach{ n =>
+        val events = denoms(n)
+        events.foreach{ event =>
+          val p = exp(
+            G.digamma( other( event ) + alpha ) -
+            G.digamma( other.denomCounts( event.normKey ) + alpha*events.size )
+          )
+
+          probs += event -> ( (
+              rho * other.expDigammaNormalized( event ) +
+                (1 - rho ) * apply( event )
+            ),
+            currentStep+1
+          )
+        }
       }
 
       currentStep += 1
@@ -92,6 +111,7 @@ class SteppingCPT[E<:Event with Product](
   }
 
   override def printOut( logSpace:Boolean = false ) {
+    println( "HWEE" )
     denoms.foreach{ case (n, events) =>
       println( s"$n:" )
       events.foreach{ e =>

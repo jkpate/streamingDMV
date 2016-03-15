@@ -699,7 +699,7 @@ object run {
 
     if( printInitialGrammar ) {
       println( "INITIAL GRAMMAR" )
-      // p.theta.printOut()
+      p.theta.printOut()
     }
 
     val shuffledTrainSet = r.shuffle( trainSet.toList )
@@ -889,7 +889,7 @@ object run {
 
     if( printFinalGrammar ) {
       println( "FINAL GRAMMAR" )
-      // p.theta.printOut()
+      p.theta.printOut()
     }
 
 
