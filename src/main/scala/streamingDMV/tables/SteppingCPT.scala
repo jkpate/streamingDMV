@@ -54,7 +54,7 @@ class SteppingCPT[E<:Event with Product](
     if( !initial ) {
       other.multiplyBy( scale )
 
-      val rho = stepSize( currentStep )
+      val rho = stepSize( currentStep+1 )
 
       // println( s"rho: $rho" )
 
