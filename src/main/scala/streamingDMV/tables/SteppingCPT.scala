@@ -33,26 +33,26 @@ class SteppingCPT[E<:Event with Product](
     // println( s"(p, updatedStep): ($p, $updatedStep)" )
 
     // Fast-forward stepwise decay
-    if( updatedStep < currentStep && false ) {
-      // Update entire multinomial
+    if( updatedStep < currentStep ) {
 
       val n = event.normKey
       val events = denoms(n)
-      events.foreach{ e =>
-        var ( decayedP, s ) = probs( e )
-        ( s + 1 to currentStep ).foreach{ stepNum =>
+      // events.foreach{ e =>
+        var decayedP = p
+        val unSeenP = taylorExpDigamma( alpha ) / taylorExpDigamma(alpha * events.size)
+        ( updatedStep + 1 to currentStep ).foreach{ stepNum =>
           val rho = stepSize( stepNum )
           decayedP = 
             (1-rho) * decayedP +
-            rho * exp( G.digamma( alpha ) - G.digamma(alpha * events.size) )
+            rho * unSeenP
 
         }
-        probs += e -> (decayedP , currentStep )
-      }
+        probs += event -> (decayedP , currentStep )
+      // }
       // probs += event -> ( decayedP , currentStep )
 
-      // decayedP
-      probs( event )._1
+      decayedP
+      // probs( event )._1
     } else {
       p
     }
@@ -71,14 +71,14 @@ class SteppingCPT[E<:Event with Product](
 
       other.denomCounts.keys.foreach{ n =>
         val events = denoms(n)
+        // val denom = G.digamma( other.denomCounts( n ) + alpha*events.size )
+        val denom = taylorExpDigamma( other.denomCounts( n ) + alpha*events.size )
         events.foreach{ event =>
-          val p = exp(
-            G.digamma( other( event ) + alpha ) -
-            G.digamma( other.denomCounts( event.normKey ) + alpha*events.size )
-          )
+          val p =
+            taylorExpDigamma( other( event ) + alpha ) / denom
 
           probs += event -> ( (
-              rho * other.expDigammaNormalized( event ) +
+              rho * p +
                 (1 - rho ) * apply( event )
             ),
             currentStep+1
