@@ -28,7 +28,9 @@ case class ParserSpec(
   uposCount:Int,
   logSpace:Boolean,
   decay:Double = 0.9,
-  epsilon:Double = 1E-4
+  epsilon:Double = 1E-4,
+  kappa:Double,
+  tau:Double
 ) {
   def toParameterSpec =
     ParameterSpec(
@@ -43,7 +45,9 @@ case class ParserSpec(
       alphabetSize = alphabetSize,
       logSpace = logSpace,
       decay = decay,
-      epsilon = epsilon
+      epsilon = epsilon,
+      kappa = kappa,
+      tau = tau
     )
 }
 object ParserSpec {
@@ -66,7 +70,9 @@ object ParserSpec {
       uposCount = parserSpec.uposCount,
       logSpace = parserSpec.logSpace,
       decay = parserSpec.decay,
-      epsilon = parserSpec.epsilon
+      epsilon = parserSpec.epsilon,
+      kappa = parserSpec.kappa,
+      tau = parserSpec.tau
     )
   }
 }
@@ -83,7 +89,9 @@ case class ParameterSpec(
   alphabetSize:Int,
   logSpace:Boolean,
   decay:Double = 0.9,
-  epsilon:Double = 1E-4
+  epsilon:Double = 1E-4,
+  kappa:Double,
+  tau:Double
 )
 
 

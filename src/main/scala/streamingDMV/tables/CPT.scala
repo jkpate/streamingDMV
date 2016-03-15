@@ -252,6 +252,12 @@ class CPT[E<:Event with Product](
     events.foreach{ increment( _, inc ) }
   }
 
+  def addEvents( events:Set[E] ) {
+    events.groupBy( _.normKey ).foreach{ case (n, es ) =>
+      denoms += n -> es
+    }
+  }
+
   // TODO implement for logspace = true
   var totalCount = 0D
   def increment( other:CPT[E], updateEvents:Boolean ) {
@@ -356,6 +362,11 @@ class CPT[E<:Event with Product](
       // denoms += n -> MSet( events.toSeq:_* )
       denoms += n -> Set( events.toSeq:_* )
     }
+  }
+
+  def addEvent( event:E ) {
+    val n = event.normKey
+    denoms += n -> { denoms( n ) + event }
   }
 
   def setEvents( other:CPT[E] ) {

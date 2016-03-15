@@ -22,6 +22,9 @@ abstract class NOPOSArcFactoredParameters(
   val decay = parameterSpec.decay
   val epsilon = parameterSpec.epsilon
 
+  val kappa = parameterSpec.kappa
+  val tau = parameterSpec.tau
+
   // if( approximate )
   //   println( "creating approximate parameters" )
   // else

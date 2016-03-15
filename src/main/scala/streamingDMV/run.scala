@@ -57,6 +57,8 @@ object run {
     optsParser.accepts( "chooseAlpha" ).withRequiredArg
     optsParser.accepts( "backoffAlpha" ).withRequiredArg
     optsParser.accepts( "notBackoffAlpha" ).withRequiredArg
+    optsParser.accepts( "kappa" ).withRequiredArg
+    optsParser.accepts( "tau" ).withRequiredArg
     optsParser.accepts( "squarelyNormalized" )
     optsParser.accepts( "uposCount" ).withRequiredArg
     optsParser.accepts( "randomSeed" ).withRequiredArg
@@ -71,6 +73,7 @@ object run {
     optsParser.accepts( "printIterScores" )
     optsParser.accepts( "batchVB" )
     optsParser.accepts( "adaDelta" )
+    optsParser.accepts( "stochasticVB" )
     optsParser.accepts( "infiniteModels" )
     optsParser.accepts( "baseDistribution" ).withRequiredArg
     optsParser.accepts( "logSpace" )
@@ -134,6 +137,16 @@ object run {
         opts.valueOf( "notBackoffAlpha" ).toString.toDouble
       else
         alpha
+    val kappa =
+      if( opts.has( "kappa" ) )
+        opts.valueOf( "kappa" ).toString.toDouble
+      else
+        0.9
+    val tau =
+      if( opts.has( "tau" ) )
+        opts.valueOf( "tau" ).toString.toDouble
+      else
+        1
     val squarelyNormalized = opts.has( "squarelyNormalized" )
     val uposCount =
       if( opts.has( "uposCount" ) )
@@ -166,6 +179,7 @@ object run {
     val convergeInitialMiniBatch = opts.has( "convergeInitialMiniBatch" )
     val batchVB = opts.has( "batchVB" )
     val adaDelta = opts.has( "adaDelta" )
+    val stochasticVB = opts.has( "stochasticVB" )
     val infiniteModels = opts.has( "infiniteModels" )
     val baseDistribution =
       if( opts.has( "baseDistribution" ) )
@@ -229,6 +243,7 @@ object run {
     println( s"printItersReached: ${printItersReached}" )
     println( s"batchVB: ${batchVB}" )
     println( s"adaDelta: ${adaDelta}" )
+    println( s"stochasticVB: ${stochasticVB}" )
     println( s"infiniteModels: ${infiniteModels}" )
     println( s"baseDistribution: ${baseDistribution}" )
     println( s"logSpace: ${logSpace}" )
@@ -248,6 +263,8 @@ object run {
     println( s"chooseAlpha: ${chooseAlpha}" )
     println( s"backoffAlpha: ${backoffAlpha}" )
     println( s"notBackoffAlpha: ${notBackoffAlpha}" )
+    println( s"kappa: ${kappa}" )
+    println( s"tau: ${tau}" )
     println( s"squarelyNormalized: ${squarelyNormalized}" )
     println( s"uposCount: ${uposCount}" )
     println( s"randomSeed: ${randomSeed}" )
@@ -293,7 +310,9 @@ object run {
       approximate = false,
       reservoirSize = reservoirSize,
       uposCount = uposCount,
-      logSpace = logSpace
+      logSpace = logSpace,
+      kappa = kappa,
+      tau = tau
     )
 
     // val p:FoldUnfoldParser[_<:ArcFactoredParameters] =
@@ -565,6 +584,11 @@ object run {
           } else if( adaDelta ) {
             println( "Using TopDownDMVADParser" )
             new TopDownDMVADParser(
+              parserSpec
+            )
+          } else if( stochasticVB ) {
+            println( "Using TopDownDMVStochasticParser" )
+            new TopDownDMVStochasticParser(
               parserSpec
             )
           } else {

@@ -10,7 +10,7 @@ name := "streamingDMV"
 
 version := "0.001-SNAPSHOT"
 
-scalaVersion := "2.11.7"
+scalaVersion := "2.11.8"
 // scalaVersion := "2.11.6"
 
 unmanagedClasspath in Compile += Attributed.blank(new java.io.File("doesnotexist"))
@@ -29,8 +29,8 @@ libraryDependencies  ++= Seq(
   "org.scalatest" % "scalatest_2.10" % "1.9.1" % "test",
   // "org.scalanlp" %% "breeze" % "0.11.2",
   // "org.scalanlp" %% "breeze-natives" % "0.11.2"
-  "org.scalanlp" %% "breeze" % "0.12-SNAPSHOT",
-  "org.scalanlp" %% "breeze-natives" % "0.12-SNAPSHOT",
+  "org.scalanlp" %% "breeze" % "0.12",
+  "org.scalanlp" %% "breeze-natives" % "0.12",
   "net.jpountz.lz4" % "lz4" % "1.3.0"
   // "com.twitter" %% "algebird-core" % "0.11.0"
 )
