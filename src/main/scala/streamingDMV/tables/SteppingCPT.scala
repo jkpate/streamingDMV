@@ -63,7 +63,7 @@ class SteppingCPT[E<:Event with Product](
             rho * other.expDigammaNormalized( event ) +
               (1 - rho ) * apply( event )
           ),
-          currentStep
+          currentStep+1
         )
       }
 
