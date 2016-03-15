@@ -69,12 +69,12 @@ class HeadOutInterpolatedAdjHeadNoValenceParser(
     }
   }
 
-  def findLeftRootChild( k:Int ) =
+  def findLeftRootChild( k:Int, rDec:Decoration ) =
     headTrace( 0 )( k )( NoValence )
-  def findRightRootChild( k:Int ) =
+  def findRightRootChild( k:Int, rDec:Decoration ) =
     headTrace( k )( intString.length )( NoValence )
 
-  def findLeftLeftwardChild( i:Int, k:Int ) = {
+  def findLeftLeftwardChild( i:Int, k:Int, mDV:Decoration ) = {
     // assert( k-i > 1 )
     headTrace( i )( k )( NoValence )
   }
@@ -86,7 +86,7 @@ class HeadOutInterpolatedAdjHeadNoValenceParser(
     assert( k-i > 1 )
     mTrace( i )( k )( RightwardM )
   }
-  def findRightRightwardChild( k:Int, j:Int ) = {
+  def findRightRightwardChild( k:Int, j:Int, mDV:Decoration ) = {
     // assert( j-k > 1 )
     headTrace( k )( j )( NoValence )
   }
@@ -236,7 +236,7 @@ class HeadOutInterpolatedAdjHeadNoValenceParser(
         outerArcFactor( intString(j), intString(k), LeftAtt, intString(i) )
     }
   }
-  def rootCellFactor( k:Int ) = {
+  def rootCellFactor( k:Int, rDec:DecorationPair ) = {
     val r = intString( k )
 
     myTimes(

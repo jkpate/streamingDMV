@@ -9,7 +9,7 @@ import scala.math.log
 trait InfiniteFirstOrderFoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters] extends FirstOrderFoldUnfoldNOPOSParser[P] {
 
 
-  override def rootCellFactor( k:Int ) = {
+  override def rootCellFactor( k:Int, rDec:DecorationPair ) = {
     val rObs = lexString( k )
     theta( RootEvent( intString( k ), rObs ) )
   }

@@ -56,16 +56,16 @@ class NoValenceParser(
   }
 
 
-  def findLeftRootChild( k:Int ) = headTrace( 0 )( k )( NoValence )
-  def findRightRootChild( k:Int ) =
+  def findLeftRootChild( k:Int, rDec:Decoration ) = headTrace( 0 )( k )( NoValence )
+  def findRightRootChild( k:Int, rDec:Decoration ) =
     headTrace( k )( intString.length )( NoValence )
 
-  def findLeftLeftwardChild( i:Int, k:Int ) = headTrace( i )( k )( NoValence )
+  def findLeftLeftwardChild( i:Int, k:Int, mDV:Decoration ) = headTrace( i )( k )( NoValence )
   def findRightLeftwardChild( k:Int, j:Int, hV:Decoration, mDV:Decoration ) =
     mTrace( k )( j )( PlainM )
   def findLeftRightwardChild( i:Int, k:Int, hV:Decoration, mDV:Decoration ) =
     mTrace( i )( k )( PlainM )
-  def findRightRightwardChild( k:Int, j:Int ) = headTrace( k )( j )( NoValence )
+  def findRightRightwardChild( k:Int, j:Int, mDV:Decoration ) = headTrace( k )( j )( NoValence )
   def findLeftMChild( i:Int, k:Int, decoration:MDecoration ) = headTrace( i )( k )( NoValence )
   def findRightMChild( k:Int, j:Int, decoration:MDecoration ) = headTrace( k )( j )( NoValence )
 
@@ -164,7 +164,7 @@ class NoValenceParser(
   }
 
 
-  def rootCellFactor( k:Int ) = {
+  def rootCellFactor( k:Int, rDec:DecorationPair ) = {
     val r = intString( k )
 
     myTimes(

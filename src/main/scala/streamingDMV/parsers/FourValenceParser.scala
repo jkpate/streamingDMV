@@ -137,22 +137,22 @@ class FourValenceParser(
   // def incHeadV( v:Decoration ) =
   //   if( v == NoDependentValence ) OneDependentValence else TwoDependentValence
 
-  def findLeftRootChild( k:Int ) = {
+  def findLeftRootChild( k:Int, rDec:Decoration ) = {
     headTrace( 0 )( k )( NoDependentValence )
   }
 
-  def findRightRootChild( k:Int ) = {
+  def findRightRootChild( k:Int, rDec:Decoration ) = {
     val span = intString.length - k
     headTrace( k )( intString.length )( NoDependentValence )
   }
 
-  def findLeftLeftwardChild( i:Int, k:Int ) = headTrace( i )( k )( NoDependentValence )
+  def findLeftLeftwardChild( i:Int, k:Int, mDV:Decoration ) = headTrace( i )( k )( NoDependentValence )
   def findRightLeftwardChild( k:Int, j:Int, hV:Decoration, mDV:Decoration ) =
     mTrace( k )( j )( DecorationPair( NoDependentValence, hV ) )
 
   def findLeftRightwardChild( i:Int, k:Int, hV:Decoration, mDV:Decoration ) =
     mTrace( i )( k )( DecorationPair( hV, NoDependentValence ) )
-  def findRightRightwardChild( k:Int, j:Int ) = headTrace( k )( j )( NoDependentValence )
+  def findRightRightwardChild( k:Int, j:Int, mDV:Decoration ) = headTrace( k )( j )( NoDependentValence )
 
   def findLeftMChild( i:Int, k:Int, decoration:MDecoration ) =
     headTrace( i )( k )( decoration.evenLeft )
@@ -599,7 +599,7 @@ class FourValenceParser(
   }
 
 
-  def rootCellFactor( k:Int ) = {
+  def rootCellFactor( k:Int, rDec:DecorationPair ) = {
     theta( RootEvent( intString( k ) ) )
   }
 

@@ -172,7 +172,8 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
   // def sampleTreeCounts( utt:Utt ):Tuple2[C,Double] = sampleTreeCounts( utt.string )
 
 
-  def streamingBayesUpdate(
+  // def streamingBayesUpdate(
+  def streamingUpdate(
     miniBatch:List[Utt],
     sentenceNum:Int,
     testSet:List[Utt],

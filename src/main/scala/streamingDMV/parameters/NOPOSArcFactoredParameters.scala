@@ -19,6 +19,9 @@ abstract class NOPOSArcFactoredParameters(
 
   val rand = new util.Random( randomSeed )
 
+  val decay = parameterSpec.decay
+  val epsilon = parameterSpec.epsilon
+
   // if( approximate )
   //   println( "creating approximate parameters" )
   // else

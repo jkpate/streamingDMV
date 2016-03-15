@@ -81,6 +81,8 @@ abstract class ParticleFilterParser[
 
   override def zerosInit( corpus:List[Utt] ) {
     // println( "--- STARTING FIRST ZEROS INIT--" )
+    println( s"corpus length: ${corpus.length}" )
+    println( s"first utterance: ${corpus.head}" )
     particles.head.theta.zerosInit( corpus )
     // println( "--- FIRST ZEROS INIT DONE--" )
     val zeroCounts = particles.head.theta.toCounts
@@ -207,8 +209,35 @@ abstract class ParticleFilterParser[
 
   def clearCharts:Unit
 
+  def streamingUpdate(
+    miniBatch:List[Utt],
+    sentenceNum:Int,
+    testSet:List[Utt],
+    maxIter:Int = 10,
+    convergence:Double = 0.001,
+    evalMaxLength:Int = 0,
+    evalRate:Int = 10,
+    logEvalRate:Boolean = true,
+    constituencyEval:Boolean = true,
+    printIterScores:Boolean = false,
+    printItersReached:Boolean = false
+  ) = streamingVBUpdate(
+    miniBatch = miniBatch,
+    sentenceNum = sentenceNum,
+    testSet = testSet,
+    maxIter = maxIter,
+    convergence = convergence,
+    evalMaxLength = evalMaxLength,
+    evalRate = evalRate,
+    logEvalRate = logEvalRate,
+    constituencyEval = constituencyEval,
+    printIterScores = printIterScores,
+    printItersReached = printItersReached
+  )
+
+
   // TODO increment eval during initial minibatch
-  def streamingBayesUpdate(
+  def streamingVBUpdate(
     miniBatch:List[Utt],
     sentenceNum:Int,
     testSet:List[Utt],

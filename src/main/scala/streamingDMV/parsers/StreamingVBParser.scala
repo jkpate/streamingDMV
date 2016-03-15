@@ -24,8 +24,34 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
 
   val reservoirSize = parserSpec.reservoirSize
 
+  def streamingUpdate(
+    miniBatch:List[Utt],
+    sentenceNum:Int,
+    testSet:List[Utt],
+    maxIter:Int = 10,
+    convergence:Double = 0.001,
+    evalMaxLength:Int = 0,
+    evalRate:Int = 10,
+    logEvalRate:Boolean = true,
+    constituencyEval:Boolean = true,
+    printIterScores:Boolean = false,
+    printItersReached:Boolean = false
+  ) = streamingVBUpdate(
+    miniBatch = miniBatch,
+    sentenceNum = sentenceNum,
+    testSet = testSet,
+    maxIter = maxIter,
+    convergence = convergence,
+    evalMaxLength = evalMaxLength,
+    evalRate = evalRate,
+    logEvalRate = logEvalRate,
+    constituencyEval = constituencyEval,
+    printIterScores = printIterScores,
+    printItersReached = printItersReached
+  )
+
   var wordsSeen = 0
-  def streamingBayesUpdate(
+  def streamingVBUpdate(
     miniBatch:List[Utt],
     sentenceNum:Int,
     testSet:List[Utt],

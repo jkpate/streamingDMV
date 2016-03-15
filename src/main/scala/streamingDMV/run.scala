@@ -70,6 +70,7 @@ object run {
     optsParser.accepts( "printItersReached" )
     optsParser.accepts( "printIterScores" )
     optsParser.accepts( "batchVB" )
+    optsParser.accepts( "adaDelta" )
     optsParser.accepts( "infiniteModels" )
     optsParser.accepts( "baseDistribution" ).withRequiredArg
     optsParser.accepts( "logSpace" )
@@ -164,6 +165,7 @@ object run {
         0
     val convergeInitialMiniBatch = opts.has( "convergeInitialMiniBatch" )
     val batchVB = opts.has( "batchVB" )
+    val adaDelta = opts.has( "adaDelta" )
     val infiniteModels = opts.has( "infiniteModels" )
     val baseDistribution =
       if( opts.has( "baseDistribution" ) )
@@ -226,6 +228,7 @@ object run {
     println( s"harmonicCorpusInit: ${harmonicCorpusInit}" )
     println( s"printItersReached: ${printItersReached}" )
     println( s"batchVB: ${batchVB}" )
+    println( s"adaDelta: ${adaDelta}" )
     println( s"infiniteModels: ${infiniteModels}" )
     println( s"baseDistribution: ${baseDistribution}" )
     println( s"logSpace: ${logSpace}" )
@@ -559,6 +562,11 @@ object run {
             new InfiniteTopDownDMVParser(
               parserSpec
             )
+          } else if( adaDelta ) {
+            println( "Using TopDownDMVADParser" )
+            new TopDownDMVADParser(
+              parserSpec
+            )
           } else {
             println( "Using TopDownDMVParser" )
             new TopDownDMVParser(
@@ -708,7 +716,7 @@ object run {
       if( printIterScores || printItersReached || batchVB || printIterScores )
         println( s"===== MINI BATCH $i" )
 
-      val mbIters = p.streamingBayesUpdate(
+      val mbIters = p.streamingUpdate(
         miniBatch = mb,
         sentenceNum = sentencesProcessed,
         testSet = testSet,
@@ -776,22 +784,6 @@ object run {
           else
             p.printViterbiDepParses( testSet, s"it${sentencesProcessed}", evalMaxLength )
 
-        // p.theta.printTotalCountsByType
-
-            // var heldOutLogProb = 0D
-            // val parseStartTime = System.currentTimeMillis
-            // testSet.foreach{ s =>
-            //   if( evalMaxLength == 0 || s.string.length <= evalMaxLength )
-            //     if( constituencyEval ) {
-            //       val Parse( id, conParse, depParse ) = p.viterbiParse( s )
-            //       println( s"it${sentencesProcessed}:constituency:${id} ${conParse}" )
-            //       println( s"it${sentencesProcessed}:dependency:${id} ${printDependencyParse(depParse)}" )
-            //     } else {
-            //       val Parse( id, _, depParse ) = p.viterbiDepParse( s )
-            //       println( s"it${sentencesProcessed}:dependency:${id} ${printDependencyParse(depParse)}" )
-            //     }
-            //     heldOutLogProb += p.logProb( s.string )
-            // }
 
             // val thisTestTime = System.currentTimeMillis - parseStartTime
         // heldOutLogProb += thisHeldOutLogProb

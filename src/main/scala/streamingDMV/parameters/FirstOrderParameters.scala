@@ -23,6 +23,8 @@ abstract class FirstOrderArcFactoredParameters(
   parameterSpec
 ) {
 
+  def rootEvents( r:Int, rObs:String ) = Seq[Event]( RootEvent( r ) )
+
   def zerosInit( corpus:List[Utt] ) {
     // val rootEvents = MSet[RootEvent]()
     // val stopEvents = MSet[StopEvent]()
@@ -44,13 +46,24 @@ abstract class FirstOrderArcFactoredParameters(
       p_choose.denomCounts.approximateCounts.initializeCountsTable
     }
 
-    corpus.map{_.string}.foreach{ s =>
+
+    // corpus.map{_.string}.foreach{ s =>
+    println( s"inside init corpus length: ${corpus.length}" )
+    println( s"inside init first utterance: ${corpus.head}" )
+    corpus.foreach{ case Utt( _, s, w ) =>
       (0 until s.length).foreach{ t =>
         val h = s(t)
+        val hW = if( w.length > 0 ) { w(t) } else { "" }
 
         // rootEvents += RootEvent( h )
         // stopEvents ++= possibleStopEvents( h )
-        p_root.increment( RootEvent( h ), myZero )
+        // p_root.increment( RootEvent( h ), myZero )
+        rootEvents(h, hW).foreach{ rEvent =>
+          rEvent match {
+            case rootEvent:RootEvent => p_root.increment( rootEvent, myZero )
+            case chooseEvent:ChooseEvent => p_choose.increment( chooseEvent, myZero )
+          }
+        }
         p_stop.increment( possibleStopEvents( h ), myZero )
 
         ( 0 until t ).foreach{ i =>
@@ -66,6 +79,7 @@ abstract class FirstOrderArcFactoredParameters(
     }
 
     // println( s"  > ${p_choose.denoms.size} choose left-hand sides" )
+    println( s"zerosInit complete" )
 
 
     // p_root.setEvents( rootEvents.toSet )

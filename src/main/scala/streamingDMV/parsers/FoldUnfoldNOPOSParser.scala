@@ -142,7 +142,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
     myTimes(
       insideChart( 0 )( k )( leftDec ),
         insideChart( k )( intString.length )( rightDec ),
-          rootCellFactor( k )
+          rootCellFactor( k, DecorationPair( leftDec, rightDec ) )
     )
   }
 
@@ -220,7 +220,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
         rootCellScore( k, decorationPair.evenLeft, decorationPair.evenRight )
       )
 
-      if( !( stringProb > myZero )) {
+      if( !( stringProb > myZero && stringProb <= myOne + 1E-10 )) {
         println( stringProb )
       }
       assert( stringProb > myZero )
@@ -242,8 +242,10 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
             rightwardCellScore( i, k, j, pDec, mDec, cDec )
           )
 
-        if( !( insideChart( i )( j )( pDec ) > myZero ) ) {
-          println( "inside rightward cell: " + (i,j,pDec, insideChart( i )( j )( pDec ) ) )
+        if( !( insideChart( i )( j )( pDec ) > 1E-200 ) ) {
+          println( "inside rightward cell: " + (i,k,j,pDec, insideChart( i )( j )( pDec ) ) )
+          println( "\t" + insideChart( i )( j )( pDec ) )
+          println( "\t" + rightwardCellScore( i, k, j, pDec, mDec, cDec ) )
         }
         assert( insideChart( i )( j )( pDec ) > myZero )
         assert( insideChart( i )( j )( pDec ) <= myOne + 1E-10 )
@@ -254,6 +256,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
   def computeInsideLeftwardScore( i:Int, j:Int ) {
     leftwardSplitSpecs( i, j ).foreach{ case ( pDec, splits ) =>
       splits.foreach{ case ( k, mDec, cDec ) =>
+        // println( "\t" + (k, mDec, cDec) )
             // println( (i,k,j,mDec,cDec) )
             // println( insideChart( i )( j )( pDec ) )
             // println(
@@ -275,7 +278,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
     }
   }
 
-  def rootCellFactor( k:Int ):Double
+  def rootCellFactor( k:Int, rDec:DecorationPair ):Double
   def rightwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ):Double
   def leftwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ):Double
   def mCellFactor( i:Int, k:Int, j:Int, mDecoration:MDecoration ):Double
@@ -336,6 +339,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
   }
 
   def synFill( i:Int, j:Int ) {
+    // println( (i,j) )
     if( i%2 == 1 && j%2 == 0 ) {
       computeInsideRightwardScore( i, j )
     } else if( i%2 == 0 && j%2 == 1 ) {
@@ -356,7 +360,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
         if( i%2 == 0 && j%2 == 0 ) { // Root
           if( i == 0 && j == intString.length ) {
             rootSplitSpecs().foreach{ case ( k, decorationPair ) =>
-              val factorAndOutside = rootCellFactor( k )
+              val factorAndOutside = rootCellFactor( k, decorationPair )
 
               outsideChart( 0 )( k )( decorationPair.evenLeft ) = myPlus(
                   outsideChart( 0 )( k )( decorationPair.evenLeft ) ,
@@ -525,20 +529,20 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
     val rightChild:Entry
   }
 
-  def findLeftRootChild( k:Int ):Entry
-  def findRightRootChild( k:Int ):Entry
+  def findLeftRootChild( k:Int, rDec:Decoration ):Entry
+  def findRightRootChild( k:Int, rDec:Decoration ):Entry
 
-  def findLeftLeftwardChild( i:Int, k:Int ):Entry
+  def findLeftLeftwardChild( i:Int, k:Int, hV:Decoration ):Entry
   def findRightLeftwardChild( k:Int, j:Int, hV:Decoration, mDV:Decoration ):Entry
 
   def findLeftRightwardChild( i:Int, k:Int, hV:Decoration, mDV:Decoration ):Entry
-  def findRightRightwardChild( k:Int, j:Int ):Entry
+  def findRightRightwardChild( k:Int, j:Int, hV:Decoration ):Entry
 
   def findLeftMChild( i:Int, k:Int, decoration:MDecoration ):Entry
   def findRightMChild( k:Int, j:Int, decoration:MDecoration ):Entry
 
 
-  def insertRootEntry( k:Int ) = treeRoot = RootEntry( k )
+  def insertRootEntry( k:Int, rDec:DecorationPair ) = treeRoot = RootEntry( k, rDec )
   def insertMEntry( i:Int, k:Int, j:Int, decoration:MDecoration ) =
     mTrace( i )( j )( decoration ) = MEntry( i , k, j, decoration )
   def insertLeftwardEntry( i:Int, k:Int, j:Int, pDec:Decoration, hV:Decoration, mDV:Decoration ) =
@@ -549,9 +553,9 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
   def insertLexEntry( index:Int, pDec:Decoration ) =
     headTrace( index )( index+1 )( pDec ) = LexEntry( index )
 
-  case class RootEntry( k:Int ) extends BinaryEntry( 0, k, intString.length ) {
-    val leftChild = findLeftRootChild( k )
-    val rightChild = findRightRootChild( k )
+  case class RootEntry( k:Int, rDec:DecorationPair ) extends BinaryEntry( 0, k, intString.length ) {
+    val leftChild = findLeftRootChild( k, rDec.evenLeft )
+    val rightChild = findRightRootChild( k, rDec.evenRight )
 
     def toDepParse =
       Set( DirectedArc( intString.length/2, (k-1)/2 ) ) ++
@@ -578,7 +582,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
 
   case class LeftwardEntry( i:Int, k:Int, j:Int, hV:Decoration, mDV:Decoration ) extends BinaryEntry( i, k, j ) {
     // println( (i,k,j,hV,mDV) )
-    val leftChild = findLeftLeftwardChild( i, k )
+    val leftChild = findLeftLeftwardChild( i, k, mDV )
     val rightChild = findRightLeftwardChild( k, j, hV, mDV )
 
     def toDepParse =
@@ -588,7 +592,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
 
   case class RightwardEntry( i:Int, k:Int, j:Int, hV:Decoration, mDV:Decoration ) extends BinaryEntry( i, k, j ) {
     val leftChild = findLeftRightwardChild( i , k, hV, mDV )
-    val rightChild = findRightRightwardChild( k, j )
+    val rightChild = findRightRightwardChild( k, j, mDV )
 
     def toDepParse =
       Set( DirectedArc( (i-1)/2, (k-1)/2 ) ) ++ leftChild.toDepParse ++ rightChild.toDepParse
@@ -645,9 +649,9 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
       // Root
 
       if( i == 0 && j == intString.length ) {
-        val ( (bestK,_), bestScore ) = argMax( rootCellScores() )
+        val ( ( bestK, rDec ), bestScore ) = argMax( rootCellScores() )
         stringProb = bestScore
-        treeRoot = RootEntry( bestK )
+        treeRoot = RootEntry( bestK, rDec )
       }
     }
   }
@@ -890,7 +894,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
           if( i == 0 && j == intString.length ) {
             rootSplitSpecs().foreach{ case ( k, decorationPair ) =>
               val r = intString( k )
-              val factorAndOutside = rootCellFactor( k )
+              val factorAndOutside = rootCellFactor( k, decorationPair )
 
               outsideChart( 0 )( k )( decorationPair.evenLeft ) = myPlus(
                 outsideChart( 0 )( k )( decorationPair.evenLeft ),
@@ -953,7 +957,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
                 )
 
                 leftwardEventCounts( i, k, j, pDec, mDec, cDec, marginal ).foreach{ case (event, count) =>
-                  if( !( count <= myOne + 1E-10 ) ) {
+                  if( !( count <= myOne + 1E-10 && count > myZero) ) {
                     println( s"  $event: $count" )
                     println( insideChart( i )( k )( cDec ) )
                     println( stringProb )

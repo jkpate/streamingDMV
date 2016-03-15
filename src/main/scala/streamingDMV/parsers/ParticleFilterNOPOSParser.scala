@@ -271,17 +271,17 @@ class ParticleFilterNOPOSParser[
   //   val rightChild:Entry
   // }
 
-  def findLeftRootChild( k:Int ) = particles.head.findLeftRootChild( k )
-  def findRightRootChild( k:Int ) = particles.head.findRightRootChild( k )
+  def findLeftRootChild( k:Int, rDec:Decoration ) = particles.head.findLeftRootChild( k, rDec )
+  def findRightRootChild( k:Int, rDec:Decoration ) = particles.head.findRightRootChild( k, rDec )
 
-  def findLeftLeftwardChild( i:Int, k:Int ) = particles.head.findLeftLeftwardChild( i, k )
+  def findLeftLeftwardChild( i:Int, k:Int, mDV:Decoration ) = particles.head.findLeftLeftwardChild( i, k, mDV )
   def findRightLeftwardChild( k:Int, j:Int, hV:Decoration, mDV:Decoration ) =
     particles.head.findRightLeftwardChild( k, j, hV, mDV )
 
   def findLeftRightwardChild( i:Int, k:Int, hV:Decoration, mDV:Decoration ) =
     particles.head.findLeftRightwardChild( i, k, hV, mDV )
-  def findRightRightwardChild( k:Int, j:Int ) =
-    particles.head.findRightRightwardChild( k, j )
+  def findRightRightwardChild( k:Int, j:Int, mDV:Decoration ) =
+    particles.head.findRightRightwardChild( k, j, mDV )
 
   def findLeftMChild( i:Int, k:Int, decoration:MDecoration ) =
     particles.head.findLeftMChild( i, k, decoration )
@@ -358,7 +358,7 @@ class ParticleFilterNOPOSParser[
             // println( s"particleWeights(l): ${particleWeights(l)}" )
             myTimes(
               parsingParticleWeights(l),
-                parsingParticles(l).rootCellFactor( k )
+                parsingParticles(l).rootCellFactor( k, DecorationPair( leftDec, rightDec ) )
             )
           }
         )
@@ -458,9 +458,9 @@ class ParticleFilterNOPOSParser[
       // Root
 
       if( i == 0 && j == intString.length ) {
-        val ( (bestK,_), bestScore ) = argMax( rootCellScores() )
+        val ( (bestK,rDec), bestScore ) = argMax( rootCellScores() )
         particles.head.stringProb = bestScore
-        particles.head.insertRootEntry( bestK )
+        particles.head.insertRootEntry( bestK, rDec )
       }
     }
   }

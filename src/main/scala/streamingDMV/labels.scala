@@ -26,7 +26,9 @@ case class ParserSpec(
   approximate:Boolean,
   reservoirSize:Int,
   uposCount:Int,
-  logSpace:Boolean
+  logSpace:Boolean,
+  decay:Double = 0.9,
+  epsilon:Double = 1E-4
 ) {
   def toParameterSpec =
     ParameterSpec(
@@ -39,10 +41,13 @@ case class ParserSpec(
       approximate = approximate,
       randomSeed = randomSeed,
       alphabetSize = alphabetSize,
-      logSpace = logSpace
+      logSpace = logSpace,
+      decay = decay,
+      epsilon = epsilon
     )
 }
 object ParserSpec {
+
   def withRandomSeed( parserSpec:ParserSpec, randomSeed:Int ) = {
     ParserSpec(
       maxLength = parserSpec.maxLength,
@@ -59,7 +64,9 @@ object ParserSpec {
       approximate = parserSpec.approximate,
       reservoirSize = parserSpec.reservoirSize,
       uposCount = parserSpec.uposCount,
-      logSpace = parserSpec.logSpace
+      logSpace = parserSpec.logSpace,
+      decay = parserSpec.decay,
+      epsilon = parserSpec.epsilon
     )
   }
 }
@@ -74,7 +81,9 @@ case class ParameterSpec(
   approximate:Boolean,
   randomSeed:Int,
   alphabetSize:Int,
-  logSpace:Boolean
+  logSpace:Boolean,
+  decay:Double = 0.9,
+  epsilon:Double = 1E-4
 )
 
 
@@ -178,6 +187,9 @@ case object RightAtt extends AttDir {
   override val hashCode = 15485863
   // override val hashCode = 47
 }
+case object MorphAtt extends AttDir {
+  val flip = MorphAtt
+}
 
 abstract class StopDecision
 case object Stop extends StopDecision {
@@ -201,6 +213,9 @@ case object ThreeDependentValence extends Decoration
 case object TwoDependentValence extends Decoration
 case object OneDependentValence extends Decoration
 case object NoDependentValence extends Decoration
+
+
+case class StemSuffixDecoration( stem:String, suffix:String, dec:Decoration ) extends Decoration
 
 case object NoValence extends Valence {
   override val hashCode = 104395303
@@ -315,6 +330,7 @@ case class ChooseNorm( head:Int, context:Int, dir:AttDir ) extends NormKey {
 }
 case class ChooseEvent(
   head:Int,
+  headString:String = "",
   context:Int,
   dir:AttDir,
   /*v:Decoration,*/
@@ -329,6 +345,13 @@ case class ChooseEvent(
     bytes.putInt( dir.hashCode )
     bytes.putInt( dep )
     bytes
+  }
+  override lazy val hashCode = {
+    if( headString.isEmpty && gen.isEmpty ) {
+      (head, context, dir, dep ).hashCode
+    } else {
+      super.hashCode()
+    }
   }
   // override def fastHash( seed:Int ) = {
   //   // var hash = FastHash( head, seed )
@@ -357,19 +380,35 @@ object ChooseEvent {
   // some parameterizations don't use valence or context for choose
 
   def apply( dir:AttDir, dep:Int ):ChooseEvent =
-    new ChooseEvent( -1, -1, dir, /*NoValence,*/ dep )
+    new ChooseEvent( -1, "", -1, dir, /*NoValence,*/ dep )
 
   def apply( head:Int, dir:AttDir, dep:Int ):ChooseEvent =
-    new ChooseEvent( head, -1, dir, /*NoValence,*/ dep )
+    new ChooseEvent( head, "", -1, dir, /*NoValence,*/ dep )
+
+  def apply( head:String, dir:AttDir, dep:String ):ChooseEvent =
+    new ChooseEvent( -1, head, -1, dir, /*NoValence,*/ -1, dep )
 
   def apply( head:Int, dir:AttDir, dep:Int, gen:String ):ChooseEvent =
-    new ChooseEvent( head, -1, dir, /*NoValence,*/ dep, gen )
+    new ChooseEvent( head, "", -1, dir, /*NoValence,*/ dep, gen )
+
+  def apply( head:Int, context:Int, dir:AttDir, dep:Int, gen:String ):ChooseEvent =
+    new ChooseEvent( head, "", context, dir, /*NoValence,*/ dep, gen )
+
+  def apply( head:Int, context:Int, dir:AttDir, dep:Int ):ChooseEvent =
+    new ChooseEvent( head, "", context, dir, /*NoValence,*/ dep, "" )
 
   // def apply( head:Int, context:Int, dir:AttDir, dep:Int ):ChooseEvent =
   //   new ChooseEvent( head, context, dir, /*NoValence,*/ dep )
 
   // def apply( head:Int, dir:AttDir, /*v:Decoration,*/ dep:Int ):ChooseEvent =
   //   new ChooseEvent( head, -1, dir, /*v,*/ dep )
+}
+
+
+case class DepCountNorm(h:Int, numDeps:Int, dir:AttDir) extends NormKey
+case class DepCount(h:Int, numDeps:Int, dir:AttDir) extends Event {
+  def peel = { assert( numDeps > 0 ) ;  DepCount( h, numDeps-1, dir ) }
+  def normKey = DepCountNorm( h, numDeps, dir )
 }
 
 trait BackingOffEvent {
@@ -518,7 +557,7 @@ case class StopNorm( head:Int, dir:AttDir, v:Decoration ) extends NormKey {
 object RootEvent {
   def apply():RootEvent = RootEvent( -1 )
 }
-case class RootEvent( root:Int, gen:String = "" ) extends Event with GeneratingString {
+case class RootEvent( root:Int = -1, gen:String = "" ) extends Event with GeneratingString {
   override lazy val byteBuffer = {
     val bytes = ByteBuffer.allocate( 8 )
     bytes.putInt( root )

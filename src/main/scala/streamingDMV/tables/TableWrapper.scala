@@ -52,7 +52,7 @@ class TableWrapper[E<:FastHashable](
     } else if( ! other.approximate ) {
       assert( logSpace == other.logSpace )
       other.exactCounts.foreach{ case ( k, v ) =>
-        increment( k, v )
+        increment( k, v, allowNegative = false )
       }
     } else {
       throw new UnsupportedOperationException( "cannot increment exact counts by approximate counts" )
@@ -82,21 +82,33 @@ class TableWrapper[E<:FastHashable](
     }
   }
 
-  def increment( event:E, inc:Double ) {
-    if( inc > myZero ) {
-      if( approximate ) {
+  def increment( event:E, inc:Double, allowNegative:Boolean = false ) {
+    if( inc > myZero  || allowNegative ) {
+      if( approximate && !allowNegative ) {
         approximateCounts.conservativeIncrement( event, inc.toInt )
+      } else if( !( inc > myZero ) && approximate ) {
+        throw new UnsupportedOperationException( s"Attempt to increment by non-positive amount: $inc" )
       } else {
-        exactCounts = exactCounts.updated(
-          event,
+        // exactCounts = exactCounts.updated(
+        //   event,
+        //   if( logSpace ) {
+        //     // println( s"incrementing $event by $inc" )
+        //     LogSum( exactCounts( event ) , inc )
+        //   } else {
+        //     exactCounts( event ) + inc
+        //   }
+        // )
+        exactCounts += event -> {
           if( logSpace ) {
             // println( s"incrementing $event by $inc" )
             LogSum( exactCounts( event ) , inc )
           } else {
             exactCounts( event ) + inc
           }
-        )
+        }
       }
+    } else if( ! ( inc > myZero ) ) {
+      throw new UnsupportedOperationException( s"Attempt to increment by non-positive amount: $inc" )
     }
   }
 
@@ -219,7 +231,7 @@ class TableWrapper[E<:FastHashable](
       throw new UnsupportedOperationException( "cannot randomize approximate counts" )
     } else {
       // exactCounts.keys
-      exactCounts.keys.foreach( increment( _, r.nextDouble() * scale ) )
+      exactCounts.keys.foreach( increment( _, r.nextDouble() * scale, allowNegative = false ) )
     }
   }
 

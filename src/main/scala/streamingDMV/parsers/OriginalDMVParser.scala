@@ -77,16 +77,16 @@ class OriginalDMVParser(
   private def adj( x:Int, y:Int ) = 
     if( math.abs(x-y) == 1 ) Innermost else Outer
 
-  def findLeftRootChild( k:Int ) = headTrace( 0 )( k )( adj( 0, k ) )
-  def findRightRootChild( k:Int ) =
+  def findLeftRootChild( k:Int, rDec:Decoration ) = headTrace( 0 )( k )( adj( 0, k ) )
+  def findRightRootChild( k:Int, rDec:Decoration ) =
     headTrace( k )( intString.length )( adj( k, intString.length ) )
 
-  def findLeftLeftwardChild( i:Int, k:Int ) = headTrace( i )( k )( adj( i, k ) )
+  def findLeftLeftwardChild( i:Int, k:Int, mDV:Decoration ) = headTrace( i )( k )( adj( i, k ) )
   def findRightLeftwardChild( k:Int, j:Int, hV:Decoration, mDV:Decoration ) =
     mTrace( k )( j )( DecorationPair( mDV, hV ) )
   def findLeftRightwardChild( i:Int, k:Int, hV:Decoration, mDV:Decoration ) =
     mTrace( i )( k )( DecorationPair( hV, mDV ) )
-  def findRightRightwardChild( k:Int, j:Int ) = headTrace( k )( j )( adj( k, j ) )
+  def findRightRightwardChild( k:Int, j:Int, mDV:Decoration ) = headTrace( k )( j )( adj( k, j ) )
   def findLeftMChild( i:Int, k:Int, decoration:MDecoration ) =
     headTrace( i )( k )( decoration.evenLeft )
   def findRightMChild( k:Int, j:Int, decoration:MDecoration ) =
@@ -290,7 +290,7 @@ class OriginalDMVParser(
   }
 
 
-  def rootCellFactor( k:Int ) = {
+  def rootCellFactor( k:Int, rDec:DecorationPair ) = {
     val r = intString( k )
 
     val leftV = if( k == 1 ) Innermost else Outer
