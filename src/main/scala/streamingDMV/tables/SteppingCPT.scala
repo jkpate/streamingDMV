@@ -52,7 +52,7 @@ class SteppingCPT[E<:Event with Product](
 
     val rho = stepSize( currentStep )
 
-    println( s"rho: $rho" )
+    // println( s"rho: $rho" )
 
     other.counts.exactCounts.keys.foreach{ event =>
       probs += event -> ( (
