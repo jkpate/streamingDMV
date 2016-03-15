@@ -26,10 +26,10 @@ class GammaPD(
   }
 
   def gammaLogMean( a:Double, b:Double ) = {
-    G.digamma( counts( event ) ) - G.digamma( denomCounts( event.normKey ) )
+    G.digamma( a ) - G.digamma( b )
   }
 
-  override def normalized( event:E ) = {
+  override def normalized( event:DepCount ) = {
     gammaMean(
       a = counts( event ) ,
       b = denomCounts( event.normKey )
