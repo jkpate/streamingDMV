@@ -56,8 +56,7 @@ abstract class ParticleFilterParser[
 
   def particlePerplexity = {
     if( logSpace )
-      math.pow(
-        math.E,
+      math.exp(
         -1 *
         (0 until numParticles).map{ l =>
           if( particleWeights(l) >= Double.NegativeInfinity )
@@ -66,8 +65,7 @@ abstract class ParticleFilterParser[
         }.sum
       )
     else
-      math.pow(
-        math.E,
+      math.exp(
         -1 *
         (0 until numParticles).map{ l =>
           if( particleWeights(l) >= 0D )
