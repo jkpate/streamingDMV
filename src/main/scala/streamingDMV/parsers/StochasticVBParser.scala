@@ -1,7 +1,7 @@
 package streamingDMV.parsers
 
 import streamingDMV.labels._
-import streamingDMV.parameters.SteppingParameters
+import streamingDMV.parameters.{ArcFactoredParameters,SteppingParameters,NumericalOptimizing}
 
 
 // abstract class StochasticVBParser[P<:ArcFactoredParameters[DMVCounts] with
@@ -11,7 +11,7 @@ import streamingDMV.parameters.SteppingParameters
 //   parserSpec
 // ) {
 
-trait StochasticVBParser[P<:SteppingParameters] extends StreamingVBParser[DMVCounts,P] {
+trait StochasticVBParser[P<:ArcFactoredParameters[DMVCounts] with NumericalOptimizing] extends StreamingVBParser[DMVCounts,P] {
   override def streamingUpdate(
     miniBatch:List[Utt],
     sentenceNum:Int,

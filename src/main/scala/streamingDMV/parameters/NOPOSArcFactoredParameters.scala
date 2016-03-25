@@ -25,6 +25,10 @@ abstract class NOPOSArcFactoredParameters(
   val kappa = parameterSpec.kappa
   val tau = parameterSpec.tau
 
+  //TODO put this in ParserSpec
+  val rho = 0.9
+  val eps = 1E-9
+
   // if( approximate )
   //   println( "creating approximate parameters" )
   // else

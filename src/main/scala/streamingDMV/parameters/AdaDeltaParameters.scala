@@ -1,31 +1,31 @@
 package streamingDMV.parameters
 
 import streamingDMV.labels._
-import streamingDMV.tables.SteppingCPT
+import streamingDMV.tables.AdaDeltaCPT
 
-trait SteppingParameters extends FirstOrderArcFactoredParameters with NumericalOptimizing {
+trait AdaDeltaParameters extends FirstOrderArcFactoredParameters with NumericalOptimizing {
 
   override val p_root =
-    new SteppingCPT[RootEvent](
+    new AdaDeltaCPT[RootEvent](
       alpha = rootAlpha,
-      kappa = kappa,
-      tau = tau,
+      rho = rho,
+      eps = eps,
       randomSeed = randomSeed
     )
 
   override val p_choose =
-    new SteppingCPT[ChooseEvent](
+    new AdaDeltaCPT[ChooseEvent](
       alpha = chooseAlpha,
-      kappa = kappa,
-      tau = tau,
+      rho = rho,
+      eps = eps,
       randomSeed = randomSeed
     )
 
   override val p_stop =
-    new SteppingCPT[StopEvent](
+    new AdaDeltaCPT[StopEvent](
       alpha = stopAlpha,
-      kappa = kappa,
-      tau = tau,
+      rho = rho,
+      eps = eps,
       randomSeed = randomSeed
     )
 
@@ -121,5 +121,6 @@ trait SteppingParameters extends FirstOrderArcFactoredParameters with NumericalO
 
 
 }
+
 
 

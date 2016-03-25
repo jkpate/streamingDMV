@@ -74,6 +74,7 @@ object run {
     optsParser.accepts( "batchVB" )
     optsParser.accepts( "adaDelta" )
     optsParser.accepts( "stochasticVB" )
+    optsParser.accepts( "adaDeltaVB" )
     optsParser.accepts( "infiniteModels" )
     optsParser.accepts( "baseDistribution" ).withRequiredArg
     optsParser.accepts( "logSpace" )
@@ -180,6 +181,7 @@ object run {
     val batchVB = opts.has( "batchVB" )
     val adaDelta = opts.has( "adaDelta" )
     val stochasticVB = opts.has( "stochasticVB" )
+    val adaDeltaVB = opts.has( "adaDeltaVB" )
     val infiniteModels = opts.has( "infiniteModels" )
     val baseDistribution =
       if( opts.has( "baseDistribution" ) )
@@ -244,6 +246,7 @@ object run {
     println( s"batchVB: ${batchVB}" )
     println( s"adaDelta: ${adaDelta}" )
     println( s"stochasticVB: ${stochasticVB}" )
+    println( s"adaDeltaVB: ${adaDeltaVB}" )
     println( s"infiniteModels: ${infiniteModels}" )
     println( s"baseDistribution: ${baseDistribution}" )
     println( s"logSpace: ${logSpace}" )
@@ -589,6 +592,11 @@ object run {
           } else if( stochasticVB ) {
             println( "Using TopDownDMVStochasticParser" )
             new TopDownDMVStochasticParser(
+              parserSpec
+            )
+          } else if( adaDeltaVB ) {
+            println( "Using TopDownDMVADStochasticParser" )
+            new TopDownDMVADStochasticParser(
               parserSpec
             )
           } else {
