@@ -55,6 +55,11 @@ class NoValenceUPOSParameters(
     MatrixDMVCounts( uposCount, rootAlpha, stopAlpha, chooseAlpha )
   }
 
+  def randomCounts( corpus:List[Utt] ) = {
+    println( "\n\n\n\nRANDOM COUNTS NOT IMPLEMENTED YET FOR NoValenceUPOSParameters!!!\n\n\n\n" )
+    MatrixDMVCounts( uposCount, rootAlpha, stopAlpha, chooseAlpha )
+  }
+
   def possibleStopEvents( h:Int ) = {
     Seq(
       StopEvent( h, LeftAtt, NoValence, Stop ),

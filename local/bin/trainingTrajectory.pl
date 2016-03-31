@@ -43,6 +43,10 @@ my @fields = (
   "harmonicCorpusInit",
   "uposCount",
   "batchVB",
+  "stochasticVB",
+  "collapsedVB",
+  "tau",
+  "kappa",
   "incIters",
   "incConvergence",
   "reservoirSize",
@@ -130,6 +134,10 @@ foreach my $fPath (@ARGV) {
     $fields{harmonicMiniBatchInit} = "false" if not defined $fields{harmonicMiniBatchInit};
     $fields{harmonicCorpusInit} = "false" if not defined $fields{harmonicCorpusInit};
     $fields{scaleInitMiniBatchCounts} = "false" if not defined $fields{scaleInitMiniBatchCounts};
+    $fields{stochasticVB} = "false" if not defined $fields{stochasticVB};
+    $fields{collapsedVB} = "false" if not defined $fields{collapsedVB};
+    $fields{tau} = 1 if not defined $fields{tau};
+    $fields{kappa} = 0.9 if not defined $fields{kappa};
     # $fields{possiblyResampleEvery} = $fields{miniBatchSize} if not defined $fields{possiblyResampleEvery};
 
     die "$trainingStrings $testingStrings $trainingWords $testingWords $vocabSize" unless 

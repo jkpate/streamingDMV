@@ -162,6 +162,36 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
     constantInitialCounts = theta.harmonicCounts( utts )
   }
 
+  var sentenceCounts = Map[String,C]().withDefaultValue( emptyCounts )
+  def sentenceSpecificHarmonicInit( utts:List[Utt] ) {
+    println( "sentenceSpecificHarmonicInit" )
+    val windowSize = math.ceil( utts.size.toDouble/20 )
+    var i = 1
+    utts.foreach{ s =>
+      val hCounts = theta.harmonicCounts( s::Nil )
+      theta.incrementCounts( hCounts, updateEvents = true )
+      sentenceCounts += s.id -> { hCounts }
+      if( i %windowSize == 0 ) {
+        println( s"$i/${utts.size} processed" )
+      }
+      i += 1
+    }
+  }
+  def sentenceSpecificRandomInit( utts:List[Utt] ) {
+    println( "sentenceSpecificRandomInit" )
+    val windowSize = math.ceil( utts.size.toDouble/20 )
+    var i = 1
+    utts.foreach{ s =>
+      val rCounts = theta.randomCounts( s::Nil )
+      theta.incrementCounts( rCounts, updateEvents = true )
+      sentenceCounts += s.id -> { rCounts }
+      if( i %windowSize == 0 ) {
+        println( s"$i/${utts.size} processed" )
+      }
+      i += 1
+    }
+  }
+
   def harmonicInit( utts:List[Utt] ) {
     theta.harmonicCounts( utts )
   }

@@ -320,6 +320,22 @@ class TopDownDMVParser( parserSpec:ParserSpec) extends FirstOrderFoldUnfoldNOPOS
 
 }
 
+class TopDownDMVCVBParser( parserSpec:ParserSpec ) extends TopDownDMVParser( parserSpec ) with
+CVBParser[DMVCounts,TopDownDMVParameters] {
+  override val theta = new TopDownDMVParameters( parserSpec.toParameterSpec) {
+    // override def harmonicCounts( utts:List[Utt] ) = {
+    //   val harmonicCounts = super.harmonicCounts( utts )
+    //   println( "HARMONIC COUNTS" )
+    //   println( harmonicCounts.counts.exactCounts.mkString("\n" ) )
+    //   println( "RANDOM COUNTS" )
+    //   println( harmonicCounts.denomCounts.exactCounts.mkString("\n" ) )
+    //   incrementCounts( harmonicCounts )
+    //   harmonicCounts
+    // }
+  }
+  theta.fullyNormalized = true
+}
+
 // UGH so ugly, refactor ASAP if it works well
 class TopDownDMVADStochasticParser( parserSpec:ParserSpec) extends
 FirstOrderFoldUnfoldNOPOSParser[TopDownDMVParameters with AdaDeltaParameters] (

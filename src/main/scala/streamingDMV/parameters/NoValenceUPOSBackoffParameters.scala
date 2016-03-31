@@ -114,6 +114,11 @@ class NoValenceUPOSBackoffParameters(
     MatrixDMVCounts( uposCount, rootAlpha, stopAlpha, chooseAlpha )
   }
 
+  def randomCounts( corpus:List[Utt] ) = {
+    println( "\n\n\n\nRANDOM COUNTS NOT IMPLEMENTED YET FOR NoValenceUPOSBackoffParameters!!!\n\n\n\n" )
+    MatrixDMVCounts( uposCount, rootAlpha, stopAlpha, chooseAlpha )
+  }
+
   def possibleStopEvents( h:Int ) = {
     Seq(  // let's try never conditioning on lexical information in stop -- try to learn stopping
           // behavior for categories of words.

@@ -38,6 +38,8 @@ class CPT[E<:Event with Product](
     )
   var denoms = Map[NormKey,Set[E]]().withDefaultValue(Set())
 
+  var cacheLGammas = false
+
   def totalCounts = denomCounts.values.sum
 
   def apply( event:E ) =
@@ -223,11 +225,19 @@ class CPT[E<:Event with Product](
   }
 
   def increment( event:E, inc:Double, updateEvents:Boolean = true ) = {
-    // println( " === NON-LOG SPACE INCREMENT ===" )
     val n = event.normKey
+    if( updateEvents ) {
+      // denoms.getOrElseUpdate( n, MSet() ) += event
+      // println( s"$n; $event" )
+      // println( "before update: " + denoms(n).mkString(" , " ) )
+      denoms += n -> { denoms( n ) + event }
+      // println( "after update: " + denoms(n).mkString(" , " ) )
+    }
+    // println( " === NON-LOG SPACE INCREMENT ===" )
+    // validateDenoms()
     // println( "\n\nCPT.increment!!!\n\n" )
     if( inc > 0 ) {
-      if( floor( inc ) == inc ) {
+      if( cacheLGammas ) {
         val newEventLGamma = cachedLGamma( event, inc )
 
         cachedSumLGammas += n -> (
@@ -236,20 +246,41 @@ class CPT[E<:Event with Product](
 
         cachedEventLGammas += event -> newEventLGamma
       }
+        // println( s"adding $inc" )
+        // println( s"before $event: ${counts.exactCounts( event ) }" )
       counts.increment( event, inc )
+        // println( s"after $event: ${counts.exactCounts( event ) }" )
+        // println( s"before $n: ${denomCounts.exactCounts( n ) }" )
       denomCounts.increment( n, inc )
+        // println( s"after $n: ${denomCounts.exactCounts( n ) }" )
     }
+    // validateDenoms()
 
     // denomCounts += n -> { denomCounts.getOrElse( n, 0D ) + inc }
 
-    if( updateEvents ) {
-      // denoms.getOrElseUpdate( n, MSet() ) += event
-      denoms += n -> { denoms( n ) + event }
+  }
+  
+  def validateDenoms( verbose:Boolean = false ) {
+    denoms.foreach{ case (n, events ) =>
+      val eventsSum = denoms(n).toSeq.map{ e =>
+        if( verbose )
+          println( s"> $e: ${counts(e)}" ) 
+        counts( e)
+      }.sum
+      if( ! ( abs( denomCounts(n) - eventsSum ) < 0.00001 ) ) {
+        println( s"$n" )
+        println( "events: " + events.mkString( "; " ) )
+        println( s"  count: ${denoms(n).size}" )
+        println( s"  sum: $eventsSum" )
+        println( s"  denom: ${denomCounts(n)}" )
+        println( s"  totalCount: ${totalCount}" )
+      }
+      assert( abs( denomCounts(n) - eventsSum ) < 0.00001 )
     }
   }
 
-  def increment( events:Seq[E], inc:Double ) {
-    events.foreach{ increment( _, inc ) }
+  def increment( events:Seq[E], inc:Double, updateEvents:Boolean ) {
+    events.foreach{ increment( _, inc, updateEvents) }
   }
 
   def addEvents( events:Set[E] ) {
@@ -264,6 +295,8 @@ class CPT[E<:Event with Product](
     // println( s"incrementing counts..." )
     // println( s"  there are ${other.denoms.flatMap{_._2}} event types" )
     // println( other.counts.exactCounts )
+
+    // validateDenoms()
     other.denoms.flatMap{_._2}.foreach{ event =>
       val inc = other(event)
 
@@ -271,6 +304,8 @@ class CPT[E<:Event with Product](
       totalCount += inc
 
     }
+    // validateDenoms()
+
   }
 
   def decrement( other:CPT[E], integerDec:Boolean = false ) {
@@ -280,43 +315,16 @@ class CPT[E<:Event with Product](
       //   decrement( k, v )
       // }
 
-      // other.denoms.foreach{ case (n, otherEvents ) =>
-      //   val eventsSum = other.denoms(n).map( counts(_) ).sum
-      //   if( ! ( abs( other.denomCounts(n) - eventsSum ) < 0.00001 ) ) {
-      //     println( s"$n" )
-      //     println( s"  count: ${other.denoms(n).size}" )
-      //     println( s"  sum: $eventsSum" )
-      //     println( s"  denom: ${other.denomCounts(n)}" )
-      //   }
-      //   assert( abs( other.denomCounts(n) - eventsSum ) < 0.00001 )
-      // }
-      // other.denoms.foreach{ case (n, otherEvents ) =>
-      //   val eventsSum = denoms(n).map( counts(_) ).sum
-      //   if( ! ( abs( denomCounts(n) - eventsSum ) < 0.00001 ) ) {
-      //     println( s"$n" )
-      //     println( s"  count: ${denoms(n).size}" )
-      //     println( s"  sum: $eventsSum" )
-      //     println( s"  denom: ${denomCounts(n)}" )
-      //   }
-      //   assert( abs( denomCounts(n) - eventsSum ) < 0.00001 )
-      // }
+    // other.validateDenoms()
+
+    // validateDenoms()
 
     counts.decrement( other.counts, integerDec )
     denomCounts.decrement( other.denomCounts, integerDec )
 
     totalCount -= other.denomCounts.values.sum
 
-
-      // other.denoms.foreach{ case (n, otherEvents ) =>
-      //   val eventsSum = denoms(n).map( counts(_) ).sum
-      //   if( ! ( abs( denomCounts(n) - eventsSum ) < 0.00001 ) ) {
-      //     println( s"$n" )
-      //     println( s"  count: ${denoms(n).size}" )
-      //     println( s"  sum: $eventsSum" )
-      //     println( s"  denom: ${denomCounts(n)}" )
-      //   }
-      //   assert( abs( denomCounts(n) - eventsSum ) < 0.00001 )
-      // }
+    // validateDenoms()
 
     // validateCPT
 

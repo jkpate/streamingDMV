@@ -95,6 +95,13 @@ abstract class NOPOSArcFactoredParameters(
         randomSeed = rand.nextInt
       )
 
+
+  def cacheLGammas {
+    p_root.cacheLGammas = true
+    p_stop.cacheLGammas = true
+    p_choose.cacheLGammas = true
+  }
+
   def toCounts = {
     DMVCounts(
         p_root,

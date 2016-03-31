@@ -74,15 +74,17 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
     approximate = false,
     reservoirSize = reservoirSize,
     uposCount = uposCount,
-    logSpace = false
+    logSpace = false,
+    kappa = 0.9,
+    tau = 1
     // logSpace = true
   )
 
   // val p = new FiveValenceParser( parserSpec )
   // val p = new FourValenceParser( parserSpec )
   // val p = new ThreeValenceParser( parserSpec )
-  // val p = new TopDownDMVParser( parserSpec )
-  val p = new TwoValenceStemSuffixParser( parserSpec )
+  val p = new TopDownDMVParser( parserSpec )
+  // val p = new TwoValenceStemSuffixParser( parserSpec )
   // val p = new InfiniteTopDownDMVParser( parserSpec )
   // val p = new OriginalDMVParser( parserSpec )
   // val p = new NoValenceParser( parserSpec )

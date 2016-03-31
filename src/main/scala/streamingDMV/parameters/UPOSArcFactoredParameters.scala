@@ -28,6 +28,10 @@ abstract class UPOSArcFactoredParameters(
       uposCount
     )
 
+  def cacheLGammas {
+    throw new UnsupportedOperationException( "particle filter for UPOS not implemented!" )
+  }
+
   def toCounts =
     MatrixDMVCounts(
       p_root,

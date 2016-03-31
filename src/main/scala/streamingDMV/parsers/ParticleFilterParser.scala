@@ -256,6 +256,7 @@ abstract class ParticleFilterParser[
 
     ( 0 until numParticles )/*.par*/.map{ l =>
       particles(l).theta.fullyNormalized = true
+      particles(l).theta.cacheLGammas
       val (counts, proposalScore) = miniBatch.zipWithIndex.map{ case ( s, i ) =>
         val (sentCounts, sentProposalScore) = particles( l ).sampleTreeCounts( s )
 
