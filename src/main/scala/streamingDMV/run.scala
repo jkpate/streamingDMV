@@ -291,8 +291,10 @@ object run {
     val trainWordStrings = readStrings( trainStrings )
     val testWordStrings = readStrings( testStrings )
 
+    val lexString = infiniteModels || parserType == "TwoValenceStemSuffixParser"
+
     val Seq( trainSet, testSet ) =
-      stringsToUtts( infiniteModels, trainWordStrings, testWordStrings )
+      stringsToUtts( lexString, trainWordStrings, testWordStrings )
 
     // lazy val totalVocabSize = (trainSet ++ testSet).flatMap{_.string}.toSet.size
     lazy val totalVocabSize = stringsToUtts.dictionary.size
@@ -701,7 +703,7 @@ object run {
             parserSpec
           )
         } else {
-          println( "parser type not recognized -- defaulting to OriginalDMVParser" )
+          println( s"parser type $parserType not recognized -- defaulting to OriginalDMVParser" )
           new OriginalDMVParser(
                 // maxLength = maxLength,
                 // randomSeed = randomSeed,

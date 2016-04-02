@@ -13,5 +13,21 @@ trait StemSuffixParameters extends FirstOrderArcFactoredParameters {
       )
     }.toSeq
   }
+
+  override def chooseEvents( h:Int, hObs:String, dir:AttDir, d:Int, dObs:String ) = {
+    // ChooseEvent( h, dir, d )
+    (1 to hObs.length).flatMap{ hK =>
+      val (hStem, hSuffix) = hObs.splitAt( hK )
+
+      (1 to dObs.length).flatMap{ dK =>
+      val (dStem, dSuffix) = dObs.splitAt( dK )
+        Seq(
+          ChooseEvent( hStem, dir, dStem  ),
+          ChooseEvent( dStem, MorphAtt, dSuffix )
+        )
+      }
+    }
+  }.toSeq
+
 }
 

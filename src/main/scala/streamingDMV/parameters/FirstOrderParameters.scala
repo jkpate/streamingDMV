@@ -25,6 +25,10 @@ abstract class FirstOrderArcFactoredParameters(
 
   def rootEvents( r:Int, rObs:String ) = Seq[Event]( RootEvent( r ) )
 
+  def chooseEvents( h:Int, hObs:String, dir:AttDir, d:Int, dObs:String ) = {
+    Seq[ChooseEvent]( ChooseEvent( h, dir, d ) )
+  }
+
   def zerosInit( corpus:List[Utt] ) {
     // val rootEvents = MSet[RootEvent]()
     // val stopEvents = MSet[StopEvent]()
@@ -51,6 +55,8 @@ abstract class FirstOrderArcFactoredParameters(
     // println( s"inside init corpus length: ${corpus.length}" )
     // println( s"inside init first utterance: ${corpus.head}" )
     // println( s"my zero is: ${myZero}" )
+    val windowSize = math.ceil( corpus.size.toDouble/20 )
+    var i = 1
     corpus.foreach{ case Utt( _, s, w ) =>
       (0 until s.length).foreach{ t =>
         val h = s(t)
@@ -69,14 +75,29 @@ abstract class FirstOrderArcFactoredParameters(
 
         ( 0 until t ).foreach{ i =>
           // chooseEvents += ChooseEvent( h, LeftAtt, s(i) )
-          p_choose.increment( ChooseEvent( h, LeftAtt, s(i) ), myZero, updateEvents = true )
+          // p_choose.increment( ChooseEvent( h, LeftAtt, s(i) ), myZero, updateEvents = true )
+          val d= s(i)
+          val dW = if( w.isEmpty ) "" else w(i)
+          chooseEvents( h, hW, LeftAtt, d, dW ).foreach{ e =>
+            p_choose.increment( e, myZero, updateEvents = true )
+          }
 
         }
         ( t+1 until s.length ).foreach{ j =>
           // chooseEvents += ChooseEvent( h, RightAtt, s(j) )
-          p_choose.increment( ChooseEvent( h, RightAtt, s(j) ), myZero, updateEvents = true )
+          // p_choose.increment( ChooseEvent( h, RightAtt, s(j) ), myZero, updateEvents = true )
+          val d= s(j)
+          val dW = if( w.isEmpty ) "" else w(j)
+          chooseEvents( h, hW, LeftAtt, d, dW ).foreach{ e =>
+            p_choose.increment( e, myZero, updateEvents = true )
+          }
         }
       }
+
+      if( i %windowSize == 0 ) {
+        println( s"$i/${corpus.size} processed" )
+      }
+      i += 1
     }
 
       // println( s"at end of zeros init, printing grammar" )

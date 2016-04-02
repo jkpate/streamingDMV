@@ -64,7 +64,7 @@ class TwoValenceStemSuffixParser(
     myTimes(
       // theta( ChooseEvent( head, RightAtt, dep ) ),
       theta( ChooseEvent( hStem, RightAtt, dStem ) ),
-      theta( ChooseEvent( hStem, MorphAtt, hSuffix ) ),
+      // theta( ChooseEvent( hStem, MorphAtt, hSuffix ) ),
       theta( ChooseEvent( dStem, MorphAtt, dSuffix ) ),
       theta( StopEvent( head, RightAtt, pValence, NotStop ) )
     )
@@ -81,7 +81,7 @@ class TwoValenceStemSuffixParser(
     myTimes(
       // theta( ChooseEvent( head, LeftAtt, dep ) ),
       theta( ChooseEvent( hStem, LeftAtt, dStem ) ),
-      theta( ChooseEvent( hStem, MorphAtt, hSuffix ) ),
+      // theta( ChooseEvent( hStem, MorphAtt, hSuffix ) ),
       theta( ChooseEvent( dStem, MorphAtt, dSuffix ) ),
         theta( StopEvent( head, LeftAtt, pValence, NotStop ) )
     )
