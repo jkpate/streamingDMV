@@ -588,7 +588,9 @@ object run {
           )
         }
       } else {
-        if( parserType == "TopDownDMVParser" ) {
+        if( parserType == "TwoValenceStemSuffixParser" ) {
+          new TwoValenceStemSuffixParser( parserSpec )
+        } else if( parserType == "TopDownDMVParser" ) {
           if( infiniteModels ) {
             println( "Using Infinite TopDownDMVParser" )
             new InfiniteTopDownDMVParser(
