@@ -14,6 +14,16 @@ class TwoValenceStemSuffixParser(
 
   override val theta = new TopDownDMVParameters( parserSpec.toParameterSpec ) with StemSuffixParameters
 
+  // Keys of chart maps are StemSuffixDecoration, so they are different for every sentence.
+  override def clearCharts {
+    (0 until insideChart.length ).foreach{ i =>
+      ((i+1) until insideChart.length+1 ).foreach{ j =>
+        insideChart(i)(j) = cellMap( i, j )
+        outsideChart(i)(j) = cellMap( i, j )
+      }
+    }
+  }
+
   override def rootSplitSpecs() = {
     ( 1 to (intString.length-1) by 2 ).flatMap{ k =>
       val rW = lexString( k )
@@ -287,7 +297,7 @@ class TwoValenceStemSuffixParser(
     val StemSuffixDecoration( dStem, dSuffix, _ ) = cDec
     Seq(
       ( ChooseEvent( hStem, RightAtt, dStem ), marginal ),
-      ( ChooseEvent( hStem, MorphAtt, hSuffix ), marginal ),
+      // ( ChooseEvent( hStem, MorphAtt, hSuffix ), marginal ),
       ( ChooseEvent( dStem, MorphAtt, dSuffix ), marginal ),
       ( StopEvent( head, RightAtt, pValence, NotStop ), marginal )
     )
@@ -300,10 +310,10 @@ class TwoValenceStemSuffixParser(
     val StemSuffixDecoration( hStem, hSuffix, pValence ) = pDec
     val StemSuffixDecoration( dStem, dSuffix, _ ) = cDec
     Seq(
-      ( ChooseEvent( hStem, RightAtt, dStem ), marginal ),
-      ( ChooseEvent( hStem, MorphAtt, hSuffix ), marginal ),
+      ( ChooseEvent( hStem, LeftAtt, dStem ), marginal ),
+      // ( ChooseEvent( hStem, MorphAtt, hSuffix ), marginal ),
       ( ChooseEvent( dStem, MorphAtt, dSuffix ), marginal ),
-      ( StopEvent( head, RightAtt, pValence, NotStop ), marginal )
+      ( StopEvent( head, LeftAtt, pValence, NotStop ), marginal )
     )
   }
 

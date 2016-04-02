@@ -88,7 +88,7 @@ abstract class FirstOrderArcFactoredParameters(
           // p_choose.increment( ChooseEvent( h, RightAtt, s(j) ), myZero, updateEvents = true )
           val d= s(j)
           val dW = if( w.isEmpty ) "" else w(j)
-          chooseEvents( h, hW, LeftAtt, d, dW ).foreach{ e =>
+          chooseEvents( h, hW, RightAtt, d, dW ).foreach{ e =>
             p_choose.increment( e, myZero, updateEvents = true )
           }
         }

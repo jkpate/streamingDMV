@@ -245,7 +245,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
             rightwardCellScore( i, k, j, pDec, mDec, cDec )
           )
 
-        if( !( insideChart( i )( j )( pDec ) > myZero ) ) {
+        if( !( insideChart( i )( j )( pDec ) > myZero && insideChart( i )( j )( pDec ) <= myOne + 1E-10)  ) {
           println( "myZero is: " + myZero )
           println( "inside rightward cell: " + (i,k,j,pDec, insideChart( i )( j )( pDec ) ) )
           println( "\t" + insideChart( i )( j )( pDec ) )

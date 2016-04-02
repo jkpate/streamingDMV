@@ -90,14 +90,15 @@ class CPT[E<:Event with Product](
           denomCounts( n ) + (alpha * denoms(n).size)
         ) )
 
-    if( !( score > 0 ) ) {
+    if( !( score > 0 && score <= 1 + 1E-9 ) ) {
       println( s"$event\t$score" )
       println( "  " + ( counts( event ) + alpha  ) )
       println( "  " + exp( G.digamma( ( counts( event ) + alpha  ) ) ) )
+      println( n )
       println( "    " + ( denomCounts( n ) + (alpha * denoms(n).size)) )
       println( "    " + G.digamma( denomCounts( n ) + (alpha * denoms(n).size)) )
     }
-    assert( score > 0 )
+    assert( score > 0  && score <= 1+1E-9)
 
     score
   }

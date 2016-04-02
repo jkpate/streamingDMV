@@ -327,7 +327,7 @@ trait GeneratingString {
 // object ChooseNorm {
 //   def apply( head:Int, dir:AttDir ) = new ChooseNorm( head, -1, dir )
 // }
-case class ChooseNorm( head:Int, context:Int, dir:AttDir ) extends NormKey {
+case class ChooseNorm( head:Int, headString:String, context:Int, dir:AttDir ) extends NormKey {
   override lazy val byteBuffer = {
     val bytes = if( context >= 0 ) ByteBuffer.allocate( 12 ) else ByteBuffer.allocate( 8 )
     bytes.putInt( head )
@@ -365,7 +365,7 @@ case class ChooseEvent(
   dep:Int,
   gen:String = ""
 ) extends Event with GeneratingString /*[AttDir]*/ {
-  def normKey = ChooseNorm( head, context, dir )
+  def normKey = ChooseNorm( head, headString, context, dir )
   override lazy val byteBuffer = {
     val bytes = if( context > 0 ) ByteBuffer.allocate( 16 ) else ByteBuffer.allocate( 12 )
     bytes.putInt( head )
@@ -374,6 +374,7 @@ case class ChooseEvent(
     bytes.putInt( dep )
     bytes
   }
+  /*
   override lazy val hashCode = {
     if( headString.isEmpty && gen.isEmpty ) {
       (head, context, dir, dep ).hashCode
@@ -381,6 +382,7 @@ case class ChooseEvent(
       super.hashCode()
     }
   }
+  */
   // override def fastHash( seed:Int ) = {
   //   // var hash = FastHash( head, seed )
   //   var hash = head*141650963 + FastHash( dir.hashCode, seed )
