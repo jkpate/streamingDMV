@@ -228,8 +228,11 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
     }
   }
   def computeInsideRightwardScore( i:Int, j:Int ) {
+    println( (i,j) )
     rightwardSplitSpecs( i, j ).foreach{ case ( pDec, splits ) =>
       splits.foreach{ case ( k, mDec, cDec ) =>
+
+        println( (i,k,j,pDec,mDec,cDec) )
 
         // println( (i,k,j,mDec,cDec) )
         // println( insideChart( i )( j )( pDec ) )

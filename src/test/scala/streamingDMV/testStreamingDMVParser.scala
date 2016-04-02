@@ -83,8 +83,8 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   // val p = new FiveValenceParser( parserSpec )
   // val p = new FourValenceParser( parserSpec )
   // val p = new ThreeValenceParser( parserSpec )
-  val p = new TopDownDMVParser( parserSpec )
-  // val p = new TwoValenceStemSuffixParser( parserSpec )
+  // val p = new TopDownDMVParser( parserSpec )
+  val p = new TwoValenceStemSuffixParser( parserSpec )
   // val p = new InfiniteTopDownDMVParser( parserSpec )
   // val p = new OriginalDMVParser( parserSpec )
   // val p = new NoValenceParser( parserSpec )
@@ -105,7 +105,7 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   p.zerosInit( idDMVCorpus )
   // p.randomInit( idDMVCorpus, 15, 100 )
 
-  val iters = 100//0
+  val iters = 1//00//0
 
   @Test def testInsideOutside {
 

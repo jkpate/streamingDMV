@@ -2,11 +2,11 @@ import AssemblyKeys._ // put this at the top of the file
 
 assemblySettings
 
-jarName in assembly := "streamingDMV.jar"
+jarName in assembly := "streamingDMV_DEV.jar"
 
 test in assembly := {}
 
-name := "streamingDMV"
+name := "streamingDMV_DEV"
 
 version := "0.001-SNAPSHOT"
 

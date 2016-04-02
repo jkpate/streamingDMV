@@ -36,6 +36,17 @@ class TwoValenceStemSuffixParser(
   override def findLeftRootChild( k:Int, rDec:Decoration ) = headTrace( 0 )( k )( rDec )
   override def findRightRootChild( k:Int, rDec:Decoration ) = headTrace( k )( intString.length )( rDec )
 
+  override def findLeftLeftwardChild( i:Int, k:Int, cDV:Decoration ) = headTrace( i )( k )( cDV )
+  override def findRightLeftwardChild( k:Int, j:Int, hV:Decoration, mDV:Decoration ) = {
+    mTrace( k )( j )( DecorationPair( mDV, hV ) )
+  }
+
+  override def findLeftRightwardChild( i:Int, k:Int, hV:Decoration, mDV:Decoration ) = {
+    mTrace( i )( k )( DecorationPair( hV, mDV ) )
+  }
+  override def findRightRightwardChild( k:Int, j:Int, cDV:Decoration ) = headTrace( k )( j )( cDV )
+
+
   override def rootCellFactor( k:Int, rDec:DecorationPair ) = {
     val StemSuffixDecoration( stem, suffix, _ ) = rDec.evenLeft
     // theta( RootEvent( intString( k ) ) )
@@ -84,7 +95,6 @@ class TwoValenceStemSuffixParser(
           StemSuffixDecoration( dStem, dSuffix, Outermost )
         ),
         StemSuffixDecoration( dStem, dSuffix, Outermost )
-        // Outermost
       )
     }.toSeq
   }
