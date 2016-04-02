@@ -228,11 +228,11 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
     }
   }
   def computeInsideRightwardScore( i:Int, j:Int ) {
-    println( (i,j) )
+    // println( (i,j) )
     rightwardSplitSpecs( i, j ).foreach{ case ( pDec, splits ) =>
       splits.foreach{ case ( k, mDec, cDec ) =>
 
-        println( (i,k,j,pDec,mDec,cDec) )
+        // println( (i,k,j,pDec,mDec,cDec) )
 
         // println( (i,k,j,mDec,cDec) )
         // println( insideChart( i )( j )( pDec ) )
@@ -245,7 +245,8 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
             rightwardCellScore( i, k, j, pDec, mDec, cDec )
           )
 
-        if( !( insideChart( i )( j )( pDec ) > 1E-200 ) ) {
+        if( !( insideChart( i )( j )( pDec ) > myZero ) ) {
+          println( "myZero is: " + myZero )
           println( "inside rightward cell: " + (i,k,j,pDec, insideChart( i )( j )( pDec ) ) )
           println( "\t" + insideChart( i )( j )( pDec ) )
           println( "\t" + rightwardCellScore( i, k, j, pDec, mDec, cDec ) )
@@ -805,13 +806,14 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
       }
 
     } else if( i == 0 && j == intString.length ) { // Root
+      // SHOULD NOT BE TRUE FOR STEM-SUFFIX MODELS  
       assert( pDec == RootDecoration )
 
       val ((k,cDecs), score) = argSample( rootCellScores(), logSpace = logSpace )
 
       sampleScore = myTimes( sampleScore, score )
 
-      rootEventCounts( k, myOne ) ++
+      rootEventCounts( k, pDec, myOne ) ++
         sampleTreeCounts( i , k, cDecs.evenLeft ) ++
         sampleTreeCounts( k, intString.length, cDecs.evenRight )
 
@@ -877,7 +879,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
   // def lexMarginals( index:Int ):Seq[Tuple2[Event,Double]]
 
 
-  def rootEventCounts( k:Int, marginal:Double ):Seq[Tuple2[Event,Double]]
+  def rootEventCounts( k:Int, rDec:Decoration, marginal:Double ):Seq[Tuple2[Event,Double]]
   def leftwardEventCounts( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration,
     cDec:Decoration, marginal:Double ):Seq[Tuple2[Event,Double]]
   def rightwardEventCounts( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration,
@@ -921,7 +923,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
                     factorAndOutside
               )
 
-              rootEventCounts( k, marginal ).foreach{ case (event, count) =>
+              rootEventCounts( k, decorationPair, marginal ).foreach{ case (event, count) =>
                 c.increment( event, count )
               }
             }
@@ -1136,6 +1138,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
 
         // println( s"inside outsidePassWithCounts" )
     // c.printTotalCountsByType
+    // c.printOut
 
     c
   }

@@ -47,7 +47,7 @@ trait InfiniteFirstOrderFoldUnfoldNOPOSParser[P<:NOPOSArcFactoredParameters] ext
 
 
 
-  override def rootEventCounts( k:Int, marginal:Double ) = {
+  override def rootEventCounts( k:Int, rDec:Decoration, marginal:Double ) = {
     val r = intString( k )
     val rObs = lexString( k )
 

@@ -58,7 +58,7 @@ class TwoValenceStemSuffixParser(
   override def rightwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = {
     val head = intString( i )
     // val dep = intString( k )
-    val StemSuffixDecoration( hStem, hSuffix, _ ) = pDec
+    val StemSuffixDecoration( hStem, hSuffix, pValence ) = pDec
     val StemSuffixDecoration( dStem, dSuffix, _ ) = cDec
 
     myTimes(
@@ -66,21 +66,24 @@ class TwoValenceStemSuffixParser(
       theta( ChooseEvent( hStem, RightAtt, dStem ) ),
       theta( ChooseEvent( hStem, MorphAtt, hSuffix ) ),
       theta( ChooseEvent( dStem, MorphAtt, dSuffix ) ),
-      theta( StopEvent( head, RightAtt, pDec, NotStop ) )
+      theta( StopEvent( head, RightAtt, pValence, NotStop ) )
     )
   }
   override def leftwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = {
     val head = intString( j )
     // val dep = intString( k )
-    val StemSuffixDecoration( hStem, hSuffix, _ ) = pDec
+    val StemSuffixDecoration( hStem, hSuffix, pValence ) = pDec
     val StemSuffixDecoration( dStem, dSuffix, _ ) = cDec
+
+    // println( s"$hStem + $hSuffix --> $dStem + $dSuffix" )
+
 
     myTimes(
       // theta( ChooseEvent( head, LeftAtt, dep ) ),
       theta( ChooseEvent( hStem, LeftAtt, dStem ) ),
       theta( ChooseEvent( hStem, MorphAtt, hSuffix ) ),
       theta( ChooseEvent( dStem, MorphAtt, dSuffix ) ),
-        theta( StopEvent( head, LeftAtt, pDec, NotStop ) )
+        theta( StopEvent( head, LeftAtt, pValence, NotStop ) )
     )
   }
 
@@ -117,6 +120,7 @@ class TwoValenceStemSuffixParser(
 
   override def rightwardSplitSpecs( i:Int, j:Int ) = {
     val hObs = lexString( i )
+    val ks = ( (i+2) to (j-1) by 2 )
 
     (1 to hObs.length).flatMap{ hK =>
 
@@ -126,12 +130,10 @@ class TwoValenceStemSuffixParser(
         Seq(
           (
             StemSuffixDecoration( hStem, hSuffix, Outermost ),
-            ( (i+2) to (j-1) by 2 ).flatMap{ k =>
+            ks.flatMap{ k =>
               val dObs = lexString( k )
 
               rightArcSpecHelper( k, hStem, hSuffix, dObs )
-
-              // ( k, DecorationPair( Inner, Outermost ), Outermost )
             }
           )
         )
@@ -139,18 +141,16 @@ class TwoValenceStemSuffixParser(
         Seq(
           (
             StemSuffixDecoration( hStem, hSuffix, Outermost ),
-            ( (i+2) to (j-1) by 2 ).flatMap{ k =>
+            ks.flatMap{ k =>
               val dObs = lexString( k )
               rightArcSpecHelper( k, hStem, hSuffix, dObs )
-              // ( k, DecorationPair( Inner, Outermost ), Outermost )
             }
           ),
           (
             StemSuffixDecoration( hStem, hSuffix, Inner ),
-            ( (i+2) to (j-1) by 2 ).flatMap{ k =>
+            ks.flatMap{ k =>
               val dObs = lexString( k )
               rightArcSpecHelper( k, hStem, hSuffix, dObs )
-              // ( k, DecorationPair( Inner, Outermost ), Outermost )
             }
           )
         )
@@ -258,14 +258,68 @@ class TwoValenceStemSuffixParser(
 
   }
 
+  override def rootEventCounts( k:Int, rDec:Decoration, marginal:Double ):Seq[Tuple2[Event,Double]] = {
+    val r = intString( k )
+    // stem/suffix analysis will be the same for left and right children
+    val DecorationPair( l , _  ) = rDec
+    val StemSuffixDecoration( rStem, rSuffix, _ ) = l
+    Seq(
+      ( RootEvent( -1, rStem ), marginal ),
+      ( ChooseEvent( rStem, MorphAtt, rSuffix ), marginal )
+    )
+  }
+
+  override def lexEventCounts( index:Int, pDec:Decoration, marginal:Double ) = {
+    val w = intString( index )
+    val StemSuffixDecoration( _, _, pValence ) = pDec
+    if( index%2 == 0 ) {
+      Seq( ( StopEvent( w, LeftAtt, pValence, Stop ) , marginal ) )
+    } else {
+      Seq( ( StopEvent( w, RightAtt, pValence, Stop ) , marginal ) )
+    }
+  }
+
+  override def rightwardEventCounts( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration,
+    cDec:Decoration, marginal:Double ) = {
+    val head = intString( i )
+    val dep = intString( k )
+    val StemSuffixDecoration( hStem, hSuffix, pValence ) = pDec
+    val StemSuffixDecoration( dStem, dSuffix, _ ) = cDec
+    Seq(
+      ( ChooseEvent( hStem, RightAtt, dStem ), marginal ),
+      ( ChooseEvent( hStem, MorphAtt, hSuffix ), marginal ),
+      ( ChooseEvent( dStem, MorphAtt, dSuffix ), marginal ),
+      ( StopEvent( head, RightAtt, pValence, NotStop ), marginal )
+    )
+  }
+
+  override def leftwardEventCounts( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration,
+    cDec:Decoration, marginal:Double ) = {
+    val head = intString( j )
+    val dep = intString( k )
+    val StemSuffixDecoration( hStem, hSuffix, pValence ) = pDec
+    val StemSuffixDecoration( dStem, dSuffix, _ ) = cDec
+    Seq(
+      ( ChooseEvent( hStem, RightAtt, dStem ), marginal ),
+      ( ChooseEvent( hStem, MorphAtt, hSuffix ), marginal ),
+      ( ChooseEvent( dStem, MorphAtt, dSuffix ), marginal ),
+      ( StopEvent( head, RightAtt, pValence, NotStop ), marginal )
+    )
+  }
+
+
+
+
+
   override def lexCellFactor( index:Int, pDec:Decoration ) = {
     // println( intString.mkString("{"," ","}") )
     val head = intString( index )
+    val StemSuffixDecoration( hStem, hSuffix, pValence ) = pDec
     val score = 
       if( index%2 == 0 ) {
-        theta( StopEvent( head, LeftAtt, pDec, Stop ) )
+        theta( StopEvent( head, LeftAtt, pValence, Stop ) )
       } else {
-        theta( StopEvent( head, RightAtt, pDec, Stop ) )
+        theta( StopEvent( head, RightAtt, pValence, Stop ) )
       }
     assert( ( score > myZero && score <= myOne + 0.00001 ) )
     score

@@ -525,7 +525,7 @@ class ThreeValenceParser(
     theta( RootEvent( intString( k ) ) )
   }
 
-  def rootEventCounts( k:Int, marginal:Double ) = {
+  def rootEventCounts( k:Int, rDec:Decoration, marginal:Double ) = {
     val r = intString( k )
     Seq(
       ( RootEvent( r ), marginal )

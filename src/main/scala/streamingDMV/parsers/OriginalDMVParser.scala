@@ -304,7 +304,7 @@ class OriginalDMVParser(
   }
 
 
-  def rootEventCounts( k:Int, marginal:Double ) = {
+  def rootEventCounts( k:Int, rDec:Decoration, marginal:Double ) = {
     val r = intString( k )
     val leftV = if( k == 1 ) Innermost else Outer
     val rightV = if( k == intString.length-1 ) Innermost else Outer

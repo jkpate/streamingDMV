@@ -280,7 +280,7 @@ class TopDownDMVParser( parserSpec:ParserSpec) extends FirstOrderFoldUnfoldNOPOS
   }
 
 
-  def rootEventCounts( k:Int, marginal:Double ) = {
+  def rootEventCounts( k:Int, rDec:Decoration, marginal:Double ):Seq[Tuple2[Event,Double]] = {
     val r = intString( k )
     Seq(
       ( RootEvent( r ), marginal )
@@ -613,7 +613,7 @@ FirstOrderFoldUnfoldNOPOSParser[TopDownDMVParameters with AdaDeltaParameters] (
   }
 
 
-  def rootEventCounts( k:Int, marginal:Double ) = {
+  def rootEventCounts( k:Int, rDec:Decoration, marginal:Double ) = {
     val r = intString( k )
     Seq(
       ( RootEvent( r ), marginal )
@@ -930,7 +930,7 @@ FirstOrderFoldUnfoldNOPOSParser[TopDownDMVParameters with SteppingParameters] (
   }
 
 
-  def rootEventCounts( k:Int, marginal:Double ) = {
+  def rootEventCounts( k:Int, rDec:Decoration, marginal:Double ) = {
     val r = intString( k )
     Seq(
       ( RootEvent( r ), marginal )
@@ -1248,7 +1248,7 @@ FirstOrderFoldUnfoldNOPOSParser[TopDownDMVParameters with WeightsParameters] (
   }
 
 
-  def rootEventCounts( k:Int, marginal:Double ) = {
+  def rootEventCounts( k:Int, rDec:Decoration, marginal:Double ) = {
     val r = intString( k )
     Seq(
       ( RootEvent( r ), marginal )

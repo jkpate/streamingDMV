@@ -212,7 +212,11 @@ abstract class BackoffDecision
 case object Backoff extends BackoffDecision
 case object NotBackoff extends BackoffDecision
 
-abstract class Decoration
+abstract class Decoration {
+  def <( o:Decoration ) = {
+    if( hashCode < o.hashCode ) true else false
+  }
+}
 
 abstract class Valence extends Decoration
 
@@ -223,7 +227,23 @@ case object OneDependentValence extends Decoration
 case object NoDependentValence extends Decoration
 
 
-case class StemSuffixDecoration( stem:String, suffix:String, dec:Decoration ) extends Decoration
+case class StemSuffixDecoration( stem:String, suffix:String, dec:Decoration ) extends Decoration {
+  def <( o:StemSuffixDecoration ) = {
+    if( dec < o.dec ) {
+      true
+    } else {
+      if( stem < o.stem ) {
+        true
+      } else {
+        if( suffix < o.suffix ) {
+          true
+        } else {
+          false
+        }
+      }
+    }
+  }
+}
 
 case object NoValence extends Valence {
   override val hashCode = 104395303
@@ -611,6 +631,12 @@ abstract class DependencyCounts {
   def printStopEvents:Unit
   def printChooseEvents:Unit
 
+  def printOut {
+    printRootEvents
+    printStopEvents
+    printChooseEvents
+  }
+
   def logSpace = false
 
 
@@ -811,11 +837,11 @@ case class DMVCounts(
   def printRootEvents =
     println( rootCounts.counts.keys.mkString("\t","\n\t","\n\n" ) )
   def printStopEvents =
-    stopCounts.counts.keys.foreach{ e =>
+    stopCounts.counts.keys.toSeq.sortWith(_.v<_.v).foreach{ e =>
       println( "\t" + e + ": " + stopCounts( e ) )
     }
   def printChooseEvents =
-    chooseCounts.counts.keys.foreach{ e =>
+    chooseCounts.counts.keys.toSeq.foreach{ e =>
       println( "\t" + e )
     }
 

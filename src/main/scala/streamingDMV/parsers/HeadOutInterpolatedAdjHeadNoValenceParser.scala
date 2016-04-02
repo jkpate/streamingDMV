@@ -248,7 +248,7 @@ class HeadOutInterpolatedAdjHeadNoValenceParser(
   def leftwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = myOne
   def rightwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = myOne
 
-  def rootEventCounts( k:Int, marginal:Double ) = {
+  def rootEventCounts( k:Int, rDec:Decoration, marginal:Double ) = {
     val r = intString( k )
     Seq(
       ( RootEvent( r ), marginal ),

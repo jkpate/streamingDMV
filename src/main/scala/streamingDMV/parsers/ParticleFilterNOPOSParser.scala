@@ -646,13 +646,14 @@ class ParticleFilterNOPOSParser[
       }
 
     } else if( i == 0 && j == intString.length ) { // Root
+      // SHOULD NOT BE TRUE FOR STEM-SUFFIX MODELS  
       assert( pDec == RootDecoration )
 
       val ((k,cDecs), score) = argSample( rootCellScores() )
 
       sampleScore += score
 
-      particles.head.rootEventCounts( k, 0D ) ++
+      particles.head.rootEventCounts( k, pDec, 0D ) ++
         sampleTreeCounts( i , k, cDecs.evenLeft ) ++
         sampleTreeCounts( k, intString.length, cDecs.evenRight )
 
