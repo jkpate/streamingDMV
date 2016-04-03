@@ -18,6 +18,7 @@ trait AdaDeltaParser[P<:WeightsParameters] extends StreamingVBParser[DMVCounts,P
     evalRate:Int = 10,
     logEvalRate:Boolean = true,
     constituencyEval:Boolean = true,
+    morphsEval:Boolean = true,
     printIterScores:Boolean = false,
     printItersReached:Boolean = false
   ) = adaDeltaUpdate(

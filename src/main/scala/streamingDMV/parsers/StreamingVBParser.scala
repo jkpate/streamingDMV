@@ -28,14 +28,15 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
     miniBatch:List[Utt],
     sentenceNum:Int,
     testSet:List[Utt],
-    maxIter:Int = 10,
-    convergence:Double = 0.001,
-    evalMaxLength:Int = 0,
-    evalRate:Int = 10,
-    logEvalRate:Boolean = true,
-    constituencyEval:Boolean = true,
-    printIterScores:Boolean = false,
-    printItersReached:Boolean = false
+    maxIter:Int,
+    convergence:Double,
+    evalMaxLength:Int,
+    evalRate:Int,
+    logEvalRate:Boolean,
+    constituencyEval:Boolean,
+    morphsEval:Boolean,
+    printIterScores:Boolean,
+    printItersReached:Boolean
   ) = streamingVBUpdate(
     miniBatch = miniBatch,
     sentenceNum = sentenceNum,
@@ -46,6 +47,7 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
     evalRate = evalRate,
     logEvalRate = logEvalRate,
     constituencyEval = constituencyEval,
+    morphsEval = morphsEval,
     printIterScores = printIterScores,
     printItersReached = printItersReached
   )
@@ -61,6 +63,7 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
     evalRate:Int = 10,
     logEvalRate:Boolean = true,
     constituencyEval:Boolean = true,
+    morphsEval:Boolean = true,
     printIterScores:Boolean = false,
     printItersReached:Boolean = false
   ) = {
@@ -136,6 +139,12 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
           theta.incrementCounts( fHat )
           if( constituencyEval )
             printViterbiParses(
+              testSet,
+              s"it${sentencesProcessed}",
+              evalMaxLength
+            )
+          else if( morphsEval )
+            printViterbiDepParsesWithMorphs(
               testSet,
               s"it${sentencesProcessed}",
               evalMaxLength

@@ -1,6 +1,6 @@
 package streamingDMV.parsers
 
-import streamingDMV.io.printDependencyParse
+import streamingDMV.io.{printDependencyParse,printMorphs}
 import streamingDMV.labels._
 import streamingDMV.tables.CPT
 import streamingDMV.parameters.ArcFactoredParameters
@@ -69,6 +69,7 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
   def viterbiParse( utt:Utt ):Parse
 
   def viterbiDepParse( utt:Utt ):Parse
+  def viterbiDepParseWithMorphs( utt:Utt ):Parse
 
   def doubleString[A:ClassTag]( string:Array[A] ) = {
     string.toSeq.flatMap{ w => List(w,w) }.toArray
@@ -89,7 +90,7 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
     val parseStartTime = System.currentTimeMillis
     testSet.foreach{ utt =>
       if( evalMaxLength == 0 || utt.string.length <= evalMaxLength ) {
-        val Parse( id, conParse, depParse ) = viterbiParse( utt )
+        val Parse( id, conParse, depParse, _ ) = viterbiParse( utt )
         println( s"${prefix}:constituency:${id} ${conParse}" )
         println( s"${prefix}:dependency:${id} ${printDependencyParse(depParse)}" )
         // heldOutLogProb += logProb( s.string )
@@ -123,8 +124,40 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
     val parseStartTime = System.currentTimeMillis
     testSet.foreach{ utt =>
       if( evalMaxLength == 0 || utt.string.length <= evalMaxLength ) {
-        val Parse( id, conParse, depParse ) = viterbiParse( utt )
+        val Parse( id, conParse, depParse, _ ) = viterbiParse( utt )
         println( s"${prefix}:dependency:${id} ${printDependencyParse(depParse)}" )
+        // heldOutLogProb += logProb( s.string )
+        heldOutLogProb += logProb( utt )
+      }
+    }
+
+    val thisTestTime = System.currentTimeMillis - parseStartTime
+
+    println( s"${prefix}:logProb:${heldOutLogProb}" )
+    println( s"${prefix}:testTimePerSentence:${ thisTestTime.toDouble / testSet.size}ms/sentence" )
+
+    // theta.decrementCounts( counts )
+    // ( heldOutLogProb, thisTestTime )
+    thisTestTime
+  }
+
+  def printViterbiDepParsesWithMorphs(
+    testSet:List[Utt],
+    prefix:String,
+    evalMaxLength:Int// ,
+    // counts:C = emptyCounts
+  ) = {
+    var heldOutLogProb = 0D
+
+    // theta.incrementCounts( counts )
+    prepareForParses()
+
+    val parseStartTime = System.currentTimeMillis
+    testSet.foreach{ utt =>
+      if( evalMaxLength == 0 || utt.string.length <= evalMaxLength ) {
+        val Parse( id, conParse, depParse, morphs ) = viterbiDepParseWithMorphs( utt )
+        println( s"${prefix}:dependency:${id} ${printDependencyParse(depParse)}" )
+        println( s"${prefix}:morphology:${id} ${printMorphs(morphs)}" )
         // heldOutLogProb += logProb( s.string )
         heldOutLogProb += logProb( utt )
       }
@@ -217,6 +250,7 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
     evalRate:Int = 10,
     logEvalRate:Boolean = true,
     constituencyEval:Boolean = true,
+    morphsEval:Boolean = true,
     printIterScores:Boolean = false,
     printItersReached:Boolean = false
   ):Double

@@ -19,6 +19,7 @@ trait CVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]] extends FoldUnf
     evalRate:Int = 10,
     logEvalRate:Boolean = true,
     constituencyEval:Boolean = true,
+    morphsEval:Boolean = true,
     printIterScores:Boolean = false,
     printItersReached:Boolean = false
   ) = {

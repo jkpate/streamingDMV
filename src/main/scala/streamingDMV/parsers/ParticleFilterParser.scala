@@ -217,6 +217,7 @@ abstract class ParticleFilterParser[
     evalRate:Int = 10,
     logEvalRate:Boolean = true,
     constituencyEval:Boolean = true,
+    morphsEval:Boolean = true,
     printIterScores:Boolean = false,
     printItersReached:Boolean = false
   ) = streamingVBUpdate(
@@ -229,6 +230,7 @@ abstract class ParticleFilterParser[
     evalRate = evalRate,
     logEvalRate = logEvalRate,
     constituencyEval = constituencyEval,
+    morphsEval = morphsEval,
     printIterScores = printIterScores,
     printItersReached = printItersReached
   )
@@ -245,6 +247,7 @@ abstract class ParticleFilterParser[
     evalRate:Int = 10,
     logEvalRate:Boolean = true,
     constituencyEval:Boolean = true,
+    morphsEval:Boolean = true,
     printIterScores:Boolean = false,
     printItersReached:Boolean = false
   ) = {

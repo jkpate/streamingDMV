@@ -18,8 +18,8 @@ class TwoValenceStemSuffixParser(
   override def clearCharts {
     (0 until insideChart.length ).foreach{ i =>
       ((i+1) until insideChart.length+1 ).foreach{ j =>
-        insideChart(i)(j) = cellMap( i, j )
-        outsideChart(i)(j) = cellMap( i, j )
+        insideChart(i)(j).clear
+        outsideChart(i)(j).clear
       }
     }
   }
@@ -28,19 +28,41 @@ class TwoValenceStemSuffixParser(
     ( 1 to (intString.length-1) by 2 ).flatMap{ k =>
       val rW = lexString( k )
       ( 1 to rW.length ).map{ l =>
-        val ( stem, suffix ) = rW.splitAt( l )
+        // val ( stem, suffix ) = rW.splitAt( l )
         (
           k,
           DecorationPair(
             {
-              StemSuffixDecoration( stem, suffix, Outermost )
+              // StemSuffixDecoration( stem, suffix, Outermost )
+              MorphSplitDecoration( Outermost, l )
             }, {
-              StemSuffixDecoration( stem, suffix, Outermost )
+              MorphSplitDecoration( Outermost, l )
+              // StemSuffixDecoration( stem, suffix, Outermost )
             }
           )
         )
       }
     }
+  }
+
+  override def recoverRootMorphs( i:Int, rDec:Decoration ) = {
+    val DecorationPair( l, _ ) = rDec
+    val MorphSplitDecoration( _, split ) = l
+
+    val ( stem, suffix) = lexString( i ).splitAt( split )
+    (i, stem, suffix )
+  }
+  override def recoverRightwardMorphs( i:Int, mDV:Decoration ) = {
+    val MorphSplitDecoration( _, split ) = mDV
+
+    val ( stem, suffix) = lexString( i ).splitAt( split )
+    (i, stem, suffix )
+  }
+  override def recoverLeftwardMorphs( i:Int, mDV:Decoration ) = {
+    val MorphSplitDecoration( _, split ) = mDV
+
+    val ( stem, suffix) = lexString( i ).splitAt( split )
+    (i, stem, suffix )
   }
 
   override def findLeftRootChild( k:Int, rDec:Decoration ) = headTrace( 0 )( k )( rDec )
@@ -58,7 +80,9 @@ class TwoValenceStemSuffixParser(
 
 
   override def rootCellFactor( k:Int, rDec:DecorationPair ) = {
-    val StemSuffixDecoration( stem, suffix, _ ) = rDec.evenLeft
+    // val StemSuffixDecoration( stem, suffix, _ ) = rDec.evenLeft
+    val MorphSplitDecoration( _, split ) = rDec.evenLeft
+    val ( stem, suffix ) = lexString( k ).splitAt( split )
     // theta( RootEvent( intString( k ) ) )
     myTimes(
       theta( RootEvent( -1, stem ) ),
@@ -67,62 +91,64 @@ class TwoValenceStemSuffixParser(
   }
   override def rightwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = {
     val head = intString( i )
-    // val dep = intString( k )
-    val StemSuffixDecoration( hStem, hSuffix, pValence ) = pDec
-    val StemSuffixDecoration( dStem, dSuffix, _ ) = cDec
+
+    val MorphSplitDecoration( pValence, hSplit ) = pDec
+    val MorphSplitDecoration( _, dSplit ) = cDec
+
+    val (hStem, _ ) = lexString( i ).splitAt( hSplit )
+    val (dStem, dSuffix ) = lexString( k ).splitAt( dSplit )
 
     myTimes(
-      // theta( ChooseEvent( head, RightAtt, dep ) ),
       theta( ChooseEvent( hStem, RightAtt, dStem ) ),
-      // theta( ChooseEvent( hStem, MorphAtt, hSuffix ) ),
       theta( ChooseEvent( dStem, MorphAtt, dSuffix ) ),
       theta( StopEvent( head, RightAtt, pValence, NotStop ) )
     )
   }
+
   override def leftwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = {
     val head = intString( j )
-    // val dep = intString( k )
-    val StemSuffixDecoration( hStem, hSuffix, pValence ) = pDec
-    val StemSuffixDecoration( dStem, dSuffix, _ ) = cDec
 
-    // println( s"$hStem + $hSuffix --> $dStem + $dSuffix" )
+    val MorphSplitDecoration( pValence, hSplit ) = pDec
+    val MorphSplitDecoration( _, dSplit ) = cDec
+
+    val (hStem, _ ) = lexString( j ).splitAt( hSplit )
+    val (dStem, dSuffix ) = lexString( k ).splitAt( dSplit )
 
 
     myTimes(
-      // theta( ChooseEvent( head, LeftAtt, dep ) ),
       theta( ChooseEvent( hStem, LeftAtt, dStem ) ),
-      // theta( ChooseEvent( hStem, MorphAtt, hSuffix ) ),
       theta( ChooseEvent( dStem, MorphAtt, dSuffix ) ),
         theta( StopEvent( head, LeftAtt, pValence, NotStop ) )
     )
   }
 
-  def rightArcSpecHelper( k:Int, hStem:String, hSuffix:String, dep:String ) = {
+  def rightArcSpecHelper( k:Int, hK:Int ) = {
+    val dep = lexString( k )
     ( 1 to dep.length ).map{ dK =>
-      val (dStem, dSuffix) = dep.splitAt( dK )
+      // val (dStem, dSuffix) = dep.splitAt( dK )
 
       (
         k,
         DecorationPair(
-          StemSuffixDecoration( hStem, hSuffix, Inner ),
-          StemSuffixDecoration( dStem, dSuffix, Outermost )
+          MorphSplitDecoration( Inner, hK ),
+          MorphSplitDecoration( Outermost, dK )
         ),
-        StemSuffixDecoration( dStem, dSuffix, Outermost )
+        MorphSplitDecoration( Outermost, dK )
       )
     }.toSeq
   }
-  def leftArcSpecHelper( k:Int, hStem:String, hSuffix:String, dep:String ) = {
+
+  def leftArcSpecHelper( k:Int, hK:Int ) = {
+    val dep = lexString( k )
     ( 1 to dep.length ).map{ dK =>
-      val (dStem, dSuffix) = dep.splitAt( dK )
 
       (
         k,
         DecorationPair(
-          StemSuffixDecoration( dStem, dSuffix, Outermost ),
-          StemSuffixDecoration( hStem, hSuffix, Inner )
+          MorphSplitDecoration( Outermost, dK ),
+          MorphSplitDecoration( Inner, hK )
         ),
-        StemSuffixDecoration( dStem, dSuffix, Outermost )
-        // Outermost
+        MorphSplitDecoration( Outermost, dK )
       )
     }.toSeq
   }
@@ -134,33 +160,27 @@ class TwoValenceStemSuffixParser(
 
     (1 to hObs.length).flatMap{ hK =>
 
-      val (hStem, hSuffix) = hObs.splitAt( hK )
-
       if( j == intString.length ) {
         Seq(
           (
-            StemSuffixDecoration( hStem, hSuffix, Outermost ),
+            MorphSplitDecoration( Outermost, hK),
             ks.flatMap{ k =>
-              val dObs = lexString( k )
-
-              rightArcSpecHelper( k, hStem, hSuffix, dObs )
+              rightArcSpecHelper( k, hK )
             }
           )
         )
       } else {
         Seq(
           (
-            StemSuffixDecoration( hStem, hSuffix, Outermost ),
+            MorphSplitDecoration( Outermost, hK ),
             ks.flatMap{ k =>
-              val dObs = lexString( k )
-              rightArcSpecHelper( k, hStem, hSuffix, dObs )
+              rightArcSpecHelper( k, hK )
             }
           ),
           (
-            StemSuffixDecoration( hStem, hSuffix, Inner ),
+            MorphSplitDecoration( Inner, hK ),
             ks.flatMap{ k =>
-              val dObs = lexString( k )
-              rightArcSpecHelper( k, hStem, hSuffix, dObs )
+              rightArcSpecHelper( k, hK )
             }
           )
         )
@@ -176,35 +196,28 @@ class TwoValenceStemSuffixParser(
 
     (1 to hObs.length).flatMap{ hK =>
 
-      val (hStem, hSuffix) = hObs.splitAt( hK )
+      // val (hStem, hSuffix) = hObs.splitAt( hK )
       if( i == 0 ) {
         Seq(
           (
-            StemSuffixDecoration( hStem, hSuffix, Outermost ),
+            MorphSplitDecoration( Outermost, hK),
             ( (i+1) to (j-2) by 2 ).flatMap{ k =>
-              val dObs = lexString( k )
-
-              leftArcSpecHelper( k, hStem, hSuffix, dObs )
-              // ( k, DecorationPair( Outermost, Inner ), Outermost )
+              leftArcSpecHelper( k, hK)
             }
           )
         )
       } else {
         Seq(
           (
-            StemSuffixDecoration( hStem, hSuffix, Outermost ),
+            MorphSplitDecoration( Outermost, hK ),
             ( (i+1) to (j-2) by 2 ).flatMap{ k =>
-              val dObs = lexString( k )
-              leftArcSpecHelper( k, hStem, hSuffix, dObs )
-              // ( k, DecorationPair( Outermost, Inner), Outermost )
+              leftArcSpecHelper( k, hK )
             }
           ),
           (
-            StemSuffixDecoration( hStem, hSuffix, Inner ),
+            MorphSplitDecoration( Inner, hK ),
             ( (i+1) to (j-2) by 2 ).flatMap{ k =>
-              val dObs = lexString( k )
-              leftArcSpecHelper( k, hStem, hSuffix, dObs )
-              // ( k, DecorationPair( Outermost, Inner ), Outermost )
+              leftArcSpecHelper( k, hK )
             }
           )
         )
@@ -221,21 +234,19 @@ class TwoValenceStemSuffixParser(
     val ks = ( (i+1) to (j-1) by 2 )
 
     (1 to lObs.length).flatMap{ lK =>
-      val (lStem, lSuffix ) = lObs.splitAt( lK )
       (1 to rObs.length).flatMap{ rK =>
-        val (rStem, rSuffix ) = rObs.splitAt( rK )
         Seq(
           (
             DecorationPair(
-              StemSuffixDecoration( lStem, lSuffix, Outermost ),
-              StemSuffixDecoration( rStem, rSuffix, Inner )
+              MorphSplitDecoration( Outermost, lK ),
+              MorphSplitDecoration( Inner, rK )
             ),
             ks
           ),
           (
             DecorationPair(
-              StemSuffixDecoration( lStem, lSuffix, Inner ),
-              StemSuffixDecoration( rStem, rSuffix, Outermost )
+              MorphSplitDecoration( Inner, lK ),
+              MorphSplitDecoration( Outermost, rK )
             ),
             ks
           )
@@ -260,9 +271,9 @@ class TwoValenceStemSuffixParser(
 
     val w = lexString( index )
     (1 to w.length).flatMap{ wK =>
-      val (stem, suffix) = w.splitAt( wK )
+      // val (stem, suffix) = w.splitAt( wK )
       vs.map{ v =>
-        StemSuffixDecoration( stem, suffix, v )
+        MorphSplitDecoration( v, wK )
       }
     }
 
@@ -272,7 +283,8 @@ class TwoValenceStemSuffixParser(
     val r = intString( k )
     // stem/suffix analysis will be the same for left and right children
     val DecorationPair( l , _  ) = rDec
-    val StemSuffixDecoration( rStem, rSuffix, _ ) = l
+    val MorphSplitDecoration( _, rK ) = l
+    val ( rStem, rSuffix) = lexString( k ).splitAt( rK )
     Seq(
       ( RootEvent( -1, rStem ), marginal ),
       ( ChooseEvent( rStem, MorphAtt, rSuffix ), marginal )
@@ -281,7 +293,8 @@ class TwoValenceStemSuffixParser(
 
   override def lexEventCounts( index:Int, pDec:Decoration, marginal:Double ) = {
     val w = intString( index )
-    val StemSuffixDecoration( _, _, pValence ) = pDec
+    // val StemSuffixDecoration( _, _, pValence ) = pDec
+    val MorphSplitDecoration( pValence, _ ) = pDec
     if( index%2 == 0 ) {
       Seq( ( StopEvent( w, LeftAtt, pValence, Stop ) , marginal ) )
     } else {
@@ -292,9 +305,15 @@ class TwoValenceStemSuffixParser(
   override def rightwardEventCounts( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration,
     cDec:Decoration, marginal:Double ) = {
     val head = intString( i )
-    val dep = intString( k )
-    val StemSuffixDecoration( hStem, hSuffix, pValence ) = pDec
-    val StemSuffixDecoration( dStem, dSuffix, _ ) = cDec
+      // val dep = intString( k )
+      // val StemSuffixDecoration( hStem, hSuffix, pValence ) = pDec
+      // val StemSuffixDecoration( dStem, dSuffix, _ ) = cDec
+    val MorphSplitDecoration( pValence, hK ) = pDec
+    val MorphSplitDecoration( _, dK ) = cDec
+
+    val ( hStem, hSuffix ) = lexString( i ).splitAt( hK )
+    val ( dStem, dSuffix ) = lexString( k ).splitAt( dK )
+
     Seq(
       ( ChooseEvent( hStem, RightAtt, dStem ), marginal ),
       // ( ChooseEvent( hStem, MorphAtt, hSuffix ), marginal ),
@@ -306,9 +325,16 @@ class TwoValenceStemSuffixParser(
   override def leftwardEventCounts( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration,
     cDec:Decoration, marginal:Double ) = {
     val head = intString( j )
-    val dep = intString( k )
-    val StemSuffixDecoration( hStem, hSuffix, pValence ) = pDec
-    val StemSuffixDecoration( dStem, dSuffix, _ ) = cDec
+      // val dep = intString( k )
+      // val StemSuffixDecoration( hStem, hSuffix, pValence ) = pDec
+      // val StemSuffixDecoration( dStem, dSuffix, _ ) = cDec
+
+    val MorphSplitDecoration( pValence, hK ) = pDec
+    val MorphSplitDecoration( _, dK ) = cDec
+
+    val ( hStem, hSuffix ) = lexString( j ).splitAt( hK )
+    val ( dStem, dSuffix ) = lexString( k ).splitAt( dK )
+
     Seq(
       ( ChooseEvent( hStem, LeftAtt, dStem ), marginal ),
       // ( ChooseEvent( hStem, MorphAtt, hSuffix ), marginal ),
@@ -324,7 +350,10 @@ class TwoValenceStemSuffixParser(
   override def lexCellFactor( index:Int, pDec:Decoration ) = {
     // println( intString.mkString("{"," ","}") )
     val head = intString( index )
-    val StemSuffixDecoration( hStem, hSuffix, pValence ) = pDec
+    // val StemSuffixDecoration( hStem, hSuffix, pValence ) = pDec
+
+    val MorphSplitDecoration( pValence, _ ) = pDec
+
     val score = 
       if( index%2 == 0 ) {
         theta( StopEvent( head, LeftAtt, pValence, Stop ) )

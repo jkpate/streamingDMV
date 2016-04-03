@@ -106,7 +106,7 @@ case class WordLengths( annotations:Array[Int] ) extends AnnotationStream[Int]
 
 case class DirectedArc( hIdx:Int, dIdx:Int )
 
-case class Parse( id:String, conParse:String, depParse:Set[DirectedArc] )
+case class Parse( id:String, conParse:String, depParse:Set[DirectedArc], morphs:Seq[Tuple3[Int,String,String]] = Seq() )
 case class Utt( id:String, string:Array[Int], lexes:Array[String] = Array() ) {
   override def toString = "Utt( " + id + ", " + string.mkString("[ ",", "," ]") + ", " +
     lexes.mkString( "< ", ", ", " >" ) + " )" 
@@ -227,22 +227,25 @@ case object OneDependentValence extends Decoration
 case object NoDependentValence extends Decoration
 
 
-case class StemSuffixDecoration( stem:String, suffix:String, dec:Decoration ) extends Decoration {
-  def <( o:StemSuffixDecoration ) = {
-    if( dec < o.dec ) {
-      true
-    } else {
-      if( stem < o.stem ) {
-        true
-      } else {
-        if( suffix < o.suffix ) {
-          true
-        } else {
-          false
-        }
-      }
-    }
-  }
+case class MorphSplitDecoration( dec:Decoration, splits:Int* ) extends Decoration {
+  override def toString = s"MorphSplitDecoration( $dec, ${splits.mkString("+")} )"
+}
+case class OldStemSuffixDecoration( stem:String, suffix:String, dec:Decoration ) extends Decoration {
+  // def <( o:StemSuffixDecoration ) = {
+  //   if( dec < o.dec ) {
+  //     true
+  //   } else {
+  //     if( stem < o.stem ) {
+  //       true
+  //     } else {
+  //       if( suffix < o.suffix ) {
+  //         true
+  //       } else {
+  //         false
+  //       }
+  //     }
+  //   }
+  // }
 }
 
 case object NoValence extends Valence {

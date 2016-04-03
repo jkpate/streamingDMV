@@ -574,6 +574,43 @@ class ParticleFilterNOPOSParser[
     Parse( utt.id, "", particles.head.treeRoot.toDepParse )
   }
 
+  def viterbiDepParseWithMorphs( utt:Utt ) = {
+    clearVitCharts
+    // intString = utt.string.flatMap{ w => Seq(w,w) }
+    intString = doubleString( utt.string )
+    (0 until numParticles).foreach{ l =>
+      particles(l).intString = intString
+      particles(l).theta.fullyNormalized = true
+    }
+
+    if( !(math.abs( particleWeights.sum -1 ) < 0.000001 ) ) {
+      println( particleWeights.mkString("; " ) )
+    }
+
+    assert( math.abs( particleWeights.sum -1 ) < 0.000001 )
+
+    if( intString.length > particles.head.headTrace.length ) {
+      particles.head.buildVitCharts( intString.length )
+    }
+    if( intString.length > particles.head.insideChart.length ) {
+      particles.head.buildCharts( intString.length )
+    }
+
+
+    (1 to ( intString.length )).foreach{ j =>
+      viterbiLexFill( j-1 )
+
+      if( j > 1 )
+        (0 to (j-2)).reverse.foreach{ i =>
+          viterbiSynFill( i , j )
+        }
+    }
+    (0 until numParticles).foreach{ l =>
+      particles(l).theta.fullyNormalized = false
+    }
+    Parse( utt.id, "", particles.head.treeRoot.toDepParse, particles.head.treeRoot.toMorphs )
+  }
+
   def sampleTreeCounts( i:Int, j:Int, pDec:Decoration ):Seq[Tuple2[Event,Double]] = {
     if( i%2 == 1 && j%2 == 1 ) { // M
 

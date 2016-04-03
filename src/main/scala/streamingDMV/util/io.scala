@@ -97,3 +97,9 @@ object printDependencyParse {
   }
 }
 
+object printMorphs {
+  def apply( morphs: Seq[Tuple3[Int,String,String]] ) = {
+    morphs.sortBy( _._1 ).map{ m => s"${m._2}+${m._3}" }.mkString("< "," "," >" )
+  }
+}
+

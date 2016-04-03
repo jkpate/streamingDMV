@@ -86,6 +86,7 @@ object run {
     optsParser.accepts( "noResampling" )
     optsParser.accepts( "printResamplingEvents" )
     optsParser.accepts( "constituencyEval" )
+    optsParser.accepts( "morphsEval" )
     optsParser.accepts( "printInitialGrammar" )
     optsParser.accepts( "printFinalGrammar" )
 
@@ -233,6 +234,8 @@ object run {
       opts.has( "printIterScores" )
     val constituencyEval =
       opts.has( "constituencyEval" )
+    val morphsEval =
+      opts.has( "morphsEval" )
     val printInitialGrammar =
       opts.has( "printInitialGrammar" )
     val printFinalGrammar =
@@ -282,6 +285,7 @@ object run {
     println( s"uposCount: ${uposCount}" )
     println( s"randomSeed: ${randomSeed}" )
     println( s"constituencyEval: ${constituencyEval}" )
+    println( s"morphsEval: ${morphsEval}" )
     println( s"printInitialGrammar: ${printInitialGrammar}" )
     println( s"printFinalGrammar: ${printFinalGrammar}" )
 
@@ -792,6 +796,7 @@ object run {
           evalRate = evalEvery,
           logEvalRate = logEvalRate,
           constituencyEval = constituencyEval,
+          morphsEval = morphsEval,
           printIterScores = batchVB || printFirstMBScores || printIterScores,
           printItersReached = printItersReached
         )
@@ -847,6 +852,8 @@ object run {
           val thisTestTime =
             if( constituencyEval )
               p.printViterbiParses( testSet, s"it${sentencesProcessed}", evalMaxLength )
+            else if( morphsEval )
+              p.printViterbiDepParsesWithMorphs( testSet, s"it${sentencesProcessed}", evalMaxLength )
             else
               p.printViterbiDepParses( testSet, s"it${sentencesProcessed}", evalMaxLength )
 
@@ -903,11 +910,16 @@ object run {
       val parseStartTime = System.currentTimeMillis
       testSet.foreach{ utt =>
         if( constituencyEval ) {
-          val Parse( id, conParse, depParse ) = p.viterbiParse( utt )
+          val Parse( id, conParse, depParse, _ ) = p.viterbiParse( utt )
           println( s"it${sentencesProcessed}:constituency:${id} ${conParse}" )
           println( s"it${sentencesProcessed}:dependency:${id} ${printDependencyParse(depParse)}" )
+        } else if( morphsEval ) {
+          val Parse( id, conParse, depParse, morphs ) = p.viterbiParse( utt )
+          println( s"it${sentencesProcessed}:constituency:${id} ${conParse}" )
+          println( s"it${sentencesProcessed}:dependency:${id} ${printDependencyParse(depParse)}" )
+          println( s"it${sentencesProcessed}:morphology:${id} ${printMorphs(morphs)}" )
         } else {
-          val Parse( id, _, depParse ) = p.viterbiDepParse( utt )
+          val Parse( id, _, depParse, _ ) = p.viterbiDepParse( utt )
           println( s"it${sentencesProcessed}:dependency:${id} ${printDependencyParse(depParse)}" )
         }
         heldOutLogProb += p.logProb( utt )

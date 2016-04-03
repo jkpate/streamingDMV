@@ -516,16 +516,19 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
   abstract class Entry( i:Int, j:Int ) {
     def toDepParse:Set[DirectedArc]
     def toConParse:String
+    def toMorphs:Seq[Tuple3[Int,String,String]]
   }
 
   object ParseFailed extends Entry( -1, -1 ) {
     def toDepParse = Set()
     def toConParse = "PARSE FAILED"
+    def toMorphs = Seq()
   }
 
   case class LexEntry( index:Int ) extends Entry( index, index+1 ) {
     def toDepParse = Set()
     def toConParse = s"(${intString(index)} ${intString(index)})"
+    def toMorphs = Seq()
   }
 
   abstract class BinaryEntry( i:Int, k:Int, j:Int ) extends Entry( i, j ) {
@@ -557,6 +560,10 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
   def insertLexEntry( index:Int, pDec:Decoration ) =
     headTrace( index )( index+1 )( pDec ) = LexEntry( index )
 
+  def recoverRootMorphs( i:Int, dec:Decoration ) = (i,"","")
+  def recoverLeftwardMorphs( i:Int, dec:Decoration ) = (i,"","")
+  def recoverRightwardMorphs( i:Int, dec:Decoration ) = (i,"","")
+
   case class RootEntry( k:Int, rDec:DecorationPair ) extends BinaryEntry( 0, k, intString.length ) {
     val leftChild = findLeftRootChild( k, rDec.evenLeft )
     val rightChild = findRightRootChild( k, rDec.evenRight )
@@ -565,6 +572,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
       Set( DirectedArc( intString.length/2, (k-1)/2 ) ) ++
         leftChild.toDepParse ++ rightChild.toDepParse
     def toConParse = s"(*.${intString( k )} ${leftChild.toConParse} ${rightChild.toConParse} )"
+    def toMorphs = leftChild.toMorphs ++ rightChild.toMorphs ++ Seq(  recoverRootMorphs( k, rDec ) )
   }
 
   case class MEntry(
@@ -581,6 +589,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
       }
     } ++ leftChild.toDepParse ++ rightChild.toDepParse
     def toConParse = s"(M ${leftChild.toConParse} ${rightChild.toConParse} )"
+    def toMorphs = leftChild.toMorphs ++ rightChild.toMorphs
 
   }
 
@@ -592,6 +601,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
     def toDepParse =
       Set( DirectedArc( (j-1)/2, (k-1)/2 ) ) ++ leftChild.toDepParse ++ rightChild.toDepParse
     def toConParse = s"(L.${intString(j)} ${leftChild.toConParse} ${rightChild.toConParse})"
+    def toMorphs = leftChild.toMorphs ++ rightChild.toMorphs ++ Seq( recoverLeftwardMorphs( k, mDV ) )
   }
 
   case class RightwardEntry( i:Int, k:Int, j:Int, hV:Decoration, mDV:Decoration ) extends BinaryEntry( i, k, j ) {
@@ -601,6 +611,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
     def toDepParse =
       Set( DirectedArc( (i-1)/2, (k-1)/2 ) ) ++ leftChild.toDepParse ++ rightChild.toDepParse
     def toConParse = s"(R.${intString(i)} ${leftChild.toConParse} ${rightChild.toConParse})"
+    def toMorphs = leftChild.toMorphs ++ rightChild.toMorphs ++ Seq( recoverRightwardMorphs( k, mDV ) )
   }
 
 
@@ -679,7 +690,8 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
     Parse(
       utt.id,
       treeRoot.toConParse,
-      treeRoot.toDepParse
+      treeRoot.toDepParse,
+      Seq()
     )
   }
 
@@ -699,7 +711,27 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
           viterbiSynFill( i , j )
         }
     }
-    Parse( utt.id, "", treeRoot.toDepParse )
+    Parse( utt.id, "", treeRoot.toDepParse, Seq() )
+  }
+
+  def viterbiDepParseWithMorphs( utt:Utt ) = {
+    clearVitCharts
+    // intString = utt.string.flatMap{ w => Seq(w,w) }
+    intString = doubleString( utt.string )
+    lexString = doubleString( utt.lexes )
+    if( intString.length > headTrace.length ) {
+      buildVitCharts( intString.length )
+    }
+    (1 to ( intString.length )).foreach{ j =>
+      viterbiLexFill( j-1 )
+
+      if( j > 1 )
+        (0 to (j-2)).reverse.foreach{ i =>
+          viterbiSynFill( i , j )
+        }
+    }
+    
+    Parse( utt.id, "", treeRoot.toDepParse, treeRoot.toMorphs )
   }
 
 
@@ -901,6 +933,8 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
               val r = intString( k )
               val factorAndOutside = rootCellFactor( k, decorationPair )
 
+              // println( (i,k,j) + " + incrementing " + decorationPair.evenLeft + " " + lexString(k) )
+
               outsideChart( 0 )( k )( decorationPair.evenLeft ) = myPlus(
                 outsideChart( 0 )( k )( decorationPair.evenLeft ),
                 myTimes(
@@ -932,10 +966,17 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
           if( length > 1 ) {
             leftwardSplitSpecs( i, j ).foreach{ case ( pDec, splits ) =>
               splits.foreach{ case ( k, mDec, cDec ) =>
+                // if( !( outsideChart(i)(j).isDefinedAt(pDec) ) ) {
+                //   println( lexString(j) )
+                //   println( pDec )
+                // }
+                // assert( outsideChart(i)(j).isDefinedAt(pDec) )
                 val factorAndOutside = myTimes(
                   outsideChart( i )( j )( pDec ),
                     leftwardCellFactor( i, k, j, pDec, mDec, cDec )
                 )
+
+                // println( s"${(i,k,j)} incrementing $cDec from ${lexString(j)} --> ${lexString(k)} " )
 
                 // to left child
                 outsideChart( i )( k )( cDec ) = myPlus(
@@ -963,7 +1004,8 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
 
                 leftwardEventCounts( i, k, j, pDec, mDec, cDec, marginal ).foreach{ case (event, count) =>
                   if( !( count <= myOne + 1E-10 && count > myZero) ) {
-                    println( s"  $event: $count" )
+                    println( s"  ${(i,k,j)} $event: $count" )
+                    println( outsideChart( i )( j )( pDec ) )
                     println( insideChart( i )( k )( cDec ) )
                     println( stringProb )
                     println( insideChart( k )( j )( mDec ) )

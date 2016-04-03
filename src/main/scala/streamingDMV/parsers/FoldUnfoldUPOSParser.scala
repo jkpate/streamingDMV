@@ -134,6 +134,10 @@ abstract class FoldUnfoldUPOSParser[P<:UPOSArcFactoredParameters](
   abstract class Entry( i:Int, j:Int ) {
     def toDepParse:Set[DirectedArc]
     def toConParse:String
+
+    def toMorphs:Seq[Tuple3[Int,String,String]] = {
+      throw new UnsupportedOperationException( "toMorphs not implemented for UPOS parsers" )
+    }
   }
 
   object ParseFailed extends Entry( -1, -1 ) {
@@ -375,6 +379,20 @@ abstract class FoldUnfoldUPOSParser[P<:UPOSArcFactoredParameters](
         }
     }
     Parse( utt.id, "", viterbiRoot.toDepParse )
+  }
+
+  def viterbiDepParseWithMorphs( utt:Utt ) = {
+    clearCharts
+    intString = utt.string.flatMap{ w => Seq(w,w) }
+    (1 to ( intString.length )).foreach{ j =>
+      viterbiLexFill( j-1 )
+
+      if( j > 1 )
+        (0 to (j-2)).reverse.foreach{ i =>
+          viterbiSynFill( i , j )
+        }
+    }
+    Parse( utt.id, "", viterbiRoot.toDepParse, viterbiRoot.toMorphs )
   }
 
 

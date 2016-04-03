@@ -798,7 +798,25 @@ abstract class NewFoldUnfoldUPOSParser[P<:ArcFactoredParameters[MatrixDMVCounts]
           viterbiSynFill( i , j )
         }
     }
-    Parse( utt.id, "", treeRoot.toDepParse )
+    Parse( utt.id, "", treeRoot.toDepParse, Seq() )
+  }
+  def viterbiDepParseWithMorphs( utt:Utt ) = {
+    clearVitCharts
+    // intString = utt.string.flatMap{ w => Seq(w,w) }
+    intString = doubleString( utt.string )
+    lexString = doubleString( utt.lexes )
+    if( intString.length > headTrace.length ) {
+      buildVitCharts( intString.length )
+    }
+    (1 to ( intString.length )).foreach{ j =>
+      viterbiLexFill( j-1 )
+
+      if( j > 1 )
+        (0 to (j-2)).reverse.foreach{ i =>
+          viterbiSynFill( i , j )
+        }
+    }
+    Parse( utt.id, "", treeRoot.toDepParse, Seq() )
   }
 
 
