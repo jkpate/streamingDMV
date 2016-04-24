@@ -110,9 +110,10 @@ foreach my $fPath (@ARGV) {
           $vocabSize = $1;
         } elsif( /^([^:]+):\s+([^\s]+)$/ ) {
           $fields{$1} = $2;
-        } elsif( /^Job started/ || /^[Jj]ava/ || /^OpenJDK/) {
+        } elsif( /^Job started/ || /^[Jj]ava/ || /^OpenJDK/ || /ocessed$/) {
+          last;
         } else {
-          die "didn't find end of header\n$_\n" unless /^Using/;
+          die "didn't find end of header\n|$_|\n" unless /^Using/;
           last;
         }
       }
