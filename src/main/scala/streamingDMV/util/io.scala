@@ -13,24 +13,40 @@ object readStrings {
 object stringsToUtts {
   val dictionary = collection.mutable.HashMap[String,Int]()
 
-  def apply( lexString:Boolean, datasets:List[Array[String]]* ):Seq[List[Utt]] = {
+  def apply( lexString:Boolean, annotDouble:Boolean, datasets:List[Array[String]]* ):Seq[List[Utt]] = {
     datasets.map{ strings =>
       strings.map{ str =>
-        Utt(
-          str.head,
-          str.tail.map{ w =>
-            dictionary.getOrElseUpdate( w, dictionary.size )
-          },
-          if( lexString )
-            str.tail
-          else
-            Array()
-        )
+        if( annotDouble) {
+          val tokens = str.tail.map{_.split("#")}
+          Utt(
+            str.head,
+            tokens.map{ w =>
+              dictionary.getOrElseUpdate( w(1), dictionary.size )
+            },
+            if( lexString )
+              str.tail
+            else
+              Array(),
+            tokens.map{ _(0).toDouble }
+          )
+        } else {
+          Utt(
+            str.head,
+            str.tail.map{ w =>
+              dictionary.getOrElseUpdate( w, dictionary.size )
+            },
+            if( lexString )
+              str.tail
+            else
+              Array()
+          )
+        }
       }
     }
   }
 
 }
+
 
 object buildMiniBatches {
       // def apply(

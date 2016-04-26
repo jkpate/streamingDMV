@@ -57,7 +57,7 @@ abstract class FirstOrderArcFactoredParameters(
     // println( s"my zero is: ${myZero}" )
     val windowSize = math.ceil( corpus.size.toDouble/20 )
     var i = 1
-    corpus.foreach{ case Utt( _, s, w ) =>
+    corpus.foreach{ case Utt( _, s, w, _ ) =>
       (0 until s.length).foreach{ t =>
         val h = s(t)
         val hW = if( w.length > 0 ) { w(t) } else { "" }

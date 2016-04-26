@@ -46,7 +46,7 @@ trait SteppingParameters extends FirstOrderArcFactoredParameters with NumericalO
     var cEvents = Set[ChooseEvent]()
     var sEvents = Set[StopEvent]()
 
-    corpus.foreach{ case Utt( _, s, w ) =>
+    corpus.foreach{ case Utt( _, s, w, _ ) =>
       totalRootEvents += 1
       totalChooseEvents += s.length - 1
       totalStopEvents += 2* s.length

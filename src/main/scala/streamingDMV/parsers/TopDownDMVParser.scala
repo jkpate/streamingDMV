@@ -2,6 +2,7 @@ package streamingDMV.parsers
 
 import streamingDMV.labels._
 import streamingDMV.parameters.{TopDownDMVParameters,WeightsParameters,SteppingParameters,AdaDeltaParameters}
+import streamingDMV.parameters.BackoffIndepDepsParameters
 
 import scala.collection.mutable.{Map=>MMap}
 import scala.math.log
@@ -317,6 +318,67 @@ class TopDownDMVParser( parserSpec:ParserSpec) extends FirstOrderFoldUnfoldNOPOS
     theta.p_stop.trueLogProb( counts.stopCounts ) +
     theta.p_choose.trueLogProb( counts.chooseCounts )
   }
+
+}
+
+class TopDownDMVIndepDepsParser( parserSpec:ParserSpec ) extends TopDownDMVParser( parserSpec ) {
+  override val theta =
+    new TopDownDMVParameters( parserSpec.toParameterSpec) with BackoffIndepDepsParameters
+  // theta.fullyNormalized = true
+
+  // The independence assumption is enforced in the BackoffIndepDepsParameters trait
+  override def rightwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = {
+    val head = intString( i )
+    val hAnn = annotString( i )
+    val dep = intString( k )
+    val dAnn = annotString( k )
+
+    myTimes(
+      theta( ChooseEvent( head, hAnn, RightAtt, dep, dAnn ) ),
+        theta( StopEvent( head, hAnn, RightAtt, pDec, NotStop ) )
+    )
+  }
+
+  // The independence assumption is enforced in the BackoffIndepDepsParameters trait
+  override def leftwardCellFactor( i:Int, k:Int, j:Int, pDec:Decoration, mDec:MDecoration, cDec:Decoration ) = {
+    val head = intString( j )
+    val hAnn = annotString( j )
+    val dep = intString( k )
+    val dAnn = annotString( k )
+
+    myTimes(
+      theta( ChooseEvent( head, hAnn, LeftAtt, dep, dAnn ) ),
+        theta( StopEvent( head, hAnn, LeftAtt, pDec, NotStop ) )
+    )
+  }
+
+
+  // The independence assumption is enforced in the BackoffIndepDepsParameters trait
+  override def rootCellFactor( k:Int, rDec:DecorationPair ) = {
+    theta( RootEvent( intString( k ), annotString( k ) ) )
+  }
+
+  override def lexCellFactor( index:Int, pDec:Decoration ) = {
+    // println( intString.mkString("{"," ","}") )
+    val head = intString( index )
+    val hAnn = annotString( index )
+    val score = 
+      if( index%2 == 0 ) {
+        assert( pDec == Outermost || index > 0 )
+        theta( StopEvent( head, hAnn, LeftAtt, pDec, Stop ) )
+      } else {
+        assert( pDec == Outermost || index < intString.length-1 )
+        theta( StopEvent( head, hAnn, RightAtt, pDec, Stop ) )
+      }
+    if( !( score > myZero && score <= myOne + 0.00001 ) ) {
+      println( "TopDownDMVIndepDepsParser.lexCellFactor: " + (index,pDec,score) )
+      println( s"myZero: $myZero (${score > myZero})" )
+      println( s"myOne: $myOne (${score <= myOne +0.00001})" )
+    }
+    assert( ( score > myZero && score <= myOne + 0.00001 ) )
+    score
+  }
+
 
 }
 

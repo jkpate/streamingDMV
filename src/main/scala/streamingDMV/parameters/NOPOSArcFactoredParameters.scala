@@ -150,8 +150,6 @@ abstract class NOPOSArcFactoredParameters(
 
   def incrementCounts( counts:DMVCounts, updateEvents:Boolean = true ) {
 
-
-
     p_root.increment( counts.rootCounts, updateEvents )
 
     p_stop.increment( counts.stopCounts, updateEvents )

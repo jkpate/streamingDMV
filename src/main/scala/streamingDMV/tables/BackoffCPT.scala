@@ -105,8 +105,8 @@ class BackoffCPT[E<:Event with BackingOffEvent with Product](
     }
   }
 
-  def increment( events:Seq[E], inc:Double ) {
-    events.foreach{ increment( _, inc ) }
+  def increment( events:Seq[E], inc:Double, updateEvents:Boolean ) {
+    events.foreach{ increment( _, inc, updateEvents ) }
   }
 
   def increment( other:BackoffCPT[E], updateEvents:Boolean ) {

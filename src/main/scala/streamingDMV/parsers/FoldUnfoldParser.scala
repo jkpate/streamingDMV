@@ -61,6 +61,7 @@ abstract class FoldUnfoldParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]]
 
   var intString:Array[Int] = Array()
   var lexString:Array[String] = Array()
+  var annotString:Array[Double] = Array()
 
   def particlePerplexity:Double
   def ess:Double

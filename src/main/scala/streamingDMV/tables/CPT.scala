@@ -38,6 +38,8 @@ class CPT[E<:Event with Product](
     )
   var denoms = Map[NormKey,Set[E]]().withDefaultValue(Set())
 
+  def events = counts.keys
+
   var cacheLGammas = false
 
   def totalCounts = denomCounts.values.sum

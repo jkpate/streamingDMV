@@ -119,7 +119,7 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
 
       while( i < miniBatch.size ) {
         val s = miniBatch( i )
-        // println( s.string.mkString("[ ", ", ", " ]") )
+        println( s.string.mkString("[ ", ", ", " ]") )
         // println( s"    $i" )
         val counts = extractPartialCounts( s )
         // val counts = extractPartialCounts( s.string, fHat )

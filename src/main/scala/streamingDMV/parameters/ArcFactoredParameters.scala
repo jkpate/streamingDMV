@@ -14,6 +14,8 @@ abstract class ArcFactoredParameters[C<:DependencyCounts](
   val rootAlpha = parameterSpec.rootAlpha
   val stopAlpha = parameterSpec.stopAlpha
   val chooseAlpha = parameterSpec.chooseAlpha
+  val backoffAlpha = parameterSpec.backoffAlpha
+  val notBackoffAlpha = parameterSpec.notBackoffAlpha
   val squarelyNormalized = parameterSpec.squarelyNormalized
   val approximate = parameterSpec.approximate
   val randomSeed = parameterSpec.randomSeed

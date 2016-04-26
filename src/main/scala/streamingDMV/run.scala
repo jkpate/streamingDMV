@@ -297,8 +297,11 @@ object run {
 
     val lexString = infiniteModels || parserType == "TwoValenceStemSuffixParser"
 
+    val doubleAnnots = parserType == "TopDownBOIndepDeps"
+    println( "doubleAnnots: " + doubleAnnots )
+
     val Seq( trainSet, testSet ) =
-      stringsToUtts( lexString, trainWordStrings, testWordStrings )
+      stringsToUtts( lexString, doubleAnnots, trainWordStrings, testWordStrings )
 
     // lazy val totalVocabSize = (trainSet ++ testSet).flatMap{_.string}.toSet.size
     lazy val totalVocabSize = stringsToUtts.dictionary.size
@@ -596,6 +599,11 @@ object run {
       } else {
         if( parserType == "TwoValenceStemSuffixParser" ) {
           new TwoValenceStemSuffixParser( parserSpec )
+        } else if( parserType == "TopDownBOIndepDeps" ) {
+          println( "using TopDownDMVINdepDepsParser" )
+            new TopDownDMVIndepDepsParser(
+              parserSpec
+            )
         } else if( parserType == "TopDownDMVParser" ) {
           if( infiniteModels ) {
             println( "Using Infinite TopDownDMVParser" )

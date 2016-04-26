@@ -107,7 +107,8 @@ case class WordLengths( annotations:Array[Int] ) extends AnnotationStream[Int]
 case class DirectedArc( hIdx:Int, dIdx:Int )
 
 case class Parse( id:String, conParse:String, depParse:Set[DirectedArc], morphs:Seq[Tuple3[Int,String,String]] = Seq() )
-case class Utt( id:String, string:Array[Int], lexes:Array[String] = Array() ) {
+case class Utt( id:String, string:Array[Int], lexes:Array[String] = Array(),
+  annotations:Array[Double] = Array() ) {
   override def toString = "Utt( " + id + ", " + string.mkString("[ ",", "," ]") + ", " +
     lexes.mkString( "< ", ", ", " >" ) + " )" 
 }
@@ -330,14 +331,14 @@ trait GeneratingString {
 // object ChooseNorm {
 //   def apply( head:Int, dir:AttDir ) = new ChooseNorm( head, -1, dir )
 // }
-case class ChooseNorm( head:Int, headString:String, context:Int, dir:AttDir ) extends NormKey {
-  override lazy val byteBuffer = {
-    val bytes = if( context >= 0 ) ByteBuffer.allocate( 12 ) else ByteBuffer.allocate( 8 )
-    bytes.putInt( head )
-    if( context >= 0 ) bytes.putInt( context )
-    bytes.putInt( dir.hashCode )
-    bytes
-  }
+case class ChooseNorm( head:Int, hAnn:Double, headString:String, context:Int, dir:AttDir ) extends NormKey {
+  // override lazy val byteBuffer = {
+  //   val bytes = if( context >= 0 ) ByteBuffer.allocate( 12 ) else ByteBuffer.allocate( 8 )
+  //   bytes.putInt( head )
+  //   if( context >= 0 ) bytes.putInt( context )
+  //   bytes.putInt( dir.hashCode )
+  //   bytes
+  // }
   // override def fastHash( seed:Int ) = {
   //   // var hash = FastHash( head, seed )
   //   var hash = head*141650963 + FastHash( dir.hashCode, seed )
@@ -362,21 +363,22 @@ case class ChooseNorm( head:Int, headString:String, context:Int, dir:AttDir ) ex
 case class ChooseEvent(
   head:Int,
   headString:String = "",
+  hAnn:Double,
   context:Int,
   dir:AttDir,
-  /*v:Decoration,*/
   dep:Int,
-  gen:String = ""
+  gen:String = "",
+  dAnn:Double
 ) extends Event with GeneratingString /*[AttDir]*/ {
-  def normKey = ChooseNorm( head, headString, context, dir )
-  override lazy val byteBuffer = {
-    val bytes = if( context > 0 ) ByteBuffer.allocate( 16 ) else ByteBuffer.allocate( 12 )
-    bytes.putInt( head )
-    if( context > 0 ) bytes.putInt( context )
-    bytes.putInt( dir.hashCode )
-    bytes.putInt( dep )
-    bytes
-  }
+  def normKey = ChooseNorm( head, hAnn, headString, context, dir )
+  // override lazy val byteBuffer = {
+  //   val bytes = if( context > 0 ) ByteBuffer.allocate( 16 ) else ByteBuffer.allocate( 12 )
+  //   bytes.putInt( head )
+  //   if( context > 0 ) bytes.putInt( context )
+  //   bytes.putInt( dir.hashCode )
+  //   bytes.putInt( dep )
+  //   bytes
+  // }
   /*
   override lazy val hashCode = {
     if( headString.isEmpty && gen.isEmpty ) {
@@ -413,22 +415,34 @@ object ChooseEvent {
   // some parameterizations don't use valence or context for choose
 
   def apply( dir:AttDir, dep:Int ):ChooseEvent =
-    new ChooseEvent( -1, "", -1, dir, /*NoValence,*/ dep )
+    new ChooseEvent( -1, "", Double.NaN, -1, dir, dep, "", Double.NaN )
 
   def apply( head:Int, dir:AttDir, dep:Int ):ChooseEvent =
-    new ChooseEvent( head, "", -1, dir, /*NoValence,*/ dep )
+    new ChooseEvent( head, "", Double.NaN, -1, dir, dep, "", Double.NaN )
+
+  def apply( head:Int, hAnn:Double, dir:AttDir, dep:Int, dAnn:Double ):ChooseEvent =
+    new ChooseEvent( head, "", hAnn, -1, dir, dep, "", dAnn )
+
+  def apply( head:Int, dir:AttDir, dAnn:Double ):ChooseEvent =
+    new ChooseEvent( head, "", Double.NaN, -1, dir, -1, "", dAnn )
+
+  def apply( head:Int, hAnn:Double, dir:AttDir, dAnn:Double ):ChooseEvent =
+    new ChooseEvent( head, "", hAnn, -1, dir, -1, "", dAnn )
 
   def apply( head:String, dir:AttDir, dep:String ):ChooseEvent =
-    new ChooseEvent( -1, head, -1, dir, /*NoValence,*/ -1, dep )
+    new ChooseEvent( -1, head, Double.NaN, -1, dir, -1, dep, Double.NaN )
 
   def apply( head:Int, dir:AttDir, dep:Int, gen:String ):ChooseEvent =
-    new ChooseEvent( head, "", -1, dir, /*NoValence,*/ dep, gen )
+    new ChooseEvent( head, "", Double.NaN, -1, dir, dep, gen, Double.NaN )
 
   def apply( head:Int, context:Int, dir:AttDir, dep:Int, gen:String ):ChooseEvent =
-    new ChooseEvent( head, "", context, dir, /*NoValence,*/ dep, gen )
+    new ChooseEvent( head, "", Double.NaN, context, dir, dep, gen, Double.NaN )
 
   def apply( head:Int, context:Int, dir:AttDir, dep:Int ):ChooseEvent =
-    new ChooseEvent( head, "", context, dir, /*NoValence,*/ dep, "" )
+    new ChooseEvent( head, "", Double.NaN, context, dir, dep, "", Double.NaN )
+
+  // def apply( head:Int, dir:AttDir, dep:Int ):ChooseEvent =
+  //   new ChooseEvent( head, "", Double.NaN, context, dir, /*NoValence,*/ dep, "" )
 
   // def apply( head:Int, context:Int, dir:AttDir, dep:Int ):ChooseEvent =
   //   new ChooseEvent( head, context, dir, /*NoValence,*/ dep )
@@ -450,6 +464,7 @@ trait BackingOffEvent {
 
 case class LambdaChooseNorm(
   head:Int,
+  hAnn:Double,
   context:Int,
   dir:AttDir/*,
   v:Decoration*/
@@ -457,12 +472,13 @@ case class LambdaChooseNorm(
 
 case class LambdaChooseEvent(
   head:Int,
+  hAnn:Double,
   context:Int,
   dir:AttDir,
   // v:Decoration,
   bo:BackoffDecision
 ) extends Event /*[Tuple2[AttDir,BackoffDecision]]*/ with BackingOffEvent {
-  def normKey = LambdaChooseNorm( head, context, dir/*, v*/ )
+  def normKey = LambdaChooseNorm( head, hAnn, context, dir/*, v*/ )
   /*def closedSpec = (dir,bo)
   def openSpec = (head, context, 0)*/
   def backOff = bo
@@ -470,6 +486,7 @@ case class LambdaChooseEvent(
 
 case class LambdaStopNorm(
   head:Int,
+  hAnn:Double,
   context:Int,
   dir:AttDir,
   v:Decoration
@@ -477,17 +494,22 @@ case class LambdaStopNorm(
 
 object LambdaStopEvent {
   def apply( head:Int, dir:AttDir, bo:BackoffDecision ):LambdaStopEvent =
-    LambdaStopEvent( head, -1, dir, NoValence, bo )
+    new LambdaStopEvent( head, Double.NaN, -1, dir, NoValence, bo )
+  def apply( head:Int, context:Int, dir:AttDir, v:Decoration, bo:BackoffDecision ) =
+    new LambdaStopEvent( head, Double.NaN, context, dir, v, bo )
+  def apply( head:Int, hAnn:Double, dir:AttDir, v:Decoration, bo:BackoffDecision ) =
+    new LambdaStopEvent( head, hAnn, -1, dir, v, bo )
 }
 
 case class LambdaStopEvent(
   head:Int,
+  hAnn:Double,
   context:Int,
   dir:AttDir,
   v:Decoration,
   bo:BackoffDecision
 ) extends Event /*[Tuple3[AttDir,Decoration,BackoffDecision]]*/ with BackingOffEvent {
-  def normKey = LambdaStopNorm( head, context, dir, v )
+  def normKey = LambdaStopNorm( head, hAnn, context, dir, v )
   def backOff = bo
   /*def closedSpec = (dir,v,bo)
   def openSpec = (head, context, 0)*/
@@ -496,42 +518,33 @@ case class LambdaStopEvent(
 
 
 object LambdaChooseEvent {
-  // def apply(
-  //   head:Int,
-  //   dir:AttDir,
-  //   v:Decoration,
-  //   bo:BackoffDecision
-  // ):LambdaChooseEvent = LambdaChooseEvent( head, -1, dir, v, bo )
-  def apply(
-    head:Int,
-    dir:AttDir,
-    bo:BackoffDecision
-  ):LambdaChooseEvent = LambdaChooseEvent( head, -1, dir, /*NoValence,*/ bo )
-  // def apply(
-  //   head:Int,
-  //   context:Int,
-  //   dir:AttDir,
-  //   bo:BackoffDecision
-  // ):LambdaChooseEvent = LambdaChooseEvent( head, context, dir, NoValence, bo )
+  def apply( head:Int, dir:AttDir, bo:BackoffDecision):LambdaChooseEvent =
+    LambdaChooseEvent( head, Double.NaN, -1, dir, /*NoValence,*/ bo )
+  def apply( head:Int, hAnn:Double, dir:AttDir, bo:BackoffDecision):LambdaChooseEvent =
+    LambdaChooseEvent( head, hAnn, -1, dir, /*NoValence,*/ bo )
 }
 
 object StopEvent {
   def apply( head:Int, dir:AttDir, dec:StopDecision ):StopEvent =
-    StopEvent( head, dir, NoValence, dec )
+    StopEvent( head, Double.NaN, dir, NoValence, dec )
+  def apply( head:Int, hAnn:Double, dir:AttDir, dec:StopDecision ):StopEvent =
+    StopEvent( head, hAnn, dir, NoValence, dec )
+  def apply( head:Int, dir:AttDir, v:Decoration, dec:StopDecision ):StopEvent =
+    StopEvent( head, Double.NaN, dir, v, dec )
   def apply( dir:AttDir, dec:StopDecision ):StopEvent =
-    StopEvent( -1, dir, NoValence, dec )
+    StopEvent( -1, Double.NaN, dir, NoValence, dec )
 }
-case class StopEvent( head:Int, dir:AttDir, v:Decoration, dec:StopDecision ) extends
+case class StopEvent( head:Int, hAnn:Double, dir:AttDir, v:Decoration, dec:StopDecision ) extends
 Event /*[Tuple3[AttDir,Decoration,StopDecision]]*/ {
-  def normKey = StopNorm( head, dir, v )
-  override lazy val byteBuffer = {
-    val bytes = if( v != NoValence ) ByteBuffer.allocate( 16 ) else ByteBuffer.allocate( 12 )
-    bytes.putInt( head )
-    bytes.putInt( dir.hashCode )
-    if( v != NoValence ) bytes.putInt( v.hashCode )
-    bytes.putInt( dec.hashCode )
-    bytes
-  }
+  def normKey = StopNorm( head, hAnn, dir, v )
+  // override lazy val byteBuffer = {
+  //   val bytes = if( v != NoValence ) ByteBuffer.allocate( 16 ) else ByteBuffer.allocate( 12 )
+  //   bytes.putInt( head )
+  //   bytes.putInt( dir.hashCode )
+  //   if( v != NoValence ) bytes.putInt( v.hashCode )
+  //   bytes.putInt( dec.hashCode )
+  //   bytes
+  // }
 
   // override def fastHash( seed:Int ) = {
   //   // var hash = FastHash( head, seed )
@@ -559,14 +572,14 @@ Event /*[Tuple3[AttDir,Decoration,StopDecision]]*/ {
   //   }
   // }
 }
-case class StopNorm( head:Int, dir:AttDir, v:Decoration ) extends NormKey {
-  override lazy val byteBuffer = {
-    val bytes = if( v != NoValence ) ByteBuffer.allocate( 12 ) else ByteBuffer.allocate( 8 )
-    bytes.putInt( head )
-    bytes.putInt( dir.hashCode )
-    if( v != NoValence ) bytes.putInt( v.hashCode )
-    bytes
-  }
+case class StopNorm( head:Int, hAnn:Double, dir:AttDir, v:Decoration ) extends NormKey {
+  // override lazy val byteBuffer = {
+  //   val bytes = if( v != NoValence ) ByteBuffer.allocate( 12 ) else ByteBuffer.allocate( 8 )
+  //   bytes.putInt( head )
+  //   bytes.putInt( dir.hashCode )
+  //   if( v != NoValence ) bytes.putInt( v.hashCode )
+  //   bytes
+  // }
   // override def fastHash( seed:Int ) = {
   //   // var hash = FastHash( head, seed )
   //   var hash = head*141650963 + FastHash( dir.hashCode, seed )
@@ -589,8 +602,14 @@ case class StopNorm( head:Int, dir:AttDir, v:Decoration ) extends NormKey {
 
 object RootEvent {
   def apply():RootEvent = RootEvent( -1 )
+
+  def apply( ann:Double ):RootEvent =
+    RootEvent( -1, "", ann )
+
+  def apply( root:Int, ann:Double ):RootEvent =
+    RootEvent( root, "", ann )
 }
-case class RootEvent( root:Int = -1, gen:String = "" ) extends Event with GeneratingString {
+case class RootEvent( root:Int = -1, gen:String = "", ann:Double = Double.NaN ) extends Event with GeneratingString {
   override lazy val byteBuffer = {
     val bytes = ByteBuffer.allocate( 8 )
     bytes.putInt( root )

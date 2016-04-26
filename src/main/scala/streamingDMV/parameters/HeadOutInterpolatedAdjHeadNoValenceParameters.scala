@@ -8,30 +8,12 @@ import collection.mutable.{Set=>MSet}
 import math.exp
 
 class HeadOutInterpolatedAdjHeadNoValenceParameters(
-  // rootAlpha:Double,
-  // stopAlpha:Double,
-  // chooseAlpha:Double,
-  // backoffAlpha:Double,
-  // notBackoffAlpha:Double,
-  // squarelyNormalized:Int = 0,
-  // approximate:Boolean = false,
-  // randomSeed:Int
   parameterSpec:ParameterSpec
-// ) extends NOPOSArcFactoredParameters(
 ) extends ArcFactoredParameters[BackoffChooseDMVCounts](
-  // rootAlpha,
-  // stopAlpha,
-  // chooseAlpha/*,
-  // squarelyNormalized,
-  // approximate,
-  // randomSeed*/
   parameterSpec
 ) {
 
   val rand = new util.Random( randomSeed )
-
-  val backoffAlpha = parameterSpec.backoffAlpha
-  val notBackoffAlpha = parameterSpec.notBackoffAlpha
 
   val p_root =
     if( logSpace )

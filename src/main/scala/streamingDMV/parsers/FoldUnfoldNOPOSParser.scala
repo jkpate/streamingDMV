@@ -71,6 +71,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
   def insidePass( utt:Utt ) = {
     intString = doubleString( utt.string )
     lexString = doubleString( utt.lexes )
+    annotString = doubleString( utt.annotations )
 
     if( intString.length > insideChart.length )
       buildCharts( intString.length )
@@ -676,6 +677,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
     // intString = utt.string.flatMap{ w => Seq(w,w) }
     intString = doubleString( utt.string )
     lexString = doubleString( utt.lexes )
+    annotString = doubleString( utt.annotations )
     if( intString.length > headTrace.length ) {
       buildVitCharts( intString.length )
     }
@@ -700,6 +702,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
     // intString = utt.string.flatMap{ w => Seq(w,w) }
     intString = doubleString( utt.string )
     lexString = doubleString( utt.lexes )
+    annotString = doubleString( utt.annotations )
     if( intString.length > headTrace.length ) {
       buildVitCharts( intString.length )
     }
@@ -719,6 +722,7 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
     // intString = utt.string.flatMap{ w => Seq(w,w) }
     intString = doubleString( utt.string )
     lexString = doubleString( utt.lexes )
+    annotString = doubleString( utt.annotations )
     if( intString.length > headTrace.length ) {
       buildVitCharts( intString.length )
     }
