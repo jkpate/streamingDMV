@@ -600,7 +600,7 @@ object run {
         if( parserType == "TwoValenceStemSuffixParser" ) {
           new TwoValenceStemSuffixParser( parserSpec )
         } else if( parserType == "TopDownBOIndepDeps" ) {
-          println( "using TopDownDMVINdepDepsParser" )
+          println( "Using TopDownDMVIndepDepsParser" )
             new TopDownDMVIndepDepsParser(
               parserSpec
             )
@@ -733,12 +733,13 @@ object run {
       println( "do harmonic" )
       if( stochasticVB )
         p.harmonicInit( trainSet )
-      else if( collapsedVB ) { {
+      else if( collapsedVB ) {
         println( "do collapsed random" )
         p.sentenceSpecificHarmonicInit( trainSet )
-      }
-      } else
+      } else {
+        println( "Setting constant harmonic counts" )
         p.setConstantHarmonicCounts( trainSet )
+      }
     } else if( collapsedVB ) {
       println( "do collapsed random" )
       p.sentenceSpecificRandomInit( trainSet )
@@ -764,7 +765,16 @@ object run {
     //     shuffledTrainSet.toList.drop( initialMiniBatchSize ).grouped( miniBatchSize ).toList
 
     // println( s"largeMiniBatchEvery" )
-    (1 to epochCount).foreach{ _ =>
+    var i = 0
+    var sentencesSinceLastEval = 0
+    var evalOffset = 0
+    (1 to epochCount).foreach{ epochNum =>
+      if( epochCount > 1 ) {
+        println( s"starting epoch $epochNum" )
+        println( s"evalEvery: $evalEvery" )
+        println( s"evalOffset: $evalOffset" )
+        println( s"sentencesProcessed: $evalEvery" )
+      }
       val shuffledTrainSet = r.shuffle( trainSet.toList )
       val miniBatches = buildMiniBatches(
         corpus = shuffledTrainSet,
@@ -774,23 +784,14 @@ object run {
         batchVB = batchVB
       )
 
-      // println( miniBatches.map{ _.size }.mkString("\n") )
-
-      // if( !(miniBatches.map{_.size}.sum == shuffledTrainSet.size) ) {
-      //   println( miniBatches.map{_.size}.sum + " != " + shuffledTrainSet.size )
-      // }
       assert( batchVB || miniBatches.map{_.size}.sum == shuffledTrainSet.size )
 
-      var i = 0
-      var sentencesSinceLastEval = 0
-      // ( firstMiniBatch :: subsequentMiniBatches ).foreach{ mb =>
       miniBatches.foreach{ mb =>
 
 
         val startTime = System.currentTimeMillis
         val printFirstMBScores =
           (initialMiniBatchSize != miniBatchSize) && ( i == 0 )
-        // p.miniBatchVB(
         if( printIterScores || printItersReached || batchVB || printIterScores )
           println( s"===== MINI BATCH $i" )
 
@@ -809,25 +810,19 @@ object run {
           printItersReached = printItersReached
         )
         val endTime = System.currentTimeMillis
+
+        if( totalMiniBatches == 0 ) println( "finished first minibatch" )
         totalDur += endTime - startTime
         miniBatchDur += endTime - startTime
         totalIters += mbIters
         totalMiniBatches += 1
-
-
-
-        // // DELETE BELOW
-        // println( s"iteration $i grammar" )
-        // p.theta.printOut()
-        // println( s"end $i -------\n\n\n" )
-
 
         sentencesSinceLastEval += mb.size
         sentencesProcessed += mb.size
 
                                               // Particle weights will be uniform if we resample right
                                               // before evaluation...
-        if( particleFilter && (!noResampling) && sentencesProcessed % evalEvery != 0 ) {
+        if( particleFilter && (!noResampling) && sentencesProcessed % ( evalEvery + evalOffset ) != 0 ) {
           val resamplingStartTime = System.currentTimeMillis
           val ess = p.ess
           if( ess < numParticles/2 ) {
@@ -851,12 +846,11 @@ object run {
         }
 
         if(
-          sentencesProcessed%evalEvery == 0 && !(
+          ( sentencesProcessed - evalOffset )%evalEvery == 0/* && !(
             sentencesProcessed == initialMiniBatchSize && incIters == 1
-          )
+          )*/
         ) {
 
-          // val ( thisHeldOutLogProb, thisTestTime ) =
           val thisTestTime =
             if( constituencyEval )
               p.printViterbiParses( testSet, s"it${sentencesProcessed}", evalMaxLength )
@@ -866,15 +860,9 @@ object run {
               p.printViterbiDepParses( testSet, s"it${sentencesProcessed}", evalMaxLength )
 
 
-              // val thisTestTime = System.currentTimeMillis - parseStartTime
-          // heldOutLogProb += thisHeldOutLogProb
           totalTestDur += thisTestTime
           testEvents += testSet.size
 
-            // if( i == 0 )
-            //   miniBatchDur/(((initialMiniBatchSize + (evalEvery-1)*miniBatchSize)).toDouble)
-            // else
-            //   miniBatchDur/evalEvery.toDouble
 
           val timePerSentence = miniBatchDur / sentencesSinceLastEval
 
@@ -885,6 +873,11 @@ object run {
           }
           miniBatchDur = 0
           sentencesSinceLastEval = 0
+        } else if( epochNum > 1 ) {
+          println( s"epochNum: $epochNum" )
+          println( s"evalEvery: $evalEvery" )
+          println( s"evalOffset: $evalOffset" )
+          println( s"sentencesProcessed: $sentencesProcessed" )
         }
         i += 1
 
@@ -892,27 +885,25 @@ object run {
           logEvalRate &&
           scala.math.log10( sentencesProcessed )%1 == 0 &&
           sentencesProcessed > evalEvery &&
-          ( sentencesProcessed > initialMiniBatchSize /* || incIters != 1 */ )
+          ( sentencesProcessed > initialMiniBatchSize )
         ) {
           evalEvery *= 10
           println( s"after processing $sentencesProcessed we eval every $evalEvery" )
         } else if(
-          ( sentencesProcessed >= evalEvery*10 )// && incIters == 1
+          ( sentencesProcessed >= evalEvery*10 )
         ) {
-          // evalEvery = initialMiniBatchSize
-            // evalEvery should be nearest power of ten below sentencesProcessed
           evalEvery = pow( 10, floor( log10( sentencesProcessed ) ) ).toInt
         }
       }
+
+      if( epochCount > 1 && stochasticVB ) { //&& !( ( sentencesProcessed - evalOffset )%evalEvery == 0 ) ) {
+        evalOffset += miniBatches.last.size
+      }
     }
 
-    // println( s"sentencesProcessed: $sentencesProcessed" )
-    // println( s"trainSet.size: ${trainSet.size}" )
-    // assert( sentencesProcessed == trainSet.size.toDouble )
     println( s"overall training took ${totalDur/(sentencesProcessed)}ms/sentence" )
 
-    val trainingSentCount = trainSet.size
-      // ( firstMiniBatch :: subsequentMiniBatches ).map{ _.size }.sum
+    val trainingSentCount = trainSet.size*epochCount
     if( !( trainingSentCount % evalEvery == 0 ) ) {
       var heldOutLogProb = 0D
       val parseStartTime = System.currentTimeMillis
@@ -939,10 +930,6 @@ object run {
       println( s"it${sentencesProcessed}:ess:${p.ess}" )
     }
 
-    // if( particleFilter ) {
-    //   println( s"resampled ${resamplingEventCounts} times" )
-    //   println( s"${resamplingDur/sentencesProcessed}ms resampling per training sentence")
-    // }
 
     p.theta.printTotalCountsByType
 

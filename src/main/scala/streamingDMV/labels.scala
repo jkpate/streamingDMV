@@ -191,6 +191,16 @@ case object LeftAtt extends AttDir {
   override val hashCode = 32452867
   // override val hashCode = 41
 }
+case object LeftAnnotAtt extends AttDir {
+  val flip = RightAnnotAtt
+  // override val hashCode = 32452867
+  // override val hashCode = 41
+}
+case object RightAnnotAtt extends AttDir {
+  val flip = LeftAnnotAtt
+  // override val hashCode = 32452867
+  // override val hashCode = 41
+}
 case object RightAtt extends AttDir {
   val flip = LeftAtt
   override val hashCode = 15485863
@@ -414,35 +424,35 @@ case class ChooseEvent(
 object ChooseEvent {
   // some parameterizations don't use valence or context for choose
 
-  def apply( dir:AttDir, dep:Int ):ChooseEvent =
-    new ChooseEvent( -1, "", Double.NaN, -1, dir, dep, "", Double.NaN )
+  // def apply( dir:AttDir, dep:Int ):ChooseEvent =
+  //   new ChooseEvent( -1, "", -1D, -1, dir, dep, "", -1D )
 
-  def apply( head:Int, dir:AttDir, dep:Int ):ChooseEvent =
-    new ChooseEvent( head, "", Double.NaN, -1, dir, dep, "", Double.NaN )
+  // def apply( head:Int, dir:AttDir, dep:Int ):ChooseEvent =
+  //   new ChooseEvent( head, "", -1D, -1, dir, dep, "", -1D )
 
   def apply( head:Int, hAnn:Double, dir:AttDir, dep:Int, dAnn:Double ):ChooseEvent =
     new ChooseEvent( head, "", hAnn, -1, dir, dep, "", dAnn )
 
   def apply( head:Int, dir:AttDir, dAnn:Double ):ChooseEvent =
-    new ChooseEvent( head, "", Double.NaN, -1, dir, -1, "", dAnn )
+    new ChooseEvent( head, "", -1D, -1, dir, -1, "", dAnn )
 
   def apply( head:Int, hAnn:Double, dir:AttDir, dAnn:Double ):ChooseEvent =
     new ChooseEvent( head, "", hAnn, -1, dir, -1, "", dAnn )
 
   def apply( head:String, dir:AttDir, dep:String ):ChooseEvent =
-    new ChooseEvent( -1, head, Double.NaN, -1, dir, -1, dep, Double.NaN )
+    new ChooseEvent( -1, head, -1D, -1, dir, -1, dep, -1D )
 
   def apply( head:Int, dir:AttDir, dep:Int, gen:String ):ChooseEvent =
-    new ChooseEvent( head, "", Double.NaN, -1, dir, dep, gen, Double.NaN )
+    new ChooseEvent( head, "", -1D, -1, dir, dep, gen, -1D )
 
   def apply( head:Int, context:Int, dir:AttDir, dep:Int, gen:String ):ChooseEvent =
-    new ChooseEvent( head, "", Double.NaN, context, dir, dep, gen, Double.NaN )
+    new ChooseEvent( head, "", -1D, context, dir, dep, gen, -1D )
 
   def apply( head:Int, context:Int, dir:AttDir, dep:Int ):ChooseEvent =
-    new ChooseEvent( head, "", Double.NaN, context, dir, dep, "", Double.NaN )
+    new ChooseEvent( head, "", -1D, context, dir, dep, "", -1D )
 
   // def apply( head:Int, dir:AttDir, dep:Int ):ChooseEvent =
-  //   new ChooseEvent( head, "", Double.NaN, context, dir, /*NoValence,*/ dep, "" )
+  //   new ChooseEvent( head, "", -1D, context, dir, /*NoValence,*/ dep, "" )
 
   // def apply( head:Int, context:Int, dir:AttDir, dep:Int ):ChooseEvent =
   //   new ChooseEvent( head, context, dir, /*NoValence,*/ dep )
@@ -494,9 +504,9 @@ case class LambdaStopNorm(
 
 object LambdaStopEvent {
   def apply( head:Int, dir:AttDir, bo:BackoffDecision ):LambdaStopEvent =
-    new LambdaStopEvent( head, Double.NaN, -1, dir, NoValence, bo )
+    new LambdaStopEvent( head, -1D, -1, dir, NoValence, bo )
   def apply( head:Int, context:Int, dir:AttDir, v:Decoration, bo:BackoffDecision ) =
-    new LambdaStopEvent( head, Double.NaN, context, dir, v, bo )
+    new LambdaStopEvent( head, -1D, context, dir, v, bo )
   def apply( head:Int, hAnn:Double, dir:AttDir, v:Decoration, bo:BackoffDecision ) =
     new LambdaStopEvent( head, hAnn, -1, dir, v, bo )
 }
@@ -519,20 +529,20 @@ case class LambdaStopEvent(
 
 object LambdaChooseEvent {
   def apply( head:Int, dir:AttDir, bo:BackoffDecision):LambdaChooseEvent =
-    LambdaChooseEvent( head, Double.NaN, -1, dir, /*NoValence,*/ bo )
+    LambdaChooseEvent( head, -1D, -1, dir, /*NoValence,*/ bo )
   def apply( head:Int, hAnn:Double, dir:AttDir, bo:BackoffDecision):LambdaChooseEvent =
     LambdaChooseEvent( head, hAnn, -1, dir, /*NoValence,*/ bo )
 }
 
 object StopEvent {
   def apply( head:Int, dir:AttDir, dec:StopDecision ):StopEvent =
-    StopEvent( head, Double.NaN, dir, NoValence, dec )
+    StopEvent( head, -1D, dir, NoValence, dec )
   def apply( head:Int, hAnn:Double, dir:AttDir, dec:StopDecision ):StopEvent =
     StopEvent( head, hAnn, dir, NoValence, dec )
   def apply( head:Int, dir:AttDir, v:Decoration, dec:StopDecision ):StopEvent =
-    StopEvent( head, Double.NaN, dir, v, dec )
+    StopEvent( head, -1D, dir, v, dec )
   def apply( dir:AttDir, dec:StopDecision ):StopEvent =
-    StopEvent( -1, Double.NaN, dir, NoValence, dec )
+    StopEvent( -1, -1D, dir, NoValence, dec )
 }
 case class StopEvent( head:Int, hAnn:Double, dir:AttDir, v:Decoration, dec:StopDecision ) extends
 Event /*[Tuple3[AttDir,Decoration,StopDecision]]*/ {
@@ -609,7 +619,7 @@ object RootEvent {
   def apply( root:Int, ann:Double ):RootEvent =
     RootEvent( root, "", ann )
 }
-case class RootEvent( root:Int = -1, gen:String = "", ann:Double = Double.NaN ) extends Event with GeneratingString {
+case class RootEvent( root:Int = -1, gen:String = "", ann:Double = -1D ) extends Event with GeneratingString {
   override lazy val byteBuffer = {
     val bytes = ByteBuffer.allocate( 8 )
     bytes.putInt( root )
@@ -866,7 +876,7 @@ case class DMVCounts(
     }
   def printChooseEvents =
     chooseCounts.counts.keys.toSeq.foreach{ e =>
-      println( "\t" + e )
+      println( "\t" + e + ": " + math.exp( chooseCounts(e) ) )
     }
 
   // TODO implement for logSpace = true

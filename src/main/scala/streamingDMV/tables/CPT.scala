@@ -230,11 +230,13 @@ class CPT[E<:Event with Product](
   def increment( event:E, inc:Double, updateEvents:Boolean = true ) = {
     val n = event.normKey
     if( updateEvents ) {
-      // denoms.getOrElseUpdate( n, MSet() ) += event
-      // println( s"$n; $event" )
-      // println( "before update: " + denoms(n).mkString(" , " ) )
+        // // denoms.getOrElseUpdate( n, MSet() ) += event
+        // println( s"$n; $event" )
+        // // println( "before update: " + denoms(n).mkString(" , " ) )
+        // println( "before update: " + denoms(n).size )
       denoms += n -> { denoms( n ) + event }
-      // println( "after update: " + denoms(n).mkString(" , " ) )
+        // // println( "after update: " + denoms(n).mkString(" , " ) )
+        // println( "after update: " + denoms(n).size + "\n\n" )
     }
     // println( " === NON-LOG SPACE INCREMENT ===" )
     // validateDenoms()
@@ -249,13 +251,13 @@ class CPT[E<:Event with Product](
 
         cachedEventLGammas += event -> newEventLGamma
       }
-        // println( s"adding $inc" )
-        // println( s"before $event: ${counts.exactCounts( event ) }" )
+      // println( s"adding $inc" )
+      // println( s"before $event: ${counts.exactCounts( event ) }" )
       counts.increment( event, inc )
-        // println( s"after $event: ${counts.exactCounts( event ) }" )
-        // println( s"before $n: ${denomCounts.exactCounts( n ) }" )
+      // println( s"after $event: ${counts.exactCounts( event ) }" )
+      // println( s"before $n: ${denomCounts.exactCounts( n ) }" )
       denomCounts.increment( n, inc )
-        // println( s"after $n: ${denomCounts.exactCounts( n ) }" )
+      // println( s"after $n: ${denomCounts.exactCounts( n ) }" )
     }
     // validateDenoms()
 

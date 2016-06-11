@@ -58,11 +58,11 @@ class TwoValenceStemSuffixParser(
     val ( stem, suffix) = lexString( i ).splitAt( split )
     (i, stem, suffix )
   }
-  override def recoverLeftwardMorphs( i:Int, mDV:Decoration ) = {
+  override def recoverLeftwardMorphs( j:Int, mDV:Decoration ) = {
     val MorphSplitDecoration( _, split ) = mDV
 
-    val ( stem, suffix) = lexString( i ).splitAt( split )
-    (i, stem, suffix )
+    val ( stem, suffix) = lexString( j ).splitAt( split )
+    (j, stem, suffix )
   }
 
   override def findLeftRootChild( k:Int, rDec:Decoration ) = headTrace( 0 )( k )( rDec )

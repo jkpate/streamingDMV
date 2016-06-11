@@ -24,7 +24,7 @@ object stringsToUtts {
               dictionary.getOrElseUpdate( w(1), dictionary.size )
             },
             if( lexString )
-              str.tail
+              tokens.map( _(1) )
             else
               Array(),
             tokens.map{ _(0).toDouble }
