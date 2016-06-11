@@ -92,6 +92,8 @@ trait SteppingParameters extends FirstOrderArcFactoredParameters with NumericalO
 
   def step( counts:DMVCounts, rEvents:Double, cEvents:Double, sEvents:Double, initial:Boolean =
     false ) {
+    // println( "received counts:" )
+    // println( counts.printTotalCountsByType )
     if( initial ) {
       p_root.step( counts.rootCounts, totalRootEvents / rEvents, true )
       p_choose.step( counts.chooseCounts, totalChooseEvents / cEvents, true )

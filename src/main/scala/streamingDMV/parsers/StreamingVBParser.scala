@@ -95,8 +95,9 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
 
     // lastFHat.printTotalCountsByType
 
-        // println( s"incrementing theta by lastFHat" )
+    // println( s"incrementing theta by lastFHat" )
     theta.incrementCounts( lastFHat, updateEvents = false )
+    // println( s"done incrementing" )
     // theta.incrementCounts( lastFHat )
 
     var lastMiniBatchScores = 1D
@@ -119,7 +120,7 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
 
       while( i < miniBatch.size ) {
         val s = miniBatch( i )
-        println( s.string.mkString("[ ", ", ", " ]") )
+        // println( s.id + ": " + s.string.mkString("[ ", ", ", " ]") )
         // println( s"    $i" )
         val counts = extractPartialCounts( s )
         // val counts = extractPartialCounts( s.string, fHat )
@@ -165,7 +166,7 @@ abstract class StreamingVBParser[C<:DependencyCounts,P<:ArcFactoredParameters[C]
           sentencesProcessed > evalEvery
         ) {
           evalEvery *= 10
-          println( s"after processing $sentencesProcessed of largeMiniBatch we eval every $evalEvery" )
+          println( s"StreamingVBParser: after processing $sentencesProcessed of largeMiniBatch we eval every $evalEvery" )
         }
       }
 

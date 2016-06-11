@@ -134,7 +134,8 @@ class TableWrapper[E<:FastHashable](
               if( integerDec )
                 math.floor( exactCounts(event) - dec )
               else
-                exactCounts(event) - dec
+                // - 1E-11 so that floating point imprecision becomes zero again
+                ( exactCounts(event) - dec ) - 1E-11
             ).max
           }
         )

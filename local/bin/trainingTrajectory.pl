@@ -76,8 +76,14 @@ print join ",",
   ( map { "undirected.$_" } @maxLengths ),
   ( map { "ned.$_" } @maxLengths );
 
+my $totalFiles = scalar @ARGV;
+print STDERR "$totalFiles evaluation files";
+
+my $fileNum = 1;
+
 foreach my $fPath (@ARGV) {
   print STDERR $fPath;
+  print STDERR "Processing file $fileNum/$totalFiles";
 
   # my $cacheName = "cachedLines/".(basename( $fPath ))."-".(basename($gold)).".lines";
   my $cacheName = "$cacheDir/".(basename( $fPath ))."-".(basename($gold)).".lines";
@@ -112,7 +118,7 @@ foreach my $fPath (@ARGV) {
         } elsif( /^([^:]+):\s+([^\s]+)$/ ) {
           $fields{$1} = $2;
         } elsif( /^Job started/ || /^[Jj]ava/ || /^OpenJDK/ || /ocessed$/) {
-          last;
+          next;
         } else {
           die "didn't find end of header\n|$_|\n" unless /^Using/;
           last;
@@ -195,6 +201,7 @@ foreach my $fPath (@ARGV) {
 
   }
 
+  $fileNum ++;
 }
 
 
