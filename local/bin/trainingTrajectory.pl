@@ -49,6 +49,7 @@ my @fields = (
   "kappa",
   "incIters",
   "incConvergence",
+  "epochCount",
   "reservoirSize",
   "particleFilter",
   "noResampling",
@@ -139,6 +140,7 @@ foreach my $fPath (@ARGV) {
     $fields{collapsedVB} = "false" if not defined $fields{collapsedVB};
     $fields{tau} = 1 if not defined $fields{tau};
     $fields{kappa} = 0.9 if not defined $fields{kappa};
+    $fields{kappa} = 1 if not defined $fields{epochCount};
     # $fields{possiblyResampleEvery} = $fields{miniBatchSize} if not defined $fields{possiblyResampleEvery};
 
     die "$trainingStrings $testingStrings $trainingWords $testingWords $vocabSize" unless 
