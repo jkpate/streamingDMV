@@ -77,8 +77,8 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
     approximate = false,
     reservoirSize = reservoirSize,
     uposCount = uposCount,
-    logSpace = false,
-    // logSpace = true,
+    // logSpace = false,
+    logSpace = true,
     kappa = 0.9,
     tau = 1
   )

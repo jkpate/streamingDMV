@@ -26,6 +26,21 @@ class TwoValenceStemSuffixParser(
     stringProb = myZero
   }
 
+  override def clearVitCharts {
+    (0 until headTrace.length ).foreach{ i =>
+      ((i+1) until headTrace.length+1 ).foreach{ j =>
+        if( i%2 != j%2 ) {
+          headTrace(i)(j).clear
+        } else if( i%2 == 1 && j%2 == 1 ) {
+          mTrace(i)(j).clear
+        }
+      }
+    }
+    treeRoot = null
+    stringProb = myZero
+  }
+
+
   override def rootSplitSpecs() = {
     ( 1 to (intString.length-1) by 2 ).flatMap{ k =>
       val rW = lexString( k )
