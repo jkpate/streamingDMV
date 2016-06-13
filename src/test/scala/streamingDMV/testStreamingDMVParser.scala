@@ -36,11 +36,11 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
     // "sent1: I am the eggman",
     // "sent5: he is the cat",
     "sent6: aa b c",
-    "sent8: aa b c"/*,
+    "sent8: aa b c",
     "sent2: I am the eggman eggman",
     "sent3: I am the walrus",
     "sent4: world in which we live in",
-    "dev.u977: and we go there uh once a year"*/
+    "dev.u977: and we go there uh once a year"
   ).map{_.split(" ")}
 
 
@@ -129,7 +129,7 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
         c = p.extractPartialCounts( s )
         i += 1
       }
-      println( "partial counts:" )
+      println( "partial counts|:" )
       c.printOut
       p.theta.printTotalCountsByType
       println( "INCREMENTING THETA... " )
@@ -139,7 +139,7 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
       p.theta.decrementCounts( c )
       println( "DONE DECREMENTING THETA... " )
       p.theta.printTotalCountsByType
-      // p.theta.incrementCounts( c, updateEvents = true )
+      p.theta.incrementCounts( c, updateEvents = true )
       val endTime = System.currentTimeMillis
 
       // println( s"\n\n---===---\nSENTENCE COUNTS" )
@@ -191,12 +191,13 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
         ) + " <=> " + pObs
         // p.insideChart(0)(1).keys.map{ k => sum( p.insideChart(0)(1)(k) :* p.outsideChart(0)(1)(k)) }.sum
       )
+      println( s.string.mkString( " " ) )
       println( "all terminals:" )
-      (0 to ((2*s.string.length)-1)).foreach{ i =>
+      (0 to ((2*s.string.length)-1)).foreach{ idx =>
         println(
           p.myPlus(
-            p.insideChart(i)(i+1).keys.toSeq.map{ k =>
-              p.myTimes( p.insideChart(i)(i+1)(k) , p.outsideChart(i)(i+1)(k) )
+            p.insideChart(idx)(idx+1).keys.toSeq.map{ k =>
+              p.myTimes( p.insideChart(idx)(idx+1)(k) , p.outsideChart(idx)(idx+1)(k) )
             }.toSeq:_*
           ) + " <=> " + pObs
           // p.insideChart(i)(i+1).keys.map{ k =>
@@ -204,21 +205,30 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
           // }.sum + " <=> " + pObs
         )
       }
-      (0 to ((2*s.string.length)-1)).foreach{ i =>
-          // println( p.myPlus(
-          //     p.insideChart(i)(i+1).keys.map{ k =>
-          //       p.myTimes( p.insideChart(i)(i+1)(k), p.outsideChart(i)(i+1)(k) )
-          //     }.toSeq:_*
-          //   ) - pObs
-          // )
+      println( s" } $pObs")
+      (0 to ((2*s.string.length)-1)).foreach{ idx =>
+        // println(
+        //   ( ( p.myPlus(
+        //     p.insideChart(idx)(idx+1).keys.toSeq.map{ k =>
+        //       p.myTimes( p.insideChart(idx)(idx+1)(k), p.outsideChart(idx)(idx+1)(k) )
+        //     }.toSeq:_*
+        //   ) ) - pObs )
+        // )
+            // println(
+            //   p.myPlus(
+            //     p.insideChart(idx)(idx+1).keys.toSeq.map{ k =>
+            //       p.myTimes( p.insideChart(idx)(idx+1)(k), p.outsideChart(idx)(idx+1)(k) )
+            //     }.toSeq:_*
+            //   ) - pObs 
+            // )
         assertTrue(
           math.abs(
             p.myPlus(
-              p.insideChart(i)(i+1).keys.toSeq.map{ k =>
-                p.myTimes( p.insideChart(i)(i+1)(k), p.outsideChart(i)(i+1)(k) )
+              p.insideChart(idx)(idx+1).keys.toSeq.map{ k =>
+                p.myTimes( p.insideChart(idx)(idx+1)(k), p.outsideChart(idx)(idx+1)(k) )
               }.toSeq:_*
             ) - pObs 
-          ) < 1.001
+          ) < 1E-3
           // p.insideChart(i)(i+1).keys.map{ k =>
           //   sum( p.insideChart(i)(i+1)(k) :* p.outsideChart(i)(i+1)(k)) }.sum - pObs < 1E-5
         )

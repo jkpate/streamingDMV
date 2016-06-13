@@ -741,7 +741,10 @@ case class BackoffChooseDMVCounts(
   }
 
   def printRootEvents =
-    println( rootCounts.counts.keys.mkString("\t","\n\t","\n\n" ) )
+    rootCounts.counts.keys.foreach{ e =>
+      println( "\t" + e )
+    }
+    // println( rootCounts.counts.keys.mkString("\t","\n\t","\n\n" ) )
   def printStopEvents =
     stopCounts.counts.keys.foreach{ e =>
       println( "\t" + e )
@@ -869,7 +872,10 @@ case class DMVCounts(
   }
 
   def printRootEvents =
-    println( rootCounts.counts.keys.mkString("\t","\n\t","\n\n" ) )
+    rootCounts.counts.keys.toSeq.sortWith(_.root<_.root).foreach{ e =>
+      println( "\t" + e + ": " + rootCounts( e ) )
+    }
+    // println( rootCounts.counts.keys.mkString("\t","\n\t","\n\n" ) )
   def printStopEvents =
     stopCounts.counts.keys.toSeq.sortWith(_.v<_.v).foreach{ e =>
       println( "\t" + e + ": " + stopCounts( e ) )
