@@ -598,6 +598,7 @@ object run {
         }
       } else {
         if( parserType == "TwoValenceStemSuffixParser" ) {
+          println( "Using TwoValenceStemSuffixParser" )
           new TwoValenceStemSuffixParser( parserSpec )
         } else if( parserType == "TopDownBOIndepDeps" ) {
           println( "Using TopDownDMVIndepDepsParser" )

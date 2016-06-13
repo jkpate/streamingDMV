@@ -59,28 +59,28 @@ class TwoValenceStemSuffixParser(
           )
         )
       }
-    }
+    }.toSeq
   }
 
-  // override def recoverRootMorphs( i:Int, rDec:Decoration ) = {
-  //   val DecorationPair( l, _ ) = rDec
-  //   val MorphSplitDecoration( _, split ) = l
+  override def recoverRootMorphs( i:Int, rDec:Decoration ) = {
+    val DecorationPair( l, _ ) = rDec
+    val MorphSplitDecoration( _, split ) = l
 
-  //   val ( stem, suffix) = lexString( i ).splitAt( split )
-  //   (i, stem, suffix )
-  // }
-  // override def recoverRightwardMorphs( i:Int, mDV:Decoration ) = {
-  //   val MorphSplitDecoration( _, split ) = mDV
+    val ( stem, suffix) = lexString( i ).splitAt( split )
+    (i, stem, suffix )
+  }
+  override def recoverRightwardMorphs( i:Int, mDV:Decoration ) = {
+    val MorphSplitDecoration( _, split ) = mDV
 
-  //   val ( stem, suffix) = lexString( i ).splitAt( split )
-  //   (i, stem, suffix )
-  // }
-  // override def recoverLeftwardMorphs( j:Int, mDV:Decoration ) = {
-  //   val MorphSplitDecoration( _, split ) = mDV
+    val ( stem, suffix) = lexString( i ).splitAt( split )
+    (i, stem, suffix )
+  }
+  override def recoverLeftwardMorphs( j:Int, mDV:Decoration ) = {
+    val MorphSplitDecoration( _, split ) = mDV
 
-  //   val ( stem, suffix) = lexString( j ).splitAt( split )
-  //   (j, stem, suffix )
-  // }
+    val ( stem, suffix) = lexString( j ).splitAt( split )
+    (j, stem, suffix )
+  }
 
   override def findLeftRootChild( k:Int, rDec:Decoration ) = headTrace( 0 )( k )( rDec )
   override def findRightRootChild( k:Int, rDec:Decoration ) = headTrace( k )( intString.length )( rDec )

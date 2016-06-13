@@ -223,9 +223,9 @@ abstract class FoldUnfoldNOPOSParser[C<:DependencyCounts,P<:ArcFactoredParameter
 
       if( !( stringProb > myZero && stringProb <= myOne + 1E-10 )) {
         println(
-          rootCellScore( k, decorationPair.evenLeft, decorationPair.evenRight )
+          "rootCellScore: " + rootCellScore( k, decorationPair.evenLeft, decorationPair.evenRight )
         )
-        println( stringProb )
+        println( "stringProb: " + stringProb )
       }
       assert( stringProb > myZero )
       assert( stringProb <= myOne + 1E-10 )
