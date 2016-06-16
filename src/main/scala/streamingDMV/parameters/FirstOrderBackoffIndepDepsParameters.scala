@@ -1,11 +1,13 @@
 package streamingDMV.parameters
 
 import streamingDMV.labels._
+import streamingDMV.math.LogSum
 import streamingDMV.tables.{CPT,BackoffCPT}
 
 
 trait BackoffIndepDepsParameters extends FirstOrderArcFactoredParameters {
 
+  // BackoffCPT doesn't support logspace yet
   assert( !logSpace )
 
 
@@ -27,11 +29,15 @@ trait BackoffIndepDepsParameters extends FirstOrderArcFactoredParameters {
   override def apply( r:RootEvent ) = {
     val RootEvent( rInt, _, a ) = r
     if( fullyNormalized )
-      p_root.normalized( RootEvent( rInt ) ) * 
-        p_root.normalized( RootEvent( a ) ) 
+      myTimes(
+        p_root.normalized( RootEvent( rInt ) ) ,
+          p_root.normalized( RootEvent( a ) ) 
+      )
     else
-      p_root.expDigammaNormalized( RootEvent( rInt ) ) * 
-        p_root.expDigammaNormalized( RootEvent( a ) ) 
+      myTimes(
+        p_root.expDigammaNormalized( RootEvent( rInt ) ) ,
+          p_root.expDigammaNormalized( RootEvent( a ) ) 
+      )
   }
 
   override def apply( s:StopEvent ) = {
@@ -42,20 +48,26 @@ trait BackoffIndepDepsParameters extends FirstOrderArcFactoredParameters {
         LambdaStopEvent( h, hAnn, dir, v, NotBackoff )
 
     if( fullyNormalized )
-      (
-        lambda_stop.normalized( boKey ) *
-          p_stop.normalized( StopEvent( h, dir, v, dec ) ) 
-      ) + (
-        lambda_stop.normalized( notBOKey ) *
-          p_stop.normalized( StopEvent( h, hAnn, dir, v, dec ) )
+      myPlus(
+        myTimes(
+          lambda_stop.normalized( boKey ),
+            p_stop.normalized( StopEvent( h, dir, v, dec ) ) 
+        ),
+        myTimes(
+          lambda_stop.normalized( notBOKey ),
+            p_stop.normalized( StopEvent( h, hAnn, dir, v, dec ) )
+        )
       )
     else
-      (
-        lambda_stop.expDigammaNormalized( boKey ) *
-          p_stop.expDigammaNormalized( StopEvent( h, dir, v, dec ) ) 
-      ) + (
-        lambda_stop.expDigammaNormalized( notBOKey ) *
-          p_stop.expDigammaNormalized( StopEvent( h, hAnn, dir, v, dec ) )
+      myPlus(
+        myTimes(
+          lambda_stop.expDigammaNormalized( boKey ),
+            p_stop.expDigammaNormalized( StopEvent( h, dir, v, dec ) ) 
+        ),
+        myTimes(
+          lambda_stop.expDigammaNormalized( notBOKey ),
+            p_stop.expDigammaNormalized( StopEvent( h, hAnn, dir, v, dec ) )
+        )
       )
   }
 
@@ -68,24 +80,30 @@ trait BackoffIndepDepsParameters extends FirstOrderArcFactoredParameters {
       LambdaChooseEvent( h, hAnn, dir, NotBackoff )
 
     if( fullyNormalized )
-      (
-        lambda_choose.normalized( boKey ) *
-          p_choose.normalized( ChooseEvent( h, "", -1D, -1, dir, d, "", -1D ) ) *
-          p_choose.normalized( ChooseEvent( h, "", -1D, -1, annotDir( dir ), -1, "", dAnn ) )
-      ) + (
-        lambda_choose.normalized( notBOKey ) *
-          p_choose.normalized( ChooseEvent( h, "", hAnn, -1, dir, d, "", -1D ) ) *
-          p_choose.normalized( ChooseEvent( h, "", hAnn, -1, annotDir( dir ), -1, "", dAnn ) )
+      myPlus(
+        myTimes(
+          lambda_choose.normalized( boKey ),
+            p_choose.normalized( ChooseEvent( h, "", -1D, -1, dir, d, "", -1D ) ),
+            p_choose.normalized( ChooseEvent( h, "", -1D, -1, annotDir( dir ), -1, "", dAnn ) )
+        ),
+        myTimes(
+          lambda_choose.normalized( notBOKey ),
+            p_choose.normalized( ChooseEvent( h, "", hAnn, -1, dir, d, "", -1D ) ),
+            p_choose.normalized( ChooseEvent( h, "", hAnn, -1, annotDir( dir ), -1, "", dAnn ) )
+        )
       )
     else
-      (
-        lambda_choose.expDigammaNormalized( boKey ) *
-          p_choose.expDigammaNormalized( ChooseEvent( h, "", -1D, -1, dir, d, "", -1D ) ) *
-          p_choose.expDigammaNormalized( ChooseEvent( h, "", -1D, -1, annotDir( dir ), -1, "", dAnn ) )
-      ) + (
-        lambda_choose.expDigammaNormalized( notBOKey ) *
-          p_choose.expDigammaNormalized( ChooseEvent( h, "", hAnn, -1, dir, d, "", -1D ) ) *
-          p_choose.expDigammaNormalized( ChooseEvent( h, "", hAnn, -1, annotDir( dir ), -1, "", dAnn ) )
+      myPlus(
+        myTimes(
+          lambda_choose.expDigammaNormalized( boKey ),
+            p_choose.expDigammaNormalized( ChooseEvent( h, "", -1D, -1, dir, d, "", -1D ) ),
+            p_choose.expDigammaNormalized( ChooseEvent( h, "", -1D, -1, annotDir( dir ), -1, "", dAnn ) )
+        ),
+        myTimes(
+          lambda_choose.expDigammaNormalized( notBOKey ),
+            p_choose.expDigammaNormalized( ChooseEvent( h, "", hAnn, -1, dir, d, "", -1D ) ),
+            p_choose.expDigammaNormalized( ChooseEvent( h, "", hAnn, -1, annotDir( dir ), -1, "", dAnn ) )
+        )
       )
   }
 
@@ -273,7 +291,11 @@ trait BackoffIndepDepsParameters extends FirstOrderArcFactoredParameters {
         stopCounts.increment( possibleAnnotatedStopEvents( h, hAnn ), count, updateEvents = true )
 
         ( 0 until t ).foreach{ i =>
-          val harmonicCount = 1D + (1D / ( t - i ) )
+          val harmonicCount =
+            if( logSpace ) 
+              LogSum( 0D, -1 *math.log( t - i ) )
+            else
+              1D + (1D / ( t - i ) )
           val d= s(i)
           val dW = if( w.isEmpty ) "" else w(i)
           val dAnn = if( a.length > 0 ) { a(i) } else { -1D }
@@ -283,7 +305,11 @@ trait BackoffIndepDepsParameters extends FirstOrderArcFactoredParameters {
 
         }
         ( t+1 until s.length ).foreach{ j =>
-          val harmonicCount = 1D + (1D / ( j - t ) )
+          val harmonicCount =
+            if( logSpace ) 
+              LogSum( 0D, -1 *math.log( j - t ) )
+            else
+              1D + ( 1D / ( j - t ) )
           val d= s(j)
           val dW = if( w.isEmpty ) "" else w(j)
           val dAnn = if( a.length > 0 ) { a(j) } else { -1D }
@@ -316,6 +342,8 @@ trait BackoffIndepDepsParameters extends FirstOrderArcFactoredParameters {
 
 
   override def incrementCounts( counts:DMVCounts, updateEvents:Boolean = true ) {
+    println( "FirstOrderBackoffIndepDepsParameters.incrementCounts received:" )
+    counts.printTotalCountsByType
     // Don't need to decompose root counts into backed-off and non-backedoff counts
     p_root.increment( counts.rootCounts, updateEvents )
 
@@ -340,19 +368,35 @@ trait BackoffIndepDepsParameters extends FirstOrderArcFactoredParameters {
       val count = counts.stopCounts( fullKey )
 
       if( fullyNormalized ) {
-        val boCount = lambda_stop.normalized( boKey ) * count
-        val notBOCount = lambda_stop.normalized( notBOKey ) * count
+        val boCount = myTimes( lambda_stop.normalized( boKey ) , count )
+        val notBOCount = myTimes( lambda_stop.normalized( notBOKey ) , count )
         p_stop.increment( eventBOKey, boCount, updateEvents = updateEvents )
         p_stop.increment( fullKey, notBOCount, updateEvents = updateEvents )
-        // separateLambdaStop.increment( boKey, boCount, updateEvents = updateEvents )
-        separateLambdaStop.increment( notBOKey, notBOCount + boCount, updateEvents = updateEvents )
+
+        separateLambdaStop.increment( boKey, boCount, updateEvents = updateEvents )
+        separateLambdaStop.increment( notBOKey, notBOCount, updateEvents = updateEvents )
       } else {
-        val boCount = lambda_stop.expDigammaNormalized( boKey ) * count
-        val notBOCount = lambda_stop.expDigammaNormalized( notBOKey ) * count
+        // We have the marginal of the arc, but we need to break it down to the part due to back-off
+        // and the part not due to back-off. The variational scores sub-normalize, so to get
+        // *counts*, we need to re-normalize the variational scores to get the proper attribution.
+        // I did not need to do this in the code for my dissertation because I explicitly broke down
+        // the counts during the outside pass (so the normalization term was implicit in outside and
+        // inside scores)
+        val boScore = lambda_stop.expDigammaNormalized( boKey )
+        val notBOScore = lambda_stop.expDigammaNormalized( notBOKey )
+        val scoreSum = boScore + notBOScore
+
+        val boProp = boScore / scoreSum
+        val notBOProp = notBOScore / scoreSum
+
+        val boCount = myTimes( boProp , count )
+        val notBOCount = myTimes( notBOProp , count )
+
         p_stop.increment( eventBOKey, boCount, updateEvents = updateEvents )
         p_stop.increment( fullKey, notBOCount, updateEvents = updateEvents )
-        // separateLambdaStop.increment( boKey, boCount, updateEvents = updateEvents )
-        separateLambdaStop.increment( notBOKey, notBOCount + boCount, updateEvents = updateEvents )
+
+        separateLambdaStop.increment( boKey, boCount, updateEvents = updateEvents )
+        separateLambdaStop.increment( notBOKey, notBOCount, updateEvents = updateEvents )
       }
 
     }
@@ -384,27 +428,41 @@ trait BackoffIndepDepsParameters extends FirstOrderArcFactoredParameters {
       val count = counts.chooseCounts( fullKey )
 
       if( fullyNormalized ) {
-        val boCount = lambda_choose.normalized( boKey ) * count
-        val notBOCount = lambda_choose.normalized( notBOKey ) * count
+        val boCount = myTimes( lambda_choose.normalized( boKey ) , count )
+        val notBOCount = myTimes( lambda_choose.normalized( notBOKey ) , count )
 
         p_choose.increment( boChooseLex, boCount, updateEvents = updateEvents )
         p_choose.increment( boChooseAnn, boCount, updateEvents = updateEvents )
         p_choose.increment( fullChooseLex, notBOCount, updateEvents = updateEvents )
         p_choose.increment( fullChooseAnn, notBOCount, updateEvents = updateEvents )
 
-        // separateLambdaChoose.increment( boKey, boCount )
-        separateLambdaChoose.increment( notBOKey, notBOCount + boCount, updateEvents = updateEvents )
+        separateLambdaChoose.increment( boKey, boCount, updateEvents = updateEvents )
+        separateLambdaChoose.increment( notBOKey, notBOCount, updateEvents = updateEvents )
       } else {
-        val boCount = lambda_choose.expDigammaNormalized( boKey ) * count
-        val notBOCount = lambda_choose.expDigammaNormalized( notBOKey ) * count
+        // We have the marginal of the arc, but we need to break it down to the part due to back-off
+        // and the part not due to back-off. The variational scores sub-normalize, so to get
+        // *counts*, we need to re-normalize the variational scores to get the proper attribution.
+        // I did not need to do this in the code for my dissertation because I explicitly broke down
+        // the counts during the outside pass (so the normalization term was implicit in outside and
+        // inside scores)
+
+        val boScore = lambda_choose.expDigammaNormalized( boKey )
+        val notBOScore = lambda_choose.expDigammaNormalized( notBOKey )
+        val scoreSum = boScore + notBOScore
+
+        val boProp = boScore / scoreSum
+        val notBOProp = notBOScore / scoreSum
+
+        val boCount = myTimes( boProp , count )
+        val notBOCount = myTimes( notBOProp , count )
 
         p_choose.increment( boChooseLex, boCount, updateEvents = updateEvents )
         p_choose.increment( boChooseAnn, boCount, updateEvents = updateEvents )
         p_choose.increment( fullChooseLex, notBOCount, updateEvents = updateEvents )
         p_choose.increment( fullChooseAnn, notBOCount, updateEvents = updateEvents )
 
-        //separateLambdaChoose.increment( boKey, boCount, updateEvents = updateEvents )
-        separateLambdaChoose.increment( notBOKey, notBOCount + boCount, updateEvents = updateEvents )
+        separateLambdaChoose.increment( boKey, boCount, updateEvents = updateEvents )
+        separateLambdaChoose.increment( notBOKey, notBOCount, updateEvents = updateEvents )
       }
 
     }
@@ -438,17 +496,34 @@ trait BackoffIndepDepsParameters extends FirstOrderArcFactoredParameters {
       val count = counts.stopCounts( fullKey )
 
       if( fullyNormalized ) {
-        val boCount = lambda_stop.normalized( boKey ) * count
-        val notBOCount = lambda_stop.normalized( notBOKey ) * count
+        val boCount = myTimes( lambda_stop.normalized( boKey ) , count )
+        val notBOCount = myTimes( lambda_stop.normalized( notBOKey ) , count )
+
         p_stop.decrement( eventBOKey, boCount, integerDec = integerDec )
         p_stop.decrement( fullKey, notBOCount, integerDec = integerDec )
+
         separateLambdaStop.decrement( boKey, boCount, integerDec = integerDec )
         separateLambdaStop.decrement( notBOKey, notBOCount, integerDec = integerDec )
       } else {
-        val boCount = lambda_stop.expDigammaNormalized( boKey ) * count
-        val notBOCount = lambda_stop.expDigammaNormalized( notBOKey ) * count
+        // We have the marginal of the arc, but we need to break it down to the part due to back-off
+        // and the part not due to back-off. The variational scores sub-normalize, so to get
+        // *counts*, we need to re-normalize the variational scores to get the proper attribution.
+        // I did not need to do this in the code for my dissertation because I explicitly broke down
+        // the counts during the outside pass (so the normalization term was implicit in outside and
+        // inside scores)
+        val boScore = lambda_stop.expDigammaNormalized( boKey )
+        val notBOScore = lambda_stop.expDigammaNormalized( notBOKey )
+        val scoreSum = boScore + notBOScore
+
+        val boProp = boScore / scoreSum
+        val notBOProp = notBOScore / scoreSum
+
+        val boCount = myTimes( boProp , count )
+        val notBOCount = myTimes( notBOProp , count )
+
         p_stop.decrement( eventBOKey, boCount, integerDec = integerDec )
         p_stop.decrement( fullKey, notBOCount, integerDec = integerDec )
+
         separateLambdaStop.decrement( boKey, boCount, integerDec = integerDec )
         separateLambdaStop.decrement( notBOKey, notBOCount, integerDec = integerDec )
       }
@@ -481,22 +556,38 @@ trait BackoffIndepDepsParameters extends FirstOrderArcFactoredParameters {
       val count = counts.chooseCounts( fullKey )
 
       if( fullyNormalized ) {
-        val boCount = lambda_choose.normalized( boKey ) * count
-        val notBOCount = lambda_choose.normalized( notBOKey ) * count
+        val boCount = myTimes( lambda_choose.normalized( boKey ) , count )
+        val notBOCount = myTimes( lambda_choose.normalized( notBOKey ) , count )
 
         p_choose.decrement( boChooseLex, boCount, integerDec = integerDec )
         p_choose.decrement( boChooseAnn, boCount, integerDec = integerDec )
+
         p_choose.decrement( fullChooseLex, notBOCount, integerDec = integerDec )
         p_choose.decrement( fullChooseAnn, notBOCount, integerDec = integerDec )
 
         separateLambdaChoose.decrement( boKey, boCount, integerDec = integerDec )
         separateLambdaChoose.decrement( notBOKey, notBOCount, integerDec = integerDec )
       } else {
-        val boCount = lambda_choose.expDigammaNormalized( boKey ) * count
-        val notBOCount = lambda_choose.expDigammaNormalized( notBOKey ) * count
+        // We have the marginal of the arc, but we need to break it down to the part due to back-off
+        // and the part not due to back-off. The variational scores sub-normalize, so to get
+        // *counts*, we need to re-normalize the variational scores to get the proper attribution.
+        // I did not need to do this in the code for my dissertation because I explicitly broke down
+        // the counts during the outside pass (so the normalization term was implicit in outside and
+        // inside scores)
+
+        val boScore = lambda_choose.expDigammaNormalized( boKey )
+        val notBOScore = lambda_choose.expDigammaNormalized( notBOKey )
+        val scoreSum = boScore + notBOScore
+
+        val boProp = boScore / scoreSum
+        val notBOProp = notBOScore / scoreSum
+
+        val boCount = myTimes( boProp , count )
+        val notBOCount = myTimes( notBOProp , count )
 
         p_choose.decrement( boChooseLex, boCount, integerDec = integerDec )
         p_choose.decrement( boChooseAnn, boCount, integerDec = integerDec )
+
         p_choose.decrement( fullChooseLex, notBOCount, integerDec = integerDec )
         p_choose.decrement( fullChooseAnn, notBOCount, integerDec = integerDec )
 

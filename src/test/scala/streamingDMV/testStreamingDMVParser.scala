@@ -46,7 +46,12 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
 
   val idDMVCorpus = stringsToUtts( lexString = true, annotDouble=false, dmvCorpus )(0)
 
+  val annotIDDMVCorpus = idDMVCorpus.map{ case Utt( id, string, _, _ ) =>
+    Utt( id, string, Array(), string.map{ _ => r.nextInt( 5 ).toDouble } )
+  }
+
   println( idDMVCorpus.mkString( "\n" ) )
+  println( "}> " + annotIDDMVCorpus.mkString( "\n" ) )
 
 
   // val uposCount = 20
@@ -77,8 +82,8 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
     approximate = false,
     reservoirSize = reservoirSize,
     uposCount = uposCount,
-    // logSpace = false,
-    logSpace = true,
+    logSpace = false,
+    // logSpace = true,
     kappa = 0.9,
     tau = 1
   )
@@ -87,7 +92,7 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   // val p = new FourValenceParser( parserSpec )
   // val p = new ThreeValenceParser( parserSpec )
   // val p = new TopDownDMVParser( parserSpec )
-  val p = new TwoValenceStemSuffixParser( parserSpec )
+  // val p = new TwoValenceStemSuffixParser( parserSpec )
   // val p = new InfiniteTopDownDMVParser( parserSpec )
   // val p = new OriginalDMVParser( parserSpec )
   // val p = new NoValenceParser( parserSpec )
@@ -103,9 +108,11 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
   // )
   // val p = new NewNoValenceUPOSParser( parserSpec )
   // val p = new NewTwoValenceUPOSParser( parserSpec )
+  val p = new TopDownDMVIndepDepsParser( parserSpec )
 
 
-  p.zerosInit( idDMVCorpus )
+  //p.zerosInit( idDMVCorpus )
+  p.zerosInit( annotIDDMVCorpus )
   // p.randomInit( idDMVCorpus, 15, 100 )
 
   val iters = 1//00//0
@@ -115,7 +122,8 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
     p.theta.printTotalCountsByType
 
     var totalTime = 0D
-    idDMVCorpus.foreach{ s =>
+    // idDMVCorpus.foreach{ s =>
+    annotIDDMVCorpus.foreach{ s =>
       println( s.string.mkString(" " ) )
       println( s.lexes.mkString(" " ) )
       var i = 0
@@ -130,6 +138,7 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
         i += 1
       }
       println( "partial counts|:" )
+      c.printTotalCountsByType
       c.printOut
       p.theta.printTotalCountsByType
       println( "INCREMENTING THETA... " )
@@ -149,6 +158,7 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
       // c.printStopEvents
 
       println( s"\n\n---===---\nACCUMULATED COUNTS" )
+      p.theta.printTotalCountsByType
       p.theta.toCounts.printTotalCountsByType
       // println( p.chartToString( "inside chart" , p.insideChart ) )
 
@@ -247,7 +257,8 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
 
   @Test def testViterbi {
     val startTime = System.currentTimeMillis
-    idDMVCorpus.foreach{ s =>
+    // idDMVCorpus.foreach{ s =>
+    annotIDDMVCorpus.foreach{ s =>
       println( s.string.mkString(" " ) )
 
       println( 
@@ -264,7 +275,8 @@ class FastDMVParserTestSuite extends AssertionsForJUnit with Suite {
 
   @Test def testLogProb {
     val startTime = System.currentTimeMillis
-    idDMVCorpus.foreach{ s =>
+    // idDMVCorpus.foreach{ s =>
+    annotIDDMVCorpus.foreach{ s =>
       println( s.string.mkString(" " ) )
 
       println( 

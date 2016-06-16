@@ -2,6 +2,7 @@ package streamingDMV.parameters
 
 import streamingDMV.labels._
 import streamingDMV.tables.CPT
+import streamingDMV.math.LogSum
 
 import collection.mutable.{Set=>MSet}
 
@@ -24,6 +25,22 @@ abstract class ArcFactoredParameters[C<:DependencyCounts](
 
   val myZero = if( parameterSpec.logSpace ) Double.NegativeInfinity else 0D
   val myOne = if( parameterSpec.logSpace ) 0D else 1D
+
+  def logPlus( nums:Double* ) = { nums.reduce( LogSum(_,_) ) }
+  def realPlus( nums:Double* ) = { nums.sum }
+  def logTimes( nums:Double* ) = { nums.sum }
+  def realTimes( nums:Double* ) = { nums.reduce(_*_) }
+
+  def logDiv( a:Double, b:Double ) = { a - b }
+  def realDiv( a:Double, b:Double ) = { a / b }
+  def myDiv = if( logSpace ) logDiv _ else realDiv _
+
+  // in scala 2.10+ partially applied varargs functions take Seq[_]...
+  val myPlusSeq = if( logSpace ) logPlus _ else realPlus _
+  def myPlus( nums:Double* ) = myPlusSeq( nums )
+
+  val myTimesSeq = if( logSpace ) logTimes _ else realTimes _
+  def myTimes( nums:Double* ) = myTimesSeq( nums )
 
   var fullyNormalized:Boolean = false
   def zerosInit( corpus:List[Utt] ):Unit

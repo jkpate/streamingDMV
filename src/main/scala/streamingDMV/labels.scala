@@ -109,8 +109,13 @@ case class DirectedArc( hIdx:Int, dIdx:Int )
 case class Parse( id:String, conParse:String, depParse:Set[DirectedArc], morphs:Seq[Tuple3[Int,String,String]] = Seq() )
 case class Utt( id:String, string:Array[Int], lexes:Array[String] = Array(),
   annotations:Array[Double] = Array() ) {
-  override def toString = "Utt( " + id + ", " + string.mkString("[ ",", "," ]") + ", " +
-    lexes.mkString( "< ", ", ", " >" ) + " )" 
+  override def toString =
+    "Utt( " +
+      id + ", " +
+        string.mkString("[ ",", "," ]") + ", " +
+        lexes.mkString( "< ", ", ", " >" ) + ", " +
+        annotations.mkString( "{ ", ", ", ", ") +
+    " )" 
 }
 
 case class SampledCounts[C]( utt:Utt, counts:C, samplingScore:Double, trueScore:Double )
@@ -901,6 +906,7 @@ case class DMVCounts(
       chooseCounts.counts.values.sum
 
   def printTotalCountsByType {
+    println( "DMVCounts.printTotalCountsByType:" )
     println( s"  > logSpace: ${logSpace}" )
     if( logSpace ) {
       println( s"  > ${rootCounts.counts.values.map{exp(_)}.sum} root events" )

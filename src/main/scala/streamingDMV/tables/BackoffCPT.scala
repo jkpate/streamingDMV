@@ -115,7 +115,7 @@ class BackoffCPT[E<:Event with BackingOffEvent with Product](
     // }
     counts.increment( other.counts )
     denomCounts.increment( other.denomCounts )
-    other.denoms.flatMap{_._2}.foreach{ event =>
+    other.denoms.flatMap{_._2}.toSeq.foreach{ event =>
       increment( event, other(event), updateEvents )
     }
   }

@@ -181,6 +181,7 @@ abstract class NOPOSArcFactoredParameters(
   }
 
   def printTotalCountsByType {
+    println( "NOPOSArcFactoredParameters.printTotalCountsByType:" )
     if( logSpace ) {
       println( s"  > ${p_root.counts.values.map{exp(_)}.sum} root events" )
       println( s"  > ${p_root.denomCounts.values.map{exp(_)}.sum} root denom events" )
