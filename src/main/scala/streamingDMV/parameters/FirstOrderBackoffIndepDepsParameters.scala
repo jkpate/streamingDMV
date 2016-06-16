@@ -342,8 +342,9 @@ trait BackoffIndepDepsParameters extends FirstOrderArcFactoredParameters {
 
 
   override def incrementCounts( counts:DMVCounts, updateEvents:Boolean = true ) {
-    println( "FirstOrderBackoffIndepDepsParameters.incrementCounts received:" )
-    counts.printTotalCountsByType
+    // println( "FirstOrderBackoffIndepDepsParameters.incrementCounts received:" )
+    // counts.printTotalCountsByType
+
     // Don't need to decompose root counts into backed-off and non-backedoff counts
     p_root.increment( counts.rootCounts, updateEvents )
 
