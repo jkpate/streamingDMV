@@ -27,16 +27,16 @@ trait BackoffIndepDepsParameters extends FirstOrderArcFactoredParameters {
   )
 
   override def apply( r:RootEvent ) = {
-    val RootEvent( rInt, _, a ) = r
+    val RootEvent( SimpleRoot, rInt, _, a ) = r
     if( fullyNormalized )
       myTimes(
-        p_root.normalized( RootEvent( rInt ) ) ,
-          p_root.normalized( RootEvent( a ) ) 
+        p_root.normalized( RootEvent( WordRoot, rInt, "", -1D ) ) ,
+          p_root.normalized( RootEvent( AnnotRoot, -1, "", a ) ) 
       )
     else
       myTimes(
-        p_root.expDigammaNormalized( RootEvent( rInt ) ) ,
-          p_root.expDigammaNormalized( RootEvent( a ) ) 
+        p_root.expDigammaNormalized( RootEvent( WordRoot, rInt, "", -1D ) ) ,
+          p_root.expDigammaNormalized( RootEvent( AnnotRoot, -1, "", a ) ) 
       )
   }
 
@@ -345,8 +345,13 @@ trait BackoffIndepDepsParameters extends FirstOrderArcFactoredParameters {
     // println( "FirstOrderBackoffIndepDepsParameters.incrementCounts received:" )
     // counts.printTotalCountsByType
 
-    // Don't need to decompose root counts into backed-off and non-backedoff counts
-    p_root.increment( counts.rootCounts, updateEvents )
+    // // Don't need to decompose root counts into backed-off and non-backedoff counts
+    // p_root.increment( counts.rootCounts, updateEvents )
+    //
+    counts.rootCounts.counts.exactCounts.foreach{ case( RootEvent( SimpleRoot, r, _, a ), count ) =>
+      p_root.increment( RootEvent( WordRoot, r, "", -1D ) , count )
+      p_root.increment( RootEvent( AnnotRoot, -1, "", a ) , count )
+    }
 
 
     // need to ensure that lambda_stop does not change until after counts are separated

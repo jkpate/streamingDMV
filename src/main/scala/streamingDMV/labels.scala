@@ -615,41 +615,34 @@ case class StopNorm( head:Int, hAnn:Double, dir:AttDir, v:Decoration ) extends N
   // }
 }
 
+
+abstract class RootType
+object SimpleRoot extends RootType
+object WordRoot extends RootType
+object AnnotRoot extends RootType
 object RootEvent {
-  def apply():RootEvent = RootEvent( -1 )
+  def apply():RootEvent = RootEvent( SimpleRoot, -1, "", -1 )
 
-  def apply( ann:Double ):RootEvent =
-    RootEvent( -1, "", ann )
+  def apply( r:Int ):RootEvent = RootEvent( SimpleRoot, r, "", -1 )
 
-  def apply( root:Int, ann:Double ):RootEvent =
-    RootEvent( root, "", ann )
+  def apply( r:Int, ann:Double ):RootEvent =
+    RootEvent( SimpleRoot, r, "", ann )
+
+  def apply( r:Int, gen:String ):RootEvent =
+    RootEvent( SimpleRoot, r, gen, -1D )
+
+  def apply( r:Int, gen:String, ann:Double ):RootEvent =
+    RootEvent( SimpleRoot, r, gen, ann )
 }
-case class RootEvent( root:Int = -1, gen:String = "", ann:Double = -1D ) extends Event with GeneratingString {
+case class RootEvent( rType:RootType, root:Int = -1, gen:String = "", ann:Double = -1D ) extends Event with GeneratingString {
   override lazy val byteBuffer = {
     val bytes = ByteBuffer.allocate( 8 )
     bytes.putInt( root )
     bytes
   }
-  def normKey = RootNorm
-  /*def closedSpec = RootNorm
-  def openSpec = (root, 0, 0)*/
-  // override val hashCode = root
-    // override def equals( o:Any ) = {
-    //   o match {
-    //     case that:RootEvent => root == that.root
-    //     case _ => false
-    //   }
-    // }
+  def normKey = RootNorm( rType )
 }
-case object RootNorm extends NormKey {
-  override val hashCode = 1
-  // override def equals( o:Any ) = {
-  //   o match {
-  //     case that:RootNorm.type => true
-  //     case _ => false
-  //   }
-  // }
-}
+case class RootNorm( rType:RootType ) extends NormKey
 
 
 abstract class DependencyCounts {

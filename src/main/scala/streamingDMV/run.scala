@@ -303,6 +303,10 @@ object run {
     val Seq( trainSet, testSet ) =
       stringsToUtts( lexString, doubleAnnots, trainWordStrings, testWordStrings )
 
+    if( doubleAnnots ) {
+      println( trainSet.map{_.annotations}.mkString( "n") )
+    }
+
     // lazy val totalVocabSize = (trainSet ++ testSet).flatMap{_.string}.toSet.size
     lazy val totalVocabSize = stringsToUtts.dictionary.size
     println( s"${trainSet.size} training strings" )
