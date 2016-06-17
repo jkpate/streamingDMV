@@ -108,7 +108,7 @@ trait BackoffIndepDepsParameters extends FirstOrderArcFactoredParameters {
   }
 
   def annotatedRootEvents( r:Int, rAnn:Double ) =
-    Seq[Event]( RootEvent( r, "", -1D ), RootEvent( -1, "", rAnn ) )
+    Seq[Event]( RootEvent( WordRoot, r, "", -1D ), RootEvent( AnnotRoot, -1, "", rAnn ) )
 
   def possibleAnnotatedStopEvents( h:Int, hAnn:Double ) = {
     possibleStopEvents( h ).map{ case StopEvent( h, _, dir, v, dec ) =>
