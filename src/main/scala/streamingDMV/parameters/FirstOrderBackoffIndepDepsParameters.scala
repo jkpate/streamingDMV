@@ -478,8 +478,12 @@ trait BackoffIndepDepsParameters extends FirstOrderArcFactoredParameters {
   }
 
   override def decrementCounts( counts:DMVCounts, integerDec:Boolean ) {
-    // Don't need to decompose root counts into backed-off and non-backedoff counts
-    p_root.decrement( counts.rootCounts, integerDec )
+    // // Don't need to decompose root counts into backed-off and non-backedoff counts
+    // p_root.decrement( counts.rootCounts, integerDec )
+    counts.rootCounts.counts.exactCounts.foreach{ case( RootEvent( SimpleRoot, r, _, a ), count ) =>
+      p_root.decrement( RootEvent( WordRoot, r, "", -1D ) , count, integerDec = integerDec )
+      p_root.decrement( RootEvent( AnnotRoot, -1, "", a ) , count, integerDec = integerDec )
+    }
 
 
     // need to ensure that lambda_stop does not change until after counts are separated
