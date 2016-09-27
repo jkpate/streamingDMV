@@ -7,6 +7,8 @@ import streamingDMV.parameters.BackoffIndepDepsParameters
 import scala.collection.mutable.{Map=>MMap}
 import scala.math.log
 
+// Used in Pate and Johnson (2016). Grammar induction from (lots of) words alone. In Proceedings of
+// COLING.
 class TopDownDMVParser( parserSpec:ParserSpec) extends FirstOrderFoldUnfoldNOPOSParser[TopDownDMVParameters](
   // maxLength, rootAlpha, stopAlpha, chooseAlpha, randomSeed, reservoirSize
   parserSpec
@@ -382,6 +384,8 @@ class TopDownDMVIndepDepsParser( parserSpec:ParserSpec ) extends TopDownDMVParse
 
 }
 
+// Used in Pate and Johnson (2016). Grammar induction from (lots of) words alone. In Proceedings of
+// COLING.
 class TopDownDMVCVBParser( parserSpec:ParserSpec ) extends TopDownDMVParser( parserSpec ) with
 CVBParser[DMVCounts,TopDownDMVParameters] {
   override val theta = new TopDownDMVParameters( parserSpec.toParameterSpec) {
@@ -398,7 +402,8 @@ CVBParser[DMVCounts,TopDownDMVParameters] {
   theta.fullyNormalized = true
 }
 
-// UGH so ugly, refactor ASAP if it works well
+// Used in Pate and Johnson (2016). Grammar induction from (lots of) words alone. In Proceedings of
+// COLING.
 class TopDownDMVADStochasticParser( parserSpec:ParserSpec) extends
 FirstOrderFoldUnfoldNOPOSParser[TopDownDMVParameters with AdaDeltaParameters] (
   parserSpec
@@ -715,7 +720,8 @@ FirstOrderFoldUnfoldNOPOSParser[TopDownDMVParameters with AdaDeltaParameters] (
 
 }
 
-// UGH so ugly, refactor ASAP if it works well
+// Used in Pate and Johnson (2016). Grammar induction from (lots of) words alone. In Proceedings of
+// COLING.
 class TopDownDMVStochasticParser( parserSpec:ParserSpec) extends
 FirstOrderFoldUnfoldNOPOSParser[TopDownDMVParameters with SteppingParameters] (
   parserSpec
@@ -1033,7 +1039,6 @@ FirstOrderFoldUnfoldNOPOSParser[TopDownDMVParameters with SteppingParameters] (
 }
 
 
-// UGH so ugly, refactor ASAP if it works well
 class TopDownDMVADParser( parserSpec:ParserSpec) extends
 FirstOrderFoldUnfoldNOPOSParser[TopDownDMVParameters with WeightsParameters] (
   parserSpec
