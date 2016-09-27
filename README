@@ -49,7 +49,7 @@ et al 2007; Asuncion et al., 2009; Wang and Blunsom, 2013), and streaming VB (Br
 
 To run stochastic VB, replace the -batchVB with -stochastic VB, optionally provide -tau
 and -kappa for the learning rate schedule), and adjust the argument to -miniBatchSize to be the size
-of your minibatches. Additionally, set the number of epochs with -epochs <number>.
+of your minibatches. Additionally, set the number of epochs with -epochCount <number>.
 
 To run collapsed VB, replace -batchVB with -collapsedVB, and remove -miniBatchSize (or set it to 1).
 Additionally, set the number of epochs with -epochs <number>. Be warned that collapsed VB maintains
@@ -74,7 +74,8 @@ You can evaluate on a log scale (every 10 sentences through the first 100 senten
 sentences through the first 1000 sentences, and so on) by passing -logEvalRate.
 
 The results for Pate and Johnson (2016) were obtained with the following commands, with random seeds
-of 15, 17, 19, 21, and 23:
+of 15, 17, 19, 21, and 23. In all cases, add the -harmonicCorpusInit flag to use a harmonic
+initialization.
 
 
 Batch VB:
@@ -101,7 +102,8 @@ java -Xmx6g -jar target/scala-2.11/streamingDMV.jar streamingDMV.run \
   -kappa 0.9 \
   -tau 1 \
   -evalEvery 10000 \
-  -logEvalRate
+  -logEvalRate \
+  -epochCount 15
 
 Collapsed VB:
 
@@ -113,7 +115,8 @@ java -Xmx60g -jar target/scala-2.11/streamingDMV.jar streamingDMV.run \
   -randomSeed <#> \
   -miniBatchSize 1 \
   -evalEvery 10 \
-  -logEvalRate
+  -logEvalRate \
+  -epochCount 15
 
 
 Streaming VB:
