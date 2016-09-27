@@ -1,9 +1,10 @@
-This repository contains implementations of the Dependency Model with Valence (Klein and Manning,
-2005) and variants, together with implementations of three scalable algorithms for variational
-Bayesian inference. This software was used to produce the results in:
+This repository contains implementations of the Dependency Model with Valence
+(Klein and Manning, 2005) and variants, together with implementations of three
+scalable algorithms for variational Bayesian inference. This software was used
+to produce the results in:
 
-Pate, J K and Johnson, M (2016). Grammar induction from (lots of) words alone. In proceedings of
-COLING 2016.
+Pate, J K and Johnson, M (2016). Grammar induction from (lots of) words alone.
+In proceedings of COLING 2016.
 
 To compile the software, install the simple-build-tool for Scala, and run:
 
@@ -12,20 +13,22 @@ $ sbt assembly
 
 This produces a single jar file under target/scala-2.11/streamingDMV.jar.
 
-Training and evaluation sentences should be provided in plain text files with one sentence per line.
-The line should begin with a unique label for the sentence, a space, and then the tokens of the
-sentence, separated by spaces. For example:
+Training and evaluation sentences should be provided in plain text files with
+one sentence per line.  The line should begin with a unique label for the
+sentence, a space, and then the tokens of the sentence, separated by spaces. For
+example:
 
 train.utt1: colorless green ideas sleep furiously
 train.utt2: the cow jumped over the moon
 
 
-run.scala contains code for running all the models. The results in Pate and Johnson (2016) were
-obtained with TopDownDMVParser (this produces identical results to OriginalDMVParser, but I have not
-implemented the scalable algorithms for the OriginalDMVParser version).
+run.scala contains code for running all the models. The results in Pate and
+Johnson (2016) were obtained with TopDownDMVParser (this produces identical
+results to OriginalDMVParser, but I have not implemented the scalable algorithms
+for the OriginalDMVParser version).
 
-To run batch VB with TopDownParser that terminates when the log-likelihood has changed less than
-0.001%, use the following command:
+To run batch VB with TopDownParser that terminates when the log-likelihood has
+changed less than 0.001%, use the following command:
 
 java -jar target/scala-2.11/streamingDMV.jar streamingDMV.run \
   -trainStrings <training strings file> \
@@ -35,47 +38,55 @@ java -jar target/scala-2.11/streamingDMV.jar streamingDMV.run \
   -miniBatchSize <number of training strings> \
   -incConvergence 1E-5
 
-To use a version of the harmonic initialization from Klein and Manning (2004), additionally pass the
-flag: -harmonicCorpusInit
+To use a version of the harmonic initialization from Klein and Manning (2004),
+additionally pass the flag: -harmonicCorpusInit
 
-To obtain learning curves for Batch VB, repeatedly run the above command with larger arguments for
-miniBatchSize, and provide the same random seed with -randomSeed <number>. A consistent random seed
-ensures that larger training sets contain all of the strings from the smaller training sets.
+To obtain learning curves for Batch VB, repeatedly run the above command with
+larger arguments for miniBatchSize, and provide the same random seed with
+-randomSeed <number>. A consistent random seed ensures that larger training sets
+contain all of the strings from the smaller training sets.
 
 
-Pate and Johnson (2016) additionally explore stochastic VB (Hoffman et al., 2013), collapsed VB (Teh
-et al 2007; Asuncion et al., 2009; Wang and Blunsom, 2013), and streaming VB (Broderick et al.,
-2013).
+Pate and Johnson (2016) additionally explore stochastic VB (Hoffman et al.,
+2013), collapsed VB (Teh et al 2007; Asuncion et al., 2009; Wang and Blunsom,
+2013), and streaming VB (Broderick et al., 2013).
 
-To run stochastic VB, replace the -batchVB with -stochastic VB, optionally provide -tau
-and -kappa for the learning rate schedule), and adjust the argument to -miniBatchSize to be the size
-of your minibatches. Additionally, set the number of epochs with -epochCount <number>.
+To run stochastic VB, replace the -batchVB with -stochastic VB, optionally
+provide -tau and -kappa for the learning rate schedule), and adjust the argument
+to -miniBatchSize to be the size of your minibatches. Additionally, set the
+number of epochs with -epochCount <number>.
 
-To run collapsed VB, replace -batchVB with -collapsedVB, and remove -miniBatchSize (or set it to 1).
-Additionally, set the number of epochs with -epochs <number>. Be warned that collapsed VB maintains
-a miniature grammar of counts for every sentence, and so has substantial memory requirements.
+To run collapsed VB, replace -batchVB with -collapsedVB, and remove
+-miniBatchSize (or set it to 1).  Additionally, set the number of epochs with
+-epochs <number>. Be warned that collapsed VB maintains a miniature grammar of
+counts for every sentence, and so has substantial memory requirements.
 
-To run streaming VB, delete -batchVB. We additionally found good performance by using a large
-initial minibatch of 10,000 sentences, and using subsequent minibatches of a single sentence. This
-can be accomplished by using -initialMiniBatchSize 10000 and -miniBatchSize 1. You can control the
-number of iterations of VB per sentence with -incIters <number>. We found 1 iteration to work well.
+To run streaming VB, delete -batchVB. We additionally found good performance by
+using a large initial minibatch of 10,000 sentences, and using subsequent
+minibatches of a single sentence. This can be accomplished by using
+-initialMiniBatchSize 10000 and -miniBatchSize 1. You can control the number of
+iterations of VB per sentence with -incIters <number>. We found 1 iteration to
+work well.
 
-To obtain learning curves for the scalable algorithms, use -evalEvery <number>. After processing
-evalEvery sentences, parameters will be "frozen" and the parser will print out the Viterbi
-dependency parse for the test set. Dependency parses are printed as a vector of zero-based head
-indices, with root set to the length of the string. The following output indicates that the second
-word is the root, and the first and last word depend on the second word:
+To obtain learning curves for the scalable algorithms, use -evalEvery <number>.
+After processing evalEvery sentences, parameters will be "frozen" and the parser
+will print out the Viterbi dependency parse for the test set. Dependency parses
+are printed as a vector of zero-based head indices, with root set to the length
+of the string. The following output indicates that the second word is the root,
+and the first and last word depend on the second word:
 
 test.utt1: [ 1, 2, 1 ]
 
-Additionally, the parser prints out the predictive log probability of the test set.
+Additionally, the parser prints out the predictive log probability of the test
+set.
 
-You can evaluate on a log scale (every 10 sentences through the first 100 sentences, then every 100
-sentences through the first 1000 sentences, and so on) by passing -logEvalRate.
+You can evaluate on a log scale (every 10 sentences through the first 100
+sentences, then every 100 sentences through the first 1000 sentences, and so on)
+by passing -logEvalRate.
 
-The results for Pate and Johnson (2016) were obtained with the following commands, with random seeds
-of 15, 17, 19, 21, and 23. In all cases, add the -harmonicCorpusInit flag to use a harmonic
-initialization.
+The results for Pate and Johnson (2016) were obtained with the following
+commands, with random seeds of 15, 17, 19, 21, and 23. In all cases, add the
+-harmonicCorpusInit flag to use a harmonic initialization.
 
 
 Batch VB:
@@ -133,19 +144,21 @@ java -Xmx6g -jar target/scala-2.11/streamingDMV.jar streamingDMV.run \
   -logEvalRate
 
 
-The local/bin/ directory contains perl scripts for plotting learning curves from the produced output.
+The local/bin/ directory contains perl scripts for plotting learning curves from
+the produced output.
 
 
-This repository contains several other implementations. The ThreeValence, FourValence,
-and FiveValence parsers are similar to the DMV, except they have additional levels of valence for
-the stop decisions. In preliminary experiments using streaming VB, the additional levels of valence
-produced an additional 2 points in directed attachment accuracy, although the advantage of five over
-four levels was much smaller than three over two levels. The NoValence parser does not distinguish
-valence in the stop decisions, and performs poorly.
+This repository contains several other implementations. The ThreeValence,
+FourValence, and FiveValence parsers are similar to the DMV, except they have
+additional levels of valence for the stop decisions. In preliminary experiments
+using streaming VB, the additional levels of valence produced an additional 2
+points in directed attachment accuracy, although the advantage of five over four
+levels was much smaller than three over two levels. The NoValence parser does
+not distinguish valence in the stop decisions, and performs poorly.
 
 
-There is also an implementation of particle filters, with optional rejuvenation, but these performed
-poorly.
+There is also an implementation of particle filters, with optional rejuvenation,
+but these performed poorly.
 
 
 
