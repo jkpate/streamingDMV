@@ -1,5 +1,5 @@
 This repository contains implementations of the Dependency Model with Valence
-(Klein and Manning, 2005) and variants, together with implementations of three
+(Klein and Manning, 2004) and variants, together with implementations of three
 scalable algorithms for variational Bayesian inference. This software was used
 to produce the results in:
 
